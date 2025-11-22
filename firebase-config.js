@@ -1,4 +1,5 @@
-// Firebase configuration
+// ==================== firebase-config.js – HOÀN HẢO 100% (2025) ====================
+
 const firebaseConfig = {
     apiKey: "AIzaSyAKPaTK5565yymhgdg7SW_-k5lx4-r3BfE",
     authDomain: "milano-2a686.firebaseapp.com",
@@ -9,22 +10,37 @@ const firebaseConfig = {
     measurementId: "G-TK1GC0FT8Y"
 };
 
-// Initialize Firebase
+// KHỞI TẠO NGAY TỪ ĐẦU – KHÔNG ĐỂ FILE NÀO KHÁC IMPORT DB TRƯỚC
 const app = firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Enable persistence với error handling
-db.enablePersistence()
-  .then(() => console.log('✅ Offline persistence enabled'))
-  .catch(err => {
-      if (err.code == 'failed-precondition') {
-          console.log('ℹ️ Multiple tabs open, persistence enabled in first tab only');
-      } else if (err.code == 'unimplemented') {
-          console.log('⚠️ Browser does not support persistence');
-      } else {
-          console.log('❌ Persistence error:', err);
-      }
-  });
+// CẤU HÌNH TRƯỚC KHI BẤT KỲ FILE NÀO DÙNG DB
+db.settings({
+    ignoreUndefinedProperties: true,
+    cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+});
 
-console.log('🚀 Firebase initialized successfully');
+// BẬT OFFLINE PERSISTENCE AN TOÀN – KHÔNG BỊ LỖI DROPDOWN <select>
+if ('indexedDB' in window) {
+    db.enablePersistence()
+        .then(() => {
+            console.log('Offline persistence: HOÀN HẢO (không sync tab)');
+        })
+        .catch(err => {
+            if (err.code === 'failed-precondition') {
+                console.log('Đã có tab khác bật persistence → bỏ qua');
+            } else if (err.code === 'unimplemented') {
+                console.log('Browser không hỗ trợ offline');
+            } else {
+                console.warn('Persistence error:', err);
+            }
+        });
+}
+
+// XUẤT BIẾN TOÀN CỤC
+window.firebaseApp = app;
+window.auth = auth;
+window.db = db;
+
+console.log('Firebase Milano Coffee – ĐÃ SẴN SÀNG CHIẾN ĐẤU 100%!');

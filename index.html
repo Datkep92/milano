@@ -43,32 +43,46 @@
     <div id="mainApp" class="screen">
         <!-- Header -->
         <!-- TRONG PHẦN HEADER -->
-<<header class="app-header">
+<header class="app-header">
     <div class="header-left">
         <h1>☕ Milano</h1>
     </div>
     <div class="header-right">
-        <!-- ICON BÁO CÁO NGÀY - HIỆN CHO CẢ SALE VÀ QUẢN LÝ -->
-        <button id="dailyReportIcon" class="header-icon daily-report-btn" title="Báo cáo ngày" onclick="switchToDailyReport()">
+        <!-- ICON BÁO CÁO NGÀY -->
+        <button id="dailyReportIcon" class="header-icon daily-report-btn" title="Báo cáo ngày" onclick="switchToModuleTab('report')">
             <span class="icon">📊</span>
-            <span class="icon-text">Báo cáo</span>
+        </button>
+        
+        <!-- ICON BÁO CÁO TÀI CHÍNH -->
+        <button class="header-icon financial-report-btn" title="Báo cáo tài chính" onclick="switchToModuleTab('baocao')">
+            <span class="icon">📈</span>
+        </button>
+        
+        <!-- ICON NHÂN VIÊN -->
+        <button class="header-icon staff-btn" title="Nhân viên" onclick="switchToModuleTab('nhanvien')">
+            <span class="icon">👥</span>
+        </button>
+        
+        <!-- ICON CHI PHÍ -->
+        <button class="header-icon cost-btn" title="Chi phí" onclick="switchToModuleTab('chiphi')">
+            <span class="icon">💸</span>
         </button>
         
         <!-- ICON QUẢN LÝ - CHỈ HIỆN CHO QUẢN LÝ -->
         <button id="managementIcon" style="display:none" class="header-icon management-btn" title="Quản lý" onclick="switchToStaffManagement()">
             <span class="icon">👑</span>
-            <span class="icon-text">QL</span>
         </button>
         
-        <button onclick="logout()" class="logout-btn">Đăng xuất</button>
+        <button onclick="logout()" class="logout-btn">
+    <span class="logout-icon">👋</span>
+</button>
     </div>
 </header>
 
         <main class="main-content">
-    <!-- Tab Navigation -->
-    
 
-    <!-- Report Tab -->
+
+    <!-- Report Tab (Báo cáo ngày - giữ nguyên) -->
     <div id="reportTab" class="tab-content active">
         <!-- NỘI DUNG TAB BÁO CÁO HIỆN TẠI GIỮ NGUYÊN -->
         <div class="date-selector">
@@ -173,6 +187,180 @@
             </div>
         </div>
     </div>
+
+    <!-- Báo Cáo Tài Chính Tab -->
+    <div id="baocaoTab" class="tab-content">
+        <div class="tab-header">
+            <h2>📊 Báo Cáo Tài Chính</h2>
+            <div class="tab-actions">
+                <select id="reportMonthSelector" class="month-selector">
+                    <!-- Options sẽ được thêm bằng JavaScript -->
+                </select>
+                <label class="toggle-label">
+                    <input type="checkbox" id="compareToggle" onchange="toggleComparison()">
+                    <span class="toggle-slider"></span>
+                    So sánh
+                </label>
+                <button onclick="exportProfitLossReport()" class="btn-export">📈 Xuất Excel</button>
+            </div>
+            <div id="comparisonSection" class="card" style="display: none;">
+    <!-- Nội dung so sánh sẽ được thêm bằng JavaScript -->
+</div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="card">
+            <h3>📈 Tổng Quan Tháng <span id="currentMonthLabel"></span></h3>
+            <div id="reportSummary" class="report-summary">
+                <!-- Nội dung tổng quan sẽ được thêm bằng JavaScript -->
+            </div>
+        </div>       
+    </div>
+
+    <!-- Nhân Viên Tab -->
+<div id="nhanvienTab" class="tab-content">
+    <div class="tab-header">
+        <h2>👥 Quản Lý Nhân Viên</h2>
+        <div class="tab-actions">
+            <select id="nhanvienMonthSelector" class="month-selector">
+    <option value="" disabled>Đang tải tháng vận hành...</option>
+</select>
+            <input type="text" id="employeeSearch" placeholder="🔍 Tìm nhân viên..." class="search-input">
+            <button onclick="showAddEmployeeForm()" class="btn-primary">➕ Thêm NV</button>
+            <button onclick="exportSalaryReport()" class="btn-export">📊 Xuất Lương</button>
+        </div>
+    </div>
+
+    <!-- Operational Summary -->
+    <div class="card">
+        <h3>📊 Tổng Quan Nhân Sự</h3>
+        <div id="nhanvienSummary">
+            <!-- Tổng quan nhân sự sẽ được thêm bằng JavaScript -->
+        </div>
+    </div>
+
+    <!-- Employees List -->
+    <div class="card">
+        <h3>👥 Danh Sách Nhân Viên</h3>
+        <div id="employeesList" class="employees-grid">
+            <!-- Danh sách nhân viên sẽ được thêm bằng JavaScript -->
+        </div>
+    </div>
+</div>
+
+   <!-- Chi Phí Tab -->
+<div id="chiphiTab" class="tab-content">
+    <div class="tab-header">
+        <h2>💸 Quản Lý Chi Phí Vận Hành</h2>
+        <div class="tab-actions">
+            <select id="operationalMonthSelector" class="month-selector">
+                <!-- Options sẽ được thêm bằng JavaScript -->
+            </select>
+            <button onclick="openExpenseModal('inventory')" 
+                        style="background:#2196f3;color:white;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;font-weight:bold;font-size:14px;">
+                    ➕ Hàng Hóa
+                </button>
+                <button onclick="openExpenseModal('service')" 
+                        style="background:#ff9800;color:white;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;font-weight:bold;font-size:14px;">
+                    ➕ Dịch Vụ
+                
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+        <h3>⚡ Thao Tác Nhanh</h3>
+        <div id="quickActions" class="quick-actions-grid">
+            <!-- Các nút thao tác nhanh sẽ được thêm bằng JavaScript -->
+        </div>
+    </div>
+
+    <!-- ==================== 3 VIEW SECTION ==================== -->
+    
+    <!-- VIEW 1: TỔNG QUAN -->
+<div id="overviewSection" class="view-section">
+    <!-- Tổng quan chi phí với nút thao tác -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0;">📊 Tổng Quan Chi Phí Tháng <span id="currentMonthLabel"></span></h3>
+            <div style="display: flex; gap: 10px;">
+               </button>
+            <button onclick="exportOperationalReport()" class="btn-export">📊 Xuất Báo Cáo
+            </button> 
+            </div>
+        </div>
+        <div id="operationalSummary">
+            <!-- Tổng quan chi phí sẽ được thêm bằng JavaScript -->
+        </div>
+    </div>
+
+    <!-- Tổng quan kho -->
+    <div class="card">
+        <h3>📦 Tổng Quan Kho Hàng</h3>
+        <div id="inventorySummary">
+            <!-- Tổng quan kho sẽ được thêm bằng JavaScript -->
+        </div>
+    </div>
+
+    <!-- Chi phí gần đây -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0;">📋 Chi Phí Gần Đây</h3>
+            <button onclick="toggleShowAllExpenses()" id="toggleExpensesBtn" 
+                    style="background:#667eea;color:white;padding:6px 12px;border:none;border-radius:6px;cursor:pointer;font-size:12px;">
+                Xem toàn bộ
+            </button>
+        </div>
+        <div id="recentExpensesList" class="expenses-list">
+            <!-- Chi phí gần đây sẽ được thêm bằng JavaScript -->
+        </div>
+    </div>
+</div>
+
+    <!-- VIEW 2: HÀNG HÓA & KHO -->
+    <div id="inventorySection" class="view-section" style="display: none;">
+        <div class="card">
+            <h3>📦 Quản Lý Kho Hàng</h3>
+            <div class="inventory-stats" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div style="background: #2196f3; color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                    <div style="font-size: 0.9rem;">Tổng Sản Phẩm</div>
+                    <div style="font-weight: bold; font-size: 1.3rem;" id="totalProducts">0</div>
+                </div>
+                <div style="background: #4caf50; color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                    <div style="font-size: 0.9rem;">Tổng Giá Trị</div>
+                    <div style="font-weight: bold; font-size: 1.3rem;" id="totalInventoryValue">0 ₫</div>
+                </div>
+                <div style="background: #ff9800; color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                    <div style="font-size: 0.9rem;">Sản Phẩm Sắp Hết</div>
+                    <div style="font-weight: bold; font-size: 1.3rem;" id="lowStockCount">0</div>
+                </div>
+            </div>
+            <div id="inventoryList" class="inventory-list">
+                <!-- Danh sách kho sẽ được thêm bằng JavaScript -->
+            </div>
+        </div>
+    </div>
+
+   <!-- VIEW 3: DỊCH VỤ -->
+<div id="servicesSection" class="view-section" style="display: none;">
+    <div class="card">
+        <h3>🔧 Chi Phí Dịch Vụ Tháng <span id="servicesMonthLabel"></span></h3>
+        <div class="service-stats" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+            <div style="background: #ff9800; color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                <div style="font-size: 0.9rem;">Tổng Chi Phí</div>
+                <div style="font-weight: bold; font-size: 1.3rem;" id="totalServicesCost">0 ₫</div>
+            </div>
+            <div style="background: #9c27b0; color: white; padding: 15px; border-radius: 10px; text-align: center;">
+                <div style="font-size: 0.9rem;">Số Loại Dịch Vụ</div>
+                <div style="font-weight: bold; font-size: 1.3rem;" id="totalServiceTypes">0</div>
+            </div>
+        </div>
+        <div id="servicesList" class="services-list">
+            <!-- Danh sách dịch vụ sẽ được thêm bằng JavaScript -->
+        </div>
+    </div>
+</div>
+</div>
 
    <!-- TRONG PHẦN REPORTS TAB - CẬP NHẬT SUMMARY CARDS -->
 <div id="reportsTab" class="tab-content">
@@ -664,7 +852,181 @@
         </div>
     </div>
 
+    <!-- Modal Container cho các modal động -->
+    <div id="modalContainer"></div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <script src="firebase-config.js"></script>
+    <script src="nhanvien.js"></script>
+    <script src="baocao.js"></script>
+    <script src="chiphi.js"></script>
     <script src="app.js"></script>
+
+    <script>
+    // Utility functions - chỉ thêm những hàm chưa có trong app.js
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('vi-VN', {
+            style: 'currency',
+            currency: 'VND'
+        }).format(amount);
+    }
+
+    function handleFirestoreError(error, context) {
+        console.error(`Error in ${context}:`, error);
+        // Sử dụng hàm showToast đã có trong app.js
+        if (typeof showToast === 'function') {
+            showToast('Có lỗi xảy ra: ' + error.message, 'error');
+        }
+    }
+
+    function switchToModuleTab(tabName) {
+        console.log('Switching to module tab:', tabName);
+        
+        // Ẩn tất cả các tab
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Bỏ active tất cả các nút tab
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Hiển thị tab được chọn
+        const targetTab = document.getElementById(tabName + 'Tab');
+        if (targetTab) {
+            targetTab.classList.add('active');
+            console.log('Module tab activated:', tabName);
+            
+            // Active nút tab tương ứng
+            event.target.classList.add('active');
+            
+            // Load dữ liệu cho tab nếu cần
+            switch(tabName) {
+                case 'nhanvien':
+                    if (typeof loadEmployees === 'function') {
+                        setTimeout(() => loadEmployees(), 100);
+                    }
+                    break;
+                case 'baocao':
+                    if (typeof loadProfitLossReport === 'function') {
+                        setTimeout(() => loadProfitLossReport(), 100);
+                    }
+                    break;
+                case 'chiphi':
+                    if (typeof loadOperationalExpenses === 'function') {
+                        setTimeout(() => loadOperationalExpenses(), 100);
+                    }
+                    break;
+                case 'report':
+                    // Tab báo cáo ngày - giữ nguyên behavior
+                    break;
+            }
+        } else {
+            console.error('Module tab not found:', tabName);
+        }
+    }
+
+    function toggleComparison() {
+        const compareToggle = document.getElementById('compareToggle');
+        if (compareToggle && compareToggle.checked) {
+            if (typeof loadComparisonData === 'function') {
+                loadComparisonData();
+            }
+        } else {
+            const comparisonSection = document.getElementById('comparisonSection');
+            if (comparisonSection) {
+                comparisonSection.style.display = 'none';
+            }
+        }
+    }
+
+    // Debounce function
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Các hàm utility cho date
+    function getPreviousMonth(month) {
+        const [m, y] = month.split('/').map(Number);
+        let prevMonth = m - 1;
+        let prevYear = y;
+        
+        if (prevMonth === 0) {
+            prevMonth = 12;
+            prevYear = y - 1;
+        }
+        
+        return `${String(prevMonth).padStart(2, '0')}/${prevYear}`;
+    }
+
+    function getLast6Months(currentMonth) {
+        const months = [];
+        let [m, y] = currentMonth.split('/').map(Number);
+        
+        for (let i = 0; i < 6; i++) {
+            months.unshift(`${String(m).padStart(2, '0')}/${y}`);
+            
+            m--;
+            if (m === 0) {
+                m = 12;
+                y--;
+            }
+        }
+        
+        return months;
+    }
+
+    function formatCurrencyShort(amount) {
+        if (amount >= 1000000) {
+            return (amount / 1000000).toFixed(1) + 'M';
+        } else if (amount >= 1000) {
+            return (amount / 1000).toFixed(0) + 'K';
+        }
+        return amount.toString();
+    }
+
+    // Khởi tạo muộn hơn để tránh xung đột
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            console.log('Initializing module tabs...');
+            
+            // Khởi tạo các module nếu chưa được khởi tạo
+            if (typeof initializeOperationalTab === 'function') {
+                try {
+                    initializeOperationalTab();
+                } catch (e) {
+                    console.error('Error initializing operational tab:', e);
+                }
+            }
+            
+            if (typeof initializeProfitLossReport === 'function') {
+                try {
+                    initializeProfitLossReport();
+                } catch (e) {
+                    console.error('Error initializing profit loss report:', e);
+                }
+            }
+            
+            if (typeof initializeOperationalExpenses === 'function') {
+                try {
+                    initializeOperationalExpenses();
+                } catch (e) {
+                    console.error('Error initializing operational expenses:', e);
+                }
+            }
+        }, 2000);
+    });
+</script>
 </body>
 </html>
