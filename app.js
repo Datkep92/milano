@@ -19,7 +19,9 @@ let editingType = null;
 let isInitializing = false;
 let isDataLoaded = false;
 
-
+// Thêm vào phần global variables
+let currentReportFilter = 'today';
+let currentReportCycle = '';
 
 // Sửa hàm loadDateData() - THÊM PHẦN NÀY
 
@@ -38,19 +40,129 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
-function formatDisplayDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN');
+// ==================== DATE VALIDATION ====================
+function isValidDate(dateInput) {
+    if (!dateInput) return false;
+    
+    // Nếu là string, kiểm tra định dạng
+    if (typeof dateInput === 'string') {
+        return dateInput.match(/^\d{4}-\d{2}-\d{2}$/) !== null;
+    }
+    
+    // Nếu là Date object, kiểm tra tính hợp lệ
+    if (dateInput instanceof Date) {
+        return !isNaN(dateInput.getTime());
+    }
+    
+    // Nếu là timestamp hoặc số
+    if (typeof dateInput === 'number') {
+        const date = new Date(dateInput);
+        return !isNaN(date.getTime());
+    }
+    
+    return false;
+}
+
+function safeDateFormat(dateInput, fallback = 'N/A') {
+    if (!isValidDate(dateInput)) {
+        console.warn('⚠️ Invalid date for formatting:', dateInput, typeof dateInput);
+        return fallback;
+    }
+    
+    try {
+        let date;
+        
+        if (dateInput instanceof Date) {
+            date = dateInput;
+        } else if (typeof dateInput === 'string') {
+            date = new Date(dateInput);
+        } else if (typeof dateInput === 'number') {
+            date = new Date(dateInput);
+        } else {
+            // Firestore Timestamp
+            date = dateInput.toDate ? dateInput.toDate() : new Date(dateInput);
+        }
+        
+        // Kiểm tra lại sau khi convert
+        if (isNaN(date.getTime())) {
+            console.warn('⚠️ Invalid date after conversion:', dateInput);
+            return fallback;
+        }
+        
+        return date.toLocaleDateString('vi-VN');
+    } catch (error) {
+        console.error('❌ Error formatting date:', error, 'Input:', dateInput);
+        return fallback;
+    }
+}
+
+function safeDateISO(dateInput) {
+    if (!isValidDate(dateInput)) {
+        console.warn('⚠️ Invalid date for ISO conversion:', dateInput);
+        return new Date().toISOString().split('T')[0];
+    }
+    
+    try {
+        let date;
+        
+        if (dateInput instanceof Date) {
+            date = dateInput;
+        } else if (typeof dateInput === 'string') {
+            date = new Date(dateInput);
+        } else if (typeof dateInput === 'number') {
+            date = new Date(dateInput);
+        } else {
+            // Firestore Timestamp
+            date = dateInput.toDate ? dateInput.toDate() : new Date(dateInput);
+        }
+        
+        return date.toISOString().split('T')[0];
+    } catch (error) {
+        console.error('❌ Error converting date to ISO:', error);
+        return new Date().toISOString().split('T')[0];
+    }
 }
 
 function getVietnamTime() {
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    return new Date(utc + (7 * 3600000));
+    try {
+        const now = new Date();
+        // Kiểm tra ngày hợp lệ
+        if (isNaN(now.getTime())) {
+            console.error('❌ Invalid current date, using fallback');
+            return new Date(); // Fallback
+        }
+        
+        const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+        const vietnamTime = new Date(utc + (7 * 3600000));
+        
+        // Kiểm tra kết quả
+        if (isNaN(vietnamTime.getTime())) {
+            console.error('❌ Invalid Vietnam time calculation, using fallback');
+            return new Date(); // Fallback
+        }
+        
+        return vietnamTime;
+    } catch (error) {
+        console.error('❌ Error in getVietnamTime:', error);
+        return new Date(); // Fallback an toàn
+    }
+}
+
+function formatDisplayDate(dateString) {
+    return safeDateFormat(dateString, 'Ngày không hợp lệ');
 }
 
 function formatVietnamDateTime(date) {
-    return date.toLocaleString('vi-VN');
+    try {
+        if (!date || isNaN(date.getTime())) {
+            console.warn('⚠️ Invalid date for Vietnam format');
+            return 'Thời gian không hợp lệ';
+        }
+        return date.toLocaleString('vi-VN');
+    } catch (error) {
+        console.error('❌ Error formatting Vietnam date time:', error);
+        return 'Lỗi định dạng thời gian';
+    }
 }
 
 function handleFirestoreError(error, context) {
@@ -109,8 +221,194 @@ function initializeApp() {
     }
     
     loadDateData();
+    createReportFilterUI();
+    loadReports('today'); // Mặc định load hôm nay
+}
+// ==================== BỘ LỌC BÁO CÁO MỚI ====================
+// ==================== BỘ LỌC BÁO CÁO MỚI ====================
+// ==================== BỘ LỌC BÁO CÁO MỚI ====================
+async function loadReportsWithFilter(filterType = 'today', customData = null) {
+    currentReportFilter = filterType;
+    
+    try {
+        // Cập nhật UI
+        updateFilterButtons(filterType);
+        
+        let query = db.collection('reports')
+            .where('companyId', '==', 'milano');
+        
+        const today = new Date();
+        let startDate, endDate;
+        
+        switch(filterType) {
+            case 'today':
+                startDate = today.toISOString().split('T')[0];
+                endDate = startDate;
+                updateCurrentCycleDisplay('📅 Hôm nay');
+                break;
+                
+            case 'yesterday':
+                const yesterday = new Date(today);
+                yesterday.setDate(today.getDate() - 1);
+                startDate = yesterday.toISOString().split('T')[0];
+                endDate = startDate;
+                updateCurrentCycleDisplay('📅 Hôm qua');
+                break;
+                
+            case 'cycle':
+                if (customData) {
+                    startDate = customData.startDate;
+                    endDate = customData.endDate;
+                    updateCurrentCycleDisplay(`🔄 ${customData.display}`);
+                }
+                break;
+                
+            case 'custom':
+                if (customData) {
+                    startDate = customData.startDate;
+                    endDate = customData.endDate;
+                    updateCurrentCycleDisplay(`📆 ${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}`);
+                }
+                break;
+        }
+        
+        console.log(`📊 Loading reports with filter: ${filterType}`, { startDate, endDate });
+        
+        if (startDate && endDate) {
+            query = query.where('date', '>=', startDate)
+                        .where('date', '<=', endDate);
+        }
+        
+        const snapshot = await query.orderBy('date', 'desc').get();
+        
+        const reports = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                reportDate: new Date(data.date)
+            };
+        });
+        
+        // Sử dụng hàm mới
+        displayReportsTable(reports);
+        updateReportsSummary(reports);
+        drawReportsChart(reports);
+        
+    } catch (error) {
+        console.error('❌ Error in loadReportsWithFilter:', error);
+        handleFirestoreError(error, 'loadReportsWithFilter');
+    }
+}
+// Cập nhật nút filter
+function updateFilterButtons(activeFilter) {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    const activeBtn = document.querySelector(`.filter-btn[onclick*="${activeFilter}"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
 }
 
+// Hiển thị dropdown chu kỳ
+function showCycleDropdown() {
+    const dropdown = document.getElementById('cycleDropdown');
+    const content = dropdown.querySelector('.dropdown-content');
+    
+    const cycles = generateCycleOptions();
+    content.innerHTML = cycles.map(cycle => `
+        <div class="cycle-option" onclick="selectCycle('${cycle.startDate}', '${cycle.endDate}', '${cycle.display}')">
+            ${cycle.display}
+        </div>
+    `).join('');
+    
+    dropdown.style.display = 'block';
+}
+
+function hideCycleDropdown() {
+    document.getElementById('cycleDropdown').style.display = 'none';
+}
+
+function selectCycle(startDate, endDate, display) {
+    loadReportsWithFilter('cycle', { startDate, endDate, display });
+    hideCycleDropdown();
+}
+
+function updateCurrentCycleDisplay(text) {
+    const displayElement = document.getElementById('currentCycleDisplay');
+    const textElement = document.getElementById('currentCycleText');
+    
+    if (text) {
+        textElement.textContent = text;
+        displayElement.style.display = 'flex';
+    } else {
+        displayElement.style.display = 'none';
+    }
+}
+
+function clearCycleFilter() {
+    loadReportsWithFilter('today');
+}
+
+// Tùy chỉnh ngày
+function showCustomDateFilter() {
+    const today = new Date().toISOString().split('T')[0];
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const oneWeekAgoStr = oneWeekAgo.toISOString().split('T')[0];
+    
+    // Tạo modal tùy chỉnh
+    const modalHTML = `
+        <div class="modal-overlay active" id="customDateModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>📆 Chọn khoảng ngày</h3>
+                    <button class="modal-close" onclick="closeCustomDateModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Từ ngày:</label>
+                        <input type="date" id="customStartDate" value="${oneWeekAgoStr}">
+                    </div>
+                    <div class="form-group">
+                        <label>Đến ngày:</label>
+                        <input type="date" id="customEndDate" value="${today}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-cancel" onclick="closeCustomDateModal()">Hủy</button>
+                    <button class="btn-confirm" onclick="applyCustomDateFilter()">Áp dụng</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function closeCustomDateModal() {
+    document.getElementById('customDateModal')?.remove();
+}
+
+function applyCustomDateFilter() {
+    const startDate = document.getElementById('customStartDate')?.value;
+    const endDate = document.getElementById('customEndDate')?.value;
+    
+    if (!startDate || !endDate) {
+        showToast('Vui lòng chọn đầy đủ ngày', 'error');
+        return;
+    }
+    
+    if (startDate > endDate) {
+        showToast('Ngày bắt đầu không thể sau ngày kết thúc', 'error');
+        return;
+    }
+    
+    loadReportsWithFilter('custom', { startDate, endDate });
+    closeCustomDateModal();
+}
 // ==================== EVENT LISTENERS UPDATE ====================
 
 function setupEventListeners() {
@@ -367,20 +665,30 @@ function showManualCopyDialog(text) {
     
     getElement('alertPopup').classList.add('active');
 }
+// ==================== DEBUG DATE ISSUES ====================
 
 
-
-
-// ==================== TODAY BUTTON & DATE MANAGEMENT ====================
 function loadTodayData() {
-    const today = new Date().toISOString().split('T')[0];
-    
-    if (getElement('reportDate').value === today) {
-        loadDateData();
-        showToast('Đã làm mới dữ liệu ngày hôm nay', 'info');
-    } else {
-        getElement('reportDate').value = today;
-        loadDateData();
+    try {
+        const today = new Date();
+        if (isNaN(today.getTime())) {
+            console.error('❌ Invalid today date');
+            showToast('Lỗi ngày hệ thống', 'error');
+            return;
+        }
+        
+        const todayStr = today.toISOString().split('T')[0];
+        
+        if (getElement('reportDate').value === todayStr) {
+            loadDateData();
+            showToast('Đã làm mới dữ liệu ngày hôm nay', 'info');
+        } else {
+            getElement('reportDate').value = todayStr;
+            loadDateData();
+        }
+    } catch (error) {
+        console.error('❌ Error in loadTodayData:', error);
+        showToast('Lỗi tải dữ liệu hôm nay', 'error');
     }
 }
 async function debugData() {
@@ -512,8 +820,17 @@ function displayDailyExpenseStatistics(expenses, date) {
     
     console.log('Daily statistics displayed for date:', date);
 }
+
 async function loadDateData() {
-    const selectedDate = getElement('reportDate').value;
+    let selectedDate = getElement('reportDate').value;
+    
+    // KIỂM TRA VÀ SỬA NGÀY NẾU CẦN THIẾT
+    if (!selectedDate || isNaN(new Date(selectedDate).getTime())) {
+        console.warn('⚠️ Invalid date detected, using today');
+        selectedDate = new Date().toISOString().split('T')[0];
+        getElement('reportDate').value = selectedDate;
+    }
+    
     console.log('📅 Loading data for date:', selectedDate);
     
     // Kiểm tra nếu đang load cùng ngày thì không load lại
@@ -532,7 +849,7 @@ async function loadDateData() {
     try {
         console.log('🔄 Starting to load date data...');
         
-        // 🚀 LOAD TẤT CẢ TRONG MỘT LẦN - không chia nhỏ
+        // 🚀 LOAD TẤT CẢ TRONG MỘT LẦN - với error handling
         const [startFund, expenses, transfers, revenueData, reportData] = await Promise.all([
             calculateStartFund(currentDate),
             loadExpensesForDate(currentDate),
@@ -566,6 +883,7 @@ async function loadDateData() {
         
     } catch (error) {
         console.error('❌ Error loading date data:', error);
+        // Vẫn cập nhật display với dữ liệu mặc định
         updateMainDisplay();
     }
 }
@@ -1772,6 +2090,276 @@ function toggleActualIncomeInput() {
         actualIncomeSection.style.display = 'none';
     }
 }
+// ==================== UI BỘ LỌC MỚI ====================
+function createReportFilterUI() {
+    const filterContainer = document.getElementById('reportsFilter');
+    if (!filterContainer) return;
+    
+    const cycles = generateCycleOptions();
+    
+    filterContainer.innerHTML = `
+        <div class="report-filter-header">
+            <h3>📊 Báo Cáo Quản Lý</h3>
+            <div class="filter-actions">
+                <button onclick="exportFullReport()" class="btn-export">
+                    📈 Xuất Excel
+                </button>
+                <button onclick="printManagementReport()" class="btn-print">
+                    🖨️ In Báo Cáo
+                </button>
+            </div>
+        </div>
+        
+        <div class="filter-controls">
+            <!-- Nút lọc nhanh -->
+            <div class="quick-filters">
+                <button class="filter-btn ${currentReportFilter === 'today' ? 'active' : ''}" 
+                        onclick="loadReports('today')">
+                    📅 Hôm Nay
+                </button>
+                <button class="filter-btn ${currentReportFilter === 'yesterday' ? 'active' : ''}" 
+                        onclick="loadReports('yesterday')">
+                    📅 Hôm Qua
+                </button>
+                <button class="filter-btn ${currentReportFilter === 'cycle' ? 'active' : ''}" 
+                        onclick="showCycleDropdown()">
+                    🔄 Chu Kỳ
+                </button>
+                <button class="filter-btn" onclick="showCustomDateFilter()">
+                    📆 Tùy Chỉnh
+                </button>
+            </div>
+            
+            <!-- Dropdown chu kỳ -->
+            <div id="cycleDropdown" class="cycle-dropdown" style="display: none;">
+                <div class="dropdown-header">
+                    <span>Chọn chu kỳ:</span>
+                    <button onclick="hideCycleDropdown()">×</button>
+                </div>
+                <div class="dropdown-content">
+                    ${cycles.map(cycle => `
+                        <div class="cycle-option" onclick="selectCycle('${cycle.startDate}', '${cycle.endDate}', '${cycle.display}')">
+                            ${cycle.display}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            
+            <!-- Hiển thị chu kỳ đang chọn -->
+            <div id="currentCycleDisplay" class="current-cycle" style="${currentReportCycle ? '' : 'display: none;'}">
+                <span>📅 ${currentReportCycle}</span>
+                <button onclick="clearCycleFilter()">🗑️</button>
+            </div>
+        </div>
+    `;
+}
+
+function updateReportFilterUI(filterType) {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    const activeBtn = document.querySelector(`.filter-btn[onclick="loadReports('${filterType}')"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
+}
+
+
+
+
+
+function clearCycleFilter() {
+    currentReportCycle = '';
+    loadReports('today');
+    updateCurrentCycleDisplay();
+}
+
+
+
+// ==================== QUẢN LÝ CHU KỲ 20-19 ====================
+function getCurrentCycle() {
+    const today = new Date();
+    return getCycleForDate(today);
+}
+
+function getCycleForDate(date) {
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    
+    let startDate, endDate;
+    
+    if (day >= 20) {
+        // Chu kỳ từ 20/tháng này đến 19/tháng sau
+        startDate = new Date(year, month - 1, 20);
+        endDate = new Date(year, month, 19);
+    } else {
+        // Chu kỳ từ 20/tháng trước đến 19/tháng này
+        startDate = new Date(year, month - 2, 20);
+        endDate = new Date(year, month - 1, 19);
+    }
+    
+    return {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        display: `20/${String(startDate.getMonth() + 1).padStart(2, '0')} - 19/${String(endDate.getMonth() + 1).padStart(2, '0')}/${endDate.getFullYear()}`
+    };
+}
+
+function getCycleDates(cycleString) {
+    // cycleString format: "20/MM - 19/MM/YYYY"
+    const parts = cycleString.split(' - ');
+    const startPart = parts[0].split('/'); // ["20", "MM"]
+    const endPart = parts[1].split('/');   // ["19", "MM", "YYYY"]
+    
+    const startMonth = parseInt(startPart[1]);
+    const startYear = parseInt(endPart[2]); // Lấy năm từ phần end
+    const endMonth = parseInt(endPart[1]);
+    const endYear = parseInt(endPart[2]);
+    
+    const startDate = new Date(startYear, startMonth - 1, 20);
+    const endDate = new Date(endYear, endMonth - 1, 19);
+    
+    return {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+    };
+}
+// ==================== UPDATE REPORTS SUMMARY ====================
+function updateReportsSummary(reports) {
+    if (!reports || reports.length === 0) {
+        safeUpdate('totalRevenueSummary', formatCurrency(0));
+        safeUpdate('totalExpensesSummary', formatCurrency(0));
+        safeUpdate('totalActualIncome', formatCurrency(0));
+        return;
+    }
+
+    const totalRevenue = reports.reduce((sum, report) => sum + (report.revenue || 0), 0);
+    const totalExpenses = reports.reduce((sum, report) => sum + (report.totalExpenses || 0), 0);
+    const totalActualIncome = reports.reduce((sum, report) => sum + (report.actualIncome || 0), 0);
+
+    safeUpdate('totalRevenueSummary', formatCurrency(totalRevenue));
+    safeUpdate('totalExpensesSummary', formatCurrency(totalExpenses));
+    safeUpdate('totalActualIncome', formatCurrency(totalActualIncome));
+}
+// Hàm tạo danh sách chu kỳ
+function generateCycleOptions() {
+    const cycles = [];
+    const today = new Date();
+    
+    // Tạo 12 chu kỳ gần nhất
+    for (let i = 0; i < 12; i++) {
+        const date = new Date(today.getFullYear(), today.getMonth() - i, 15);
+        const cycle = getCycleForDate(date);
+        
+        if (!cycles.find(c => c.display === cycle.display)) {
+            cycles.push(cycle);
+        }
+    }
+    
+    return cycles;
+}
+
+function getCycleForDate(date) {
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    
+    let startMonth, startYear, endMonth, endYear;
+    
+    if (day >= 20) {
+        // Chu kỳ từ 20/tháng này đến 19/tháng sau
+        startMonth = month;
+        startYear = year;
+        endMonth = month + 1;
+        endYear = year;
+        
+        if (endMonth > 12) {
+            endMonth = 1;
+            endYear = year + 1;
+        }
+    } else {
+        // Chu kỳ từ 20/tháng trước đến 19/tháng này
+        startMonth = month - 1;
+        startYear = year;
+        endMonth = month;
+        endYear = year;
+        
+        if (startMonth < 1) {
+            startMonth = 12;
+            startYear = year - 1;
+        }
+    }
+    
+    const startDate = new Date(startYear, startMonth - 1, 20);
+    const endDate = new Date(endYear, endMonth - 1, 19);
+    
+    return {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        display: `20/${String(startMonth).padStart(2, '0')} - 19/${String(endMonth).padStart(2, '0')}/${endYear}`
+    };
+}
+// ==================== DISPLAY REPORTS TABLE ====================
+function displayReportsTable(reports) {
+    const tbody = document.querySelector('#reportsTable tbody');
+    
+    if (!tbody) {
+        console.warn('Reports table tbody not found');
+        return;
+    }
+    
+    if (!reports || reports.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">📭 Không có báo cáo nào trong khoảng thời gian này</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = reports.map(report => {
+        const actualIncome = report.actualIncome || 0;
+        const calculatedIncome = calculateReportIncome(report);
+        const difference = actualIncome - calculatedIncome;
+        
+        let statusClass = 'status-ok';
+        let statusText = '✅ Đã khớp';
+        
+        if (Math.abs(difference) >= 1000) {
+            statusClass = 'status-alert';
+            statusText = `⚠️ Lệch ${formatCurrency(difference)}`;
+        } else if (Math.abs(difference) >= 100) {
+            statusClass = 'status-warning';
+            statusText = `📊 Chênh ${formatCurrency(difference)}`;
+        }
+
+        return `
+            <tr>
+                <td>${safeDateFormat(report.date)}</td>
+                <td>${formatCurrency(report.revenue || 0)}</td>
+                <td>${formatCurrency(report.totalExpenses || 0)}</td>
+                <td>${formatCurrency(actualIncome)}</td>
+                <td class="${statusClass}">${statusText}</td>
+                <td>${report.creatorEmail || 'N/A'}</td>
+                <td>
+                    <button onclick="viewFullReport('${report.id}')" class="btn-info" title="Xem chi tiết">👁️</button>
+                    <button onclick="editExistingReport('${report.id}')" class="btn-edit" title="Sửa báo cáo">✏️</button>
+                    ${isManager() ? `<button onclick="deleteReport('${report.id}')" class="btn-danger" title="Xóa báo cáo">🗑️</button>` : ''}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Hàm tính thu nhập để so sánh
+function calculateReportIncome(report) {
+    const startFund = report.startFund || 0;
+    const revenue = report.revenue || 0;
+    const expenses = report.totalExpenses || 0;
+    const transfers = report.revenueDetails?.transferTotal || 0;
+    const endFund = report.endFund || 0;
+    
+    return startFund + revenue - expenses - transfers - endFund;
+}
+// ==================== BÁO CÁO QUẢN LÝ - BỘ LỌC MỚI ====================
 async function loadReports(timeframe = 0) {
     currentTimeframe = timeframe;
     
@@ -1784,7 +2372,6 @@ async function loadReports(timeframe = 0) {
             }
         });
         
-        // 🚀 CHỈ LOAD BÁO CÁO CHÍNH TRƯỚC
         let query = db.collection('reports')
             .where('companyId', '==', 'milano');
         
@@ -1813,7 +2400,7 @@ async function loadReports(timeframe = 0) {
             return {
                 id: doc.id,
                 ...data,
-                reportDate: new Date(data.date)
+                reportDate: data.date ? new Date(data.date) : new Date()
             };
         });
         
@@ -1821,32 +2408,15 @@ async function loadReports(timeframe = 0) {
         displayReports(reports);
         updateSummary(reports);
         
-        // 📦 LOAD DỮ LIỆU NẶNG SAU
-        setTimeout(() => {
-            drawReportsChart(reports); // Chart có thể load sau
-            
-            // Chỉ load detailed data nếu tab đang active
-            const reportsTab = getElement('reportsTab');
-            if (reportsTab && reportsTab.classList.contains('active')) {
-                const activeDetailTab = document.querySelector('.detail-tab-content.active');
-                if (activeDetailTab) {
-                    const tabName = activeDetailTab.id.replace('DetailTab', '');
-                    switch(tabName) {
-                        case 'transfers':
-                            loadDetailedTransfers(timeframe);
-                            break;
-                        case 'expenses':
-                            loadDetailedExpenses(timeframe);
-                            break;
-                        case 'statistics':
-                            loadExpenseStatistics(timeframe);
-                            break;
-                    }
-                }
-            }
-        }, 500);
+        // Vẽ biểu đồ với error handling
+        try {
+            drawReportsChart(reports);
+        } catch (chartError) {
+            console.error('Error drawing chart:', chartError);
+        }
         
     } catch (error) {
+        console.error('Error in loadReports:', error);
         handleFirestoreError(error, 'loadReports');
     }
 }
@@ -2062,7 +2632,6 @@ function getStartDateFromTimeframe(timeframe) {
     return today.toISOString().split('T')[0];
 }
 
-// ==================== CHART MANAGEMENT ====================
 function drawReportsChart(reports) {
     if (!reports || reports.length === 0) {
         if (reportsChart) {
@@ -2072,12 +2641,30 @@ function drawReportsChart(reports) {
         return;
     }
     
-    const sortedReports = reports.slice().sort((a, b) => a.reportDate - b.reportDate);
-    const labels = sortedReports.map(r => formatDisplayDate(r.reportDate));
-    const revenues = sortedReports.map(r => r.revenue);
-    const expenses = sortedReports.map(r => r.totalExpenses);
+    // Sắp xếp và xử lý dates an toàn
+    const sortedReports = reports.slice().sort((a, b) => {
+        const dateA = a.reportDate instanceof Date ? a.reportDate : new Date(a.date);
+        const dateB = b.reportDate instanceof Date ? b.reportDate : new Date(b.date);
+        return dateA - dateB;
+    });
+    
+    const labels = sortedReports.map(r => {
+        try {
+            if (r.reportDate instanceof Date) {
+                return safeDateFormat(r.reportDate, 'Invalid Date');
+            } else {
+                return safeDateFormat(r.date, 'Invalid Date');
+            }
+        } catch (error) {
+            console.warn('Error formatting chart label:', error);
+            return 'N/A';
+        }
+    });
+    
+    const revenues = sortedReports.map(r => r.revenue || 0);
+    const expenses = sortedReports.map(r => r.totalExpenses || 0);
     const transfers = sortedReports.map(r => r.revenueDetails?.transferTotal || 0);
-    const incomes = sortedReports.map(r => r.actualIncome);
+    const incomes = sortedReports.map(r => r.actualIncome || 0);
 
     const ctx = getElement('reportsChart').getContext('2d');
 
@@ -2148,7 +2735,6 @@ function drawReportsChart(reports) {
         }
     });
 }
-
 // ==================== FULL REPORT VIEW ====================
 async function viewFullReport(reportId) {
     try {
@@ -2286,11 +2872,11 @@ async function loadStaffManagement() {
         handleFirestoreError(error, 'loadStaffManagement');
     }
 }
-
 function displayStaffManagement(staff) {
     const container = getElement('staffList');
     
     console.log('Displaying staff management, container:', container);
+    console.log('Staff data:', staff);
     
     if (!container) {
         console.error('Staff list container not found');
@@ -2311,8 +2897,24 @@ function displayStaffManagement(staff) {
         <div class="staff-list-content">
             ${staff.map(user => {
                 const isCurrentUser = user.id === currentUser.uid;
-                const createdAt = user.createdAt ? formatDisplayDate(user.createdAt.toDate()) : 'N/A';
-                const lastLogin = user.lastLogin ? formatVietnamDateTime(user.lastLogin.toDate()) : 'Chưa đăng nhập';
+                
+                // XỬ LÝ DATE AN TOÀN
+                let createdAt = 'N/A';
+                let lastLogin = 'Chưa đăng nhập';
+                
+                try {
+                    if (user.createdAt) {
+                        const createdDate = user.createdAt.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
+                        createdAt = safeDateFormat(createdDate, 'N/A');
+                    }
+                    
+                    if (user.lastLogin) {
+                        const loginDate = user.lastLogin.toDate ? user.lastLogin.toDate() : new Date(user.lastLogin);
+                        lastLogin = formatVietnamDateTime(loginDate);
+                    }
+                } catch (error) {
+                    console.warn('Error processing dates for user:', user.email, error);
+                }
                 
                 return `
                     <div class="staff-item ${isCurrentUser ? 'current-user' : ''}">
@@ -2433,6 +3035,44 @@ function switchToViewReports() {
     switchTab('reportsTab');
     updateHeaderIconsState('reportsTab');
 }
+
+// ==================== MODULE TAB SWITCHING ====================
+function switchToModuleTab(moduleName) {
+    console.log('🔄 Switching to module:', moduleName);
+    
+    // Map tên module sang tên tab thực tế
+    const tabMapping = {
+        'report': 'reportTab',
+        'reports': 'reportsTab',
+        'management': 'reportsTab',
+        'staff': 'reportsTab'
+    };
+    
+    const targetTab = tabMapping[moduleName];
+    
+    if (!targetTab) {
+        console.error('❌ Unknown module:', moduleName);
+        return;
+    }
+    
+    // Kiểm tra quyền truy cập
+    if (targetTab === 'reportsTab' && !isManager()) {
+        showToast('Chỉ quản lý được phép xem báo cáo', 'error');
+        return;
+    }
+    
+    console.log('✅ Switching to tab:', targetTab);
+    switchTab(targetTab);
+    
+    // Nếu là staff management, tự động mở tab chi tiết
+    if (moduleName === 'staff' || moduleName === 'management') {
+        setTimeout(() => {
+            console.log('📋 Opening staff management details');
+            showDetailTab('staff');
+        }, 500);
+    }
+}
+
 function safeDisplayUpdate(elementId, show) {
     const element = getElement(elementId);
     if (element && element.style) {
@@ -2445,24 +3085,20 @@ function safeDisplayUpdate(elementId, show) {
 function switchToStaffManagement() {
     console.log('Switching to staff management from header icon');
     
-    // KIỂM TRA PHẦN TỬ TỒN TẠI TRƯỚC KHI SỬ DỤNG
-    const managementIcon = getElement('managementIcon');
-    if (!managementIcon || !managementIcon.style) {
-        console.error('Management icon not available');
-        return;
-    }
-    
     if (!isManager()) {
         showToast('Chỉ quản lý được phép quản lý nhân viên', 'error');
         return;
     }
+    
+    // Chuyển đến tab reportsTab trước
     switchTab('reportsTab');
-    updateHeaderIconsState('reportsTab');
-    // Tự động mở tab quản lý staff
+    
+    // Sau đó mở tab staff
     setTimeout(() => {
         showDetailTab('staff');
     }, 500);
 }
+
 function updateHeaderIconsState(activeTab) {
     console.log('Updating header icons state for tab:', activeTab);
     
@@ -2488,6 +3124,10 @@ function updateHeaderIconsState(activeTab) {
     } else if (activeTab === 'reportsTab' && viewReportsIcon && viewReportsIcon.classList) {
         viewReportsIcon.classList.add('active');
         console.log('View reports icon activated');
+    } else if (activeTab === 'reportsTab' && managementIcon && managementIcon.classList) {
+        // Nếu không có viewReportsIcon, active managementIcon
+        managementIcon.classList.add('active');
+        console.log('Management icon activated (fallback)');
     }
 }
 
@@ -2660,14 +3300,33 @@ function displayRecentReports(reports) {
 
 async function calculateStartFund(date) {
     try {
-        console.log('Calculating start fund for date:', date);
+        console.log('🔍 Calculating start fund for date:', date);
+        
+        // KIỂM TRA NGÀY HỢP LỆ
+        if (!date || isNaN(new Date(date).getTime())) {
+            console.error('❌ Invalid date:', date);
+            const defaultFund = 469000;
+            safeUpdate('startFundDisplay', formatCurrency(defaultFund));
+            getElement('reportStartFund').value = defaultFund;
+            return defaultFund;
+        }
         
         // Tìm ngày hôm trước
         const prevDate = new Date(date);
         prevDate.setDate(prevDate.getDate() - 1);
+        
+        // KIỂM TRA NGÀY HÔM TRƯỚC HỢP LỆ
+        if (isNaN(prevDate.getTime())) {
+            console.error('❌ Invalid previous date calculation');
+            const defaultFund = 469000;
+            safeUpdate('startFundDisplay', formatCurrency(defaultFund));
+            getElement('reportStartFund').value = defaultFund;
+            return defaultFund;
+        }
+        
         const prevDateStr = prevDate.toISOString().split('T')[0];
         
-        console.log('Looking for previous day:', prevDateStr);
+        console.log('🔍 Looking for previous day:', prevDateStr);
         
         // Tìm báo cáo ngày trước đó
         const prevReports = await db.collection('reports')
@@ -2680,10 +3339,10 @@ async function calculateStartFund(date) {
         if (!prevReports.empty) {
             // Lấy số dư cuối của ngày trước làm số dư đầu hiện tại
             const prevReport = prevReports.docs[0].data();
-            startFund = prevReport.endFund;
-            console.log(`Found previous day report. End fund: ${prevReport.endFund} → Start fund: ${startFund}`);
+            startFund = prevReport.endFund || 0;
+            console.log(`✅ Found previous day report. End fund: ${prevReport.endFund} → Start fund: ${startFund}`);
         } else {
-            console.log('No previous day report found, using default start fund');
+            console.log('📝 No previous day report found, using default start fund');
             startFund = 469000; // Số dư mặc định
         }
         
@@ -2691,18 +3350,17 @@ async function calculateStartFund(date) {
         safeUpdate('startFundDisplay', formatCurrency(startFund));
         getElement('reportStartFund').value = startFund;
         
-        console.log('Final start fund:', startFund);
+        console.log('💰 Final start fund:', startFund);
         return startFund;
         
     } catch (error) {
-        console.error('Error calculating start fund:', error);
+        console.error('❌ Error calculating start fund:', error);
         const defaultFund = 469000;
         safeUpdate('startFundDisplay', formatCurrency(defaultFund));
         getElement('reportStartFund').value = defaultFund;
         return defaultFund;
     }
 }
-
 async function updateSubsequentDays(startDate, originalEndFund, newEndFund) {
     if (originalEndFund === newEndFund) {
         return;
@@ -2871,50 +3529,9 @@ function showCustomDateModal() {
     getElement('customDateModal').classList.add('active');
 }
 
-function closeCustomDateModal() {
-    getElement('customDateModal').classList.remove('active');
-}
 
-async function applyCustomDateFilter() {
-    const startDate = getElement('customStartDate').value;
-    const endDate = getElement('customEndDate').value;
-    
-    if (!startDate || !endDate) {
-        showAlert('Lỗi', 'Vui lòng chọn đầy đủ ngày bắt đầu và kết thúc');
-        return;
-    }
-    
-    if (startDate > endDate) {
-        showAlert('Lỗi', 'Ngày bắt đầu không thể sau ngày kết thúc');
-        return;
-    }
-    
-    try {
-        const snapshot = await db.collection('reports')
-            .where('companyId', '==', 'milano')
-            .where('date', '>=', startDate)
-            .where('date', '<=', endDate)
-            .orderBy('date', 'desc')
-            .get();
-            
-        const reports = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                reportDate: new Date(data.date)
-            };
-        });
-        
-        displayReports(reports);
-        updateSummary(reports);
-        drawReportsChart(reports);
-        closeCustomDateModal();
-        
-    } catch (error) {
-        handleFirestoreError(error, 'applyCustomDateFilter');
-    }
-}
+
+
 
 // ==================== EDIT EXISTING REPORT ====================
 async function editExistingReport(reportId) {
@@ -3918,7 +4535,7 @@ function exportToExcel() {
 
 // ==================== UPDATE EXISTING FUNCTIONS ====================
 
-function updateSummary(reports) {
+function updateSummary1(reports) {
     // Lưu dữ liệu reports để sử dụng cho detail views
     currentReportsData = reports;
     

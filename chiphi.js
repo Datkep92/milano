@@ -1,145 +1,199 @@
-// ==================== chiphi.js – MILANO COFFEE PRO 2025 ====================
-// LUỒNG XỬ LÝ CHÍNH: QUẢN LÝ CHI PHÍ & KHO HÀNG
-
+// chiphi.js – ĐỘC LẬP HOÀN TOÀN – TỐI ƯU TỐC ĐỘ
 let currentOperationalMonth = '';
 let currentOperationalExpenses = [];
 let currentInventory = [];
-let currentView = 'overview'; // 'overview', 'inventory', 'services'
-
-// ==================== LUỒNG KHỞI TẠO ====================
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('📦 Chiphi.js: DOM Ready - Chờ kích hoạt tab');
-    
-    // Lắng nghe sự kiện chuyển tab
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.tab-btn') && e.target.textContent.includes('Chi Phí')) {
-            setTimeout(initializeChiphiModule, 500);
-        }
-    });
-});
-
-
-
-// ==================== LUỒNG QUẢN LÝ THÁNG ====================
-function setupMonthSelector() {
-    console.log('📅 Đang thiết lập dropdown tháng...');
-    
-    const selector = document.getElementById('operationalMonthSelector');
-    if (!selector) {
-        console.log('❌ Không tìm thấy month selector');
-        return;
+let currentView = 'overview';
+let showAllExpenses = false;
+let allExpenses = [];
+let productCategories = [];
+let serviceCategories = [];
+// Thêm vào đầu file chiphi.js
+function ensureSalaryCalculator() {
+    if (typeof window.calculateEmployeeSalaryForMonth !== 'function') {
+        console.warn('Hàm tính lương từ nhanvien.js chưa sẵn sàng, sử dụng tính toán mặc định');
+        // Fallback to default calculation
+        return async function(employeeId, month) {
+            // Tính toán mặc định nếu hàm từ nhanvien.js không có
+            return await calculateEmployeeSalaryForMonthFallback(employeeId, month);
+        };
     }
-
-    // Lấy tháng hiện tại theo chu kỳ 20/N - 19/N+1
-    currentOperationalMonth = getCurrentOperationalMonth(new Date());
-    
-    // Tạo danh sách 12 tháng gần nhất
-    const months = generateOperationalMonths(12);
-    
-    // Render dropdown
-    selector.innerHTML = months.map(m => 
-        `<option value="${m}">${m}</option>`
-    ).join('');
-    selector.value = currentOperationalMonth;
-
-    // Lắng nghe thay đổi tháng
-    selector.onchange = () => {
-        currentOperationalMonth = selector.value;
-        console.log(`🔄 Đã chuyển sang tháng: ${currentOperationalMonth}`);
-        refreshAllData();
-    };
-    
-    console.log('✅ Dropdown tháng đã sẵn sàng');
+    return window.calculateEmployeeSalaryForMonth;
 }
 
+// Fallback function
+async function calculateEmployeeSalaryForMonthFallback(employeeId, month) {
+    try {
+        const [empDoc, attDoc, bonusSnap, penaltySnap] = await Promise.all([
+            db.collection('employees').doc(employeeId).get(),
+            db.collection('attendance').doc(`${employeeId}_${month.replace('/', '_')}`).get(),
+            db.collection('bonuses_penalties')
+                .where('employeeId', '==', employeeId)
+                .where('month', '==', month)
+                .where('type', '==', 'bonus').get(),
+            db.collection('bonuses_penalties')
+                .where('employeeId', '==', employeeId)
+                .where('month', '==', month)
+                .where('type', '==', 'penalty').get()
+        ]);
+
+        if (!empDoc.exists) return 0;
+        const emp = empDoc.data();
+        const base = Number(emp.monthlySalary || 0);
+        const daily = base / 30;
+
+        let off = 0, ot = 0;
+        if (attDoc.exists) {
+            const data = attDoc.data() || {};
+            const days = data.days || {};
+            
+            Object.keys(days).forEach(k => {
+                const status = days[k];
+                if (typeof status === 'string') {
+                    if (status === 'off') off++;
+                    if (status === 'overtime') ot++;
+                }
+            });
+        }
+
+        const bonus = bonusSnap.docs.reduce((s, d) => {
+            const data = d.data();
+            return s + Number(data.amount || 0);
+        }, 0);
+        
+        const penalty = penaltySnap.docs.reduce((s, d) => {
+            const data = d.data();
+            return s + Number(data.amount || 0);
+        }, 0);
+
+        return Math.round(base - off * daily + ot * daily + bonus - penalty);
+    } catch (err) {
+        console.error('Lỗi tính lương (fallback):', err);
+        return 0;
+    }
+}
+// ==================== KHỞI TẠO ĐỘC LẬP ====================
+function initializeChiphiModule() {
+    console.log('🚀 Khởi tạo module Chi Phí - Độc lập hoàn toàn');
+    currentOperationalMonth = getCurrentOperationalMonth(new Date());
+    
+    // Hiển thị loading
+    showLoadingState();
+    
+    // Khởi tạo tuần tự để đảm bảo thứ tự
+    setupMonthDropdown();
+    setupNavigation();
+    setupQuickActions();
+    loadCategories().then(() => {
+        loadInitialData();
+        switchToView('overview');
+    });
+}
+
+function showLoadingState() {
+    const sections = ['overviewSection', 'inventorySection', 'servicesSection'];
+    sections.forEach(sectionId => {
+        const section = document.getElementById(sectionId);
+        if (section) {
+            section.innerHTML = '<div class="loading-state">Đang tải dữ liệu...</div>';
+        }
+    });
+}
+
+// ==================== QUẢN LÝ THÁNG - ĐỘC LẬP ====================
 function getCurrentOperationalMonth(date) {
     const day = date.getDate();
     const month = date.getMonth() + 1;
     const year = date.getFullYear();
     
-    if (day >= 20) {
-        return `${String(month).padStart(2, '0')}/${year}`;
-    } else {
-        let prevMonth = month - 1;
-        let prevYear = year;
-        if (prevMonth === 0) {
-            prevMonth = 12;
-            prevYear = year - 1;
-        }
-        return `${String(prevMonth).padStart(2, '0')}/${prevYear}`;
-    }
+    return day >= 20 ? 
+        `${String(month).padStart(2, '0')}/${year}` :
+        `${String(month === 1 ? 12 : month - 1).padStart(2, '0')}/${month === 1 ? year - 1 : year}`;
 }
 
+
+// ==================== QUẢN LÝ THÁNG - SỬA SẮP XẾP ====================
 function generateOperationalMonths(count) {
     const months = [];
     const today = new Date();
     
     for (let i = 0; i < count; i++) {
-        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        months.push(getCurrentOperationalMonth(d));
+        const date = new Date(today.getFullYear(), today.getMonth() - i, 20);
+        const monthValue = getCurrentOperationalMonth(date);
+        const monthLabel = formatOperationalPeriod(monthValue);
+        
+        if (!months.find(m => m.value === monthValue)) {
+            months.push({ value: monthValue, label: monthLabel });
+        }
     }
     
-    // Loại bỏ duplicates
-    return [...new Set(months)].sort().reverse();
+    // SẮP XẾP NGƯỢC LẠI: tháng mới nhất ở TRÊN cùng
+    return months; // Bỏ .reverse() để tháng mới nhất ở trên
 }
 
-// ==================== LUỒNG ĐIỀU HƯỚNG VIEW ====================
-function setupNavigation() {
-    console.log('🧭 Đang thiết lập navigation...');
-    
-    const container = document.getElementById('quickActions');
-    if (!container) {
-        console.log('❌ Không tìm thấy quickActions container');
-        return;
-    }
+function setupMonthDropdown() {
+    const dropdown = document.getElementById('operationalMonthSelector');
+    if (!dropdown) return;
 
-    // Tạo navigation buttons
+    const months = generateOperationalMonths(12);
+    dropdown.innerHTML = months.map(month => 
+        `<option value="${month.value}" ${month.value === currentOperationalMonth ? 'selected' : ''}>
+            ${month.label}
+        </option>`
+    ).join('');
+
+    dropdown.onchange = () => {
+        currentOperationalMonth = dropdown.value;
+        refreshAllData();
+    };
+    
+    // Mặc định chọn tháng hiện tại
+    currentOperationalMonth = getCurrentOperationalMonth(new Date());
+    dropdown.value = currentOperationalMonth;
+}
+
+function formatOperationalPeriod(monthStr) {
+    const [m, y] = monthStr.split('/').map(Number);
+    const startMonth = m;
+    const startYear = y;
+    const endMonth = m === 12 ? 1 : m + 1;
+    const endYear = m === 12 ? y + 1 : y;
+    
+    return `20/${String(startMonth).padStart(2, '0')} - 19/${String(endMonth).padStart(2, '0')}/${endYear}`;
+}
+
+// ==================== ĐIỀU HƯỚNG VIEW ====================
+function setupNavigation() {
+    const container = document.getElementById('quickActions');
+    if (!container) return;
+
     container.innerHTML = `
-        <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px;">
-            <button onclick="switchToView('overview')" 
-                    class="nav-btn ${currentView === 'overview' ? 'active' : ''}">
+        <div class="nav-buttons">
+            <button onclick="switchToView('overview')" class="nav-btn ${currentView === 'overview' ? 'active' : ''}">
                 📊 Tổng Quan
             </button>
-            <button onclick="switchToView('inventory')" 
-                    class="nav-btn ${currentView === 'inventory' ? 'active' : ''}">
-                📦 Hàng Hóa & Kho
+            <button onclick="switchToView('inventory')" class="nav-btn ${currentView === 'inventory' ? 'active' : ''}">
+                📦 Kho Hàng
             </button>
-            <button onclick="switchToView('services')" 
-                    class="nav-btn ${currentView === 'services' ? 'active' : ''}">
+            <button onclick="switchToView('services')" class="nav-btn ${currentView === 'services' ? 'active' : ''}">
                 🔧 Dịch Vụ
             </button>
         </div>
     `;
-    
-    console.log('✅ Navigation đã sẵn sàng');
 }
 
 function switchToView(view) {
-    console.log(`🔄 Chuyển sang view: ${view}`);
-    
-    // Cập nhật state
     currentView = view;
-    
-    // Cập nhật UI navigation
     updateNavigationUI();
-    
-    // Ẩn tất cả sections
     hideAllSections();
-    
-    // Hiển thị section target
     showTargetSection(view);
-    
-    // Load dữ liệu cho view
     loadDataForView(view);
 }
 
 function updateNavigationUI() {
-    const buttons = document.querySelectorAll('.nav-btn');
-    buttons.forEach(btn => {
+    document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('active');
-        // Active button dựa trên text content
         if ((currentView === 'overview' && btn.textContent.includes('Tổng Quan')) ||
-            (currentView === 'inventory' && btn.textContent.includes('Hàng Hóa')) ||
+            (currentView === 'inventory' && btn.textContent.includes('Kho Hàng')) ||
             (currentView === 'services' && btn.textContent.includes('Dịch Vụ'))) {
             btn.classList.add('active');
         }
@@ -147,254 +201,396 @@ function updateNavigationUI() {
 }
 
 function hideAllSections() {
-    const sections = ['overviewSection', 'inventorySection', 'servicesSection'];
-    sections.forEach(sectionId => {
-        const section = document.getElementById(sectionId);
+    ['overviewSection', 'inventorySection', 'servicesSection'].forEach(id => {
+        const section = document.getElementById(id);
         if (section) section.style.display = 'none';
     });
 }
 
 function showTargetSection(view) {
-    const targetSection = document.getElementById(`${view}Section`);
-    if (targetSection) {
-        targetSection.style.display = 'block';
-        console.log(`✅ Đã hiển thị section: ${view}Section`);
-    } else {
-        console.log(`❌ Không tìm thấy section: ${view}Section`);
+    const section = document.getElementById(`${view}Section`);
+    if (section) section.style.display = 'block';
+}
+// === CHI TIẾT CHI PHÍ NHÂN VIÊN - SỬA LỖI POPUP TRÙNG ===
+async function showStaffCostDetail(staffDetails, totalCost) {
+    // KIỂM TRA POPUP ĐÃ TỒN TẠI CHƯA
+    if (document.getElementById('staffCostDetailModal')) {
+        console.log('⚠️ Popup đã mở, không mở lại');
+        return;
+    }
+
+    console.log('🔍 Bắt đầu mở popup chi tiết nhân viên');
+    
+    try {
+        // Load thêm thông tin chi tiết cho từng nhân viên
+        const detailedStaff = await Promise.all(
+            staffDetails.map(async (staff) => {
+                const detail = await getEmployeeSalaryDetail(staff.name, currentOperationalMonth);
+                return { 
+                    ...staff, 
+                    ...detail,
+                    offDays: detail.offDays || 0,
+                    overtimeDays: detail.overtimeDays || 0,
+                    offDeduction: detail.offDeduction || 0,
+                    overtimeBonus: detail.overtimeBonus || 0
+                };
+            })
+        );
+
+        createStaffCostDetailModal(detailedStaff, totalCost);
+        
+    } catch (error) {
+        console.error('❌ Lỗi mở popup chi tiết:', error);
+        showToast('Lỗi tải chi tiết nhân viên', 'error');
     }
 }
 
-// ==================== LUỒNG THAO TÁC NHANH ====================
-function setupQuickActions() {
-    console.log('⚡ Đang thiết lập thao tác nhanh...');
-    
-    const container = document.getElementById('quickActions');
-    if (!container) return;
-
-    // Thêm buttons thao tác nhanh
-    const quickActionsHTML = `
-       
-    `;
-    
-    container.insertAdjacentHTML('beforeend', quickActionsHTML);
-    console.log('✅ Thao tác nhanh đã sẵn sàng');
-}
-
-function handleQuickAction(action) {
-    console.log(`🎯 Thao tác nhanh: ${action}`);
-    
-    switch(action) {
-        case 'add_inventory':
-            openExpenseModal('inventory');
-            break;
-        case 'add_service':
-            openExpenseModal('service');
-            break;
-        default:
-            console.log('❌ Thao tác không xác định:', action);
+function createStaffCostDetailModal(detailedStaff, totalCost) {
+    // KIỂM TRA LẦN CUỐI TRƯỚC KHI TẠO POPUP
+    if (document.getElementById('staffCostDetailModal')) {
+        console.log('⚠️ Popup đã được tạo trước đó');
+        return;
     }
-}
 
-
-
-function createExpenseModal(type) {
-    const today = new Date().toISOString().split('T')[0];
-    const isInventory = type === 'inventory';
-    
     const modal = document.createElement('div');
-    modal.id = 'milanoExpenseModal';
-    modal.style.cssText = `
-        position:fixed;top:0;left:0;right:0;bottom:0;
-        background:rgba(0,0,0,0.85);z-index:99999;
-        display:flex;align-items:center;justify-content:center;
-        padding:20px;font-family:system-ui,sans-serif;
-    `;
-
+    modal.id = 'staffCostDetailModal';
+    modal.className = 'modal-overlay active';
+    
     modal.innerHTML = `
-        <div style="background:white;border-radius:20px;width:100%;max-width:520px;max-height:95vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,0.5);">
-            <!-- Header -->
-            <div style="background:${isInventory ? '#2196f3' : '#ff9800'};color:white;padding:24px;border-radius:20px 20px 0 0;text-align:center;position:relative;">
-                <h2 style="margin:0;font-size:1.6rem;font-weight:bold;">
-                    ${isInventory ? '📦 Thêm Hàng Hóa Vào Kho' : '🔧 Thêm Chi Phí Dịch Vụ'}
-                </h2>
-                <button onclick="closeExpenseModal()" 
-                        style="position:absolute;top:15px;right:20px;background:none;border:none;color:white;font-size:36px;cursor:pointer;">×</button>
+        <div class="modal-content large">
+            <div class="modal-header staff">
+                <h3>💰 Chi Tiết Lương Nhân Viên</h3>
+                <button class="modal-close" onclick="closeStaffCostDetailModal()">×</button>
             </div>
-
-            <!-- Form -->
-            <div style="padding:28px;">
-                ${createExpenseFormFields(type, today)}
+            <div class="modal-body">
+                <div class="total-cost-display">
+                    📊 Tổng chi phí lương thực tế: <strong>${formatCurrency(totalCost)}</strong>
+                    <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">
+                        Tháng ${currentOperationalMonth} • ${detailedStaff.length} nhân viên
+                    </div>
+                </div>
+                <div class="staff-list">
+                    ${detailedStaff.length === 0 ? `
+                        <div class="empty-state">
+                            <div class="empty-icon">👥</div>
+                            <div>Chưa có nhân viên nào</div>
+                        </div>
+                    ` : detailedStaff.map(staff => `
+                        <div class="staff-item-detailed">
+                            <div class="staff-header">
+                                <div class="staff-name">${staff.name}</div>
+                                <div class="staff-total">${formatCurrency(staff.calculatedSalary || staff.salary)}</div>
+                            </div>
+                            
+                            <div class="salary-breakdown">
+                                <div class="breakdown-item">
+                                    <span class="label">Lương cơ bản:</span>
+                                    <span class="value">${formatCurrency(staff.monthlySalary)}</span>
+                                </div>
+                                
+                                ${staff.offDays > 0 ? `
+                                <div class="breakdown-item negative">
+                                    <span class="label">❌ ${staff.offDays} ngày off:</span>
+                                    <span class="value">-${formatCurrency(staff.offDeduction)}</span>
+                                </div>
+                                ` : '<div class="breakdown-item"><span class="label">❌ Ngày off:</span><span class="value">0 ngày</span></div>'}
+                                
+                                ${staff.overtimeDays > 0 ? `
+                                <div class="breakdown-item positive">
+                                    <span class="label">⭐ ${staff.overtimeDays} tăng ca:</span>
+                                    <span class="value">+${formatCurrency(staff.overtimeBonus)}</span>
+                                </div>
+                                ` : '<div class="breakdown-item"><span class="label">⭐ Tăng ca:</span><span class="value">0 ngày</span></div>'}
+                                
+                                ${staff.totalBonus > 0 ? `
+                                <div class="breakdown-item positive">
+                                    <span class="label">🎁 Thưởng:</span>
+                                    <span class="value">+${formatCurrency(staff.totalBonus)}</span>
+                                </div>
+                                ` : ''}
+                                
+                                ${staff.totalPenalty > 0 ? `
+                                <div class="breakdown-item negative">
+                                    <span class="label">⚠️ Phạt:</span>
+                                    <span class="value">-${formatCurrency(staff.totalPenalty)}</span>
+                                </div>
+                                ` : ''}
+                            </div>
+                            
+                            <div class="salary-summary">
+                                <div class="final-salary">
+                                    Thực lãnh: <strong>${formatCurrency(staff.calculatedSalary || staff.salary)}</strong>
+                                </div>
+                                <div class="salary-percentage">
+                                    ${formatPercentage(staff.calculatedSalary || staff.salary, totalCost)}% tổng chi phí
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
-
-            <!-- Footer -->
-            <div style="padding:24px;background:#f8f9fa;border-top:1px solid #eee;display:flex;gap:16px;justify-content:flex-end;border-radius:0 0 20px 20px;">
-                <button onclick="closeExpenseModal()"
-                        style="padding:16px 32px;background:#6c757d;color:white;border:none;border-radius:14px;cursor:pointer;font-weight:bold;font-size:16px;">
-                    Hủy
-                </button>
-                <button onclick="processSaveExpense('${type}')"
-                        style="padding:16px 40px;background:#28a745;color:white;border:none;border-radius:14px;cursor:pointer;font-weight:bold;font-size:16px;">
-                    ${isInventory ? '📦 Nhập Kho' : '💾 Lưu Chi Phí'}
-                </button>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeStaffCostDetailModal()">Đóng</button>
             </div>
         </div>
     `;
 
     document.body.appendChild(modal);
+    console.log('✅ Popup chi tiết nhân viên đã mở');
+}
+// ==================== THAO TÁC NHANH - GIỮ NGUYÊN HTML ====================
+function setupQuickActions() {
+    const container = document.getElementById('quickActions');
+    if (!container) return;
+
+    const actionsHTML = `
+        <div class="quick-actions-buttons">
+            <button onclick="openExpenseModal('inventory')" class="btn-primary">
+                📦 Thêm Hàng Hóa
+            </button>
+            <button onclick="openExpenseModal('service')" class="btn-secondary">
+                🔧 Thêm Dịch Vụ
+            </button>
+            <button onclick="exportOperationalReport()" class="btn-export">
+                📊 Xuất Báo Cáo
+            </button>
+        </div>
+    `;
+    
+    container.innerHTML = actionsHTML;
+    
+    // Thêm sự kiện click cho tiêu đề
+    const header = document.getElementById('quickActionsHeader');
+    if (header) {
+        header.addEventListener('click', () => {
+            switchToView('overview');
+        });
+        
+        // Thêm hiệu ứng hover
+        header.addEventListener('mouseenter', () => {
+            header.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            header.style.color = 'white';
+            header.style.transform = 'translateY(-2px)';
+            header.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+        });
+        
+        header.addEventListener('mouseleave', () => {
+            header.style.background = '';
+            header.style.color = '';
+            header.style.transform = '';
+            header.style.boxShadow = '';
+        });
+    }
 }
 
+// ==================== QUẢN LÝ DANH MỤC ====================
+async function loadCategories() {
+    try {
+        // Danh mục mặc định - không phụ thuộc Firestore
+        productCategories = ['Cà phê hạt', 'Sữa tươi', 'Đường', 'Syrup', 'Bánh ngọt', 'Cốc giấy', 'Ống hút'];
+        serviceCategories = ['Tiền điện', 'Tiền nước', 'Tiền mạng', 'Tiền thuê mặt bằng', 'Sửa chữa', 'Vệ sinh'];
+    } catch (error) {
+        console.log('Sử dụng danh mục mặc định');
+    }
+}
 
+// ==================== MODAL QUẢN LÝ CHI PHÍ ====================
+function openExpenseModal(type) {
+    document.getElementById('milanoExpenseModal')?.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'milanoExpenseModal';
+    modal.className = 'modal-overlay active';
+    
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header ${type === 'inventory' ? 'inventory' : 'service'}">
+                <h3>${type === 'inventory' ? '📦 Thêm Hàng Hóa' : '🔧 Thêm Dịch Vụ'}</h3>
+                <button class="modal-close" onclick="closeExpenseModal()">×</button>
+            </div>
+            <div class="modal-body">
+                ${createExpenseForm(type)}
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeExpenseModal()">❌ Hủy</button>
+                <button class="btn-confirm" onclick="processSaveExpense('${type}')">
+                    ${type === 'inventory' ? '📦 Nhập Kho' : '💾 Lưu Chi Phí'}
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    initializeExpenseForm(type);
+}
+
+function createExpenseForm(type) {
+    const isInventory = type === 'inventory';
+    const today = new Date().toISOString().split('T')[0];
+    
+    return `
+        <form class="expense-form" onsubmit="return false;">
+            <div class="form-group">
+                <label>${isInventory ? 'Tên hàng hóa' : 'Tên dịch vụ'} *</label>
+                <input type="text" id="expenseContent" placeholder="Nhập tên..." required>
+            </div>
+            
+            <div class="form-group">
+                <label>Số tiền *</label>
+                <input type="number" id="expenseAmount" placeholder="Nhập số tiền..." min="0" required>
+            </div>
+            
+            ${isInventory ? `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Số lượng</label>
+                    <input type="number" id="expenseQuantity" value="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Đơn vị</label>
+                    <select id="expenseUnit">
+                        <option value="kg">kg</option>
+                        <option value="gói">gói</option>
+                        <option value="hộp">hộp</option>
+                        <option value="thùng">thùng</option>
+                        <option value="chai">chai</option>
+                        <option value="cái">cái</option>
+                    </select>
+                </div>
+            </div>
+            ` : ''}
+            
+            <div class="form-group">
+                <label>Ngày ${isInventory ? 'nhập kho' : 'chi phí'}</label>
+                <input type="date" id="expenseDate" value="${today}" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Ghi chú</label>
+                <textarea id="expenseNote" placeholder="Không bắt buộc..."></textarea>
+            </div>
+        </form>
+    `;
+}
+
+function initializeExpenseForm(type) {
+    // Focus vào input đầu tiên
+    setTimeout(() => {
+        document.getElementById('expenseContent')?.focus();
+    }, 100);
+}
 
 function closeExpenseModal() {
     document.getElementById('milanoExpenseModal')?.remove();
 }
 
+// ==================== XỬ LÝ LƯU DỮ LIỆU ====================
+async function processSaveExpense(type) {
+    try {
+        const formData = validateExpenseForm(type);
+        if (!formData) return;
 
+        const expenseData = prepareExpenseData(formData, type);
+        await saveExpenseData(expenseData, type);
+        
+        showToast(`✅ ${type === 'inventory' ? 'Đã nhập kho' : 'Đã lưu chi phí'} ${formatCurrency(expenseData.amount)}`, 'success');
+        closeExpenseModal();
+        refreshAllData();
+        
+    } catch (error) {
+        console.error('Lỗi lưu dữ liệu:', error);
+        showToast('❌ Lỗi lưu dữ liệu', 'error');
+    }
+}
 
 function validateExpenseForm(type) {
-    const content = document.getElementById('expenseContentInput')?.value?.trim();
-    const amountRaw = document.getElementById('expenseAmountInput')?.value?.trim();
+    const content = document.getElementById('expenseContent')?.value?.trim();
+    const amount = Number(document.getElementById('expenseAmount')?.value);
     
-    if (!content || !amountRaw) {
-        showToast('Vui lòng nhập đầy đủ thông tin và số tiền', 'error');
-        return null;
-    }
-    
-    const amount = Number(amountRaw.replace(/[^0-9]/g, ''));
-    if (!amount || amount <= 0) {
-        showToast('Số tiền không hợp lệ', 'error');
+    if (!content || !amount || amount <= 0) {
+        showToast('Vui lòng nhập đầy đủ thông tin', 'error');
         return null;
     }
     
     return { content, amount };
 }
 
-
-
-async function saveToOperationalExpenses(expenseData) {
-    await db.collection('operational_expenses').add(expenseData);
-}
-
-async function updateInventoryData(expenseData) {
-    try {
-        const inventoryData = {
-            productName: expenseData.description,
-            quantity: expenseData.quantity,
-            unit: expenseData.unit,
-            unitPrice: expenseData.unitPrice,
-            totalAmount: expenseData.amount,
-            lastRestockDate: expenseData.date,
-            month: expenseData.month,
-            note: expenseData.note,
-            companyId: 'milano',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-
-        // Kiểm tra sản phẩm đã tồn tại chưa
-        const existingProduct = await db.collection('inventory')
-            .where('productName', '==', expenseData.description)
-            .where('companyId', '==', 'milano')
-            .get();
-
-        if (!existingProduct.empty) {
-            // Cập nhật số lượng tồn kho
-            const existingDoc = existingProduct.docs[0];
-            const currentData = existingDoc.data();
-            const newQuantity = currentData.quantity + expenseData.quantity;
-            
-            await db.collection('inventory').doc(existingDoc.id).update({
-                quantity: newQuantity,
-                unitPrice: expenseData.unitPrice,
-                totalAmount: newQuantity * expenseData.unitPrice,
-                lastRestockDate: expenseData.date,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            // Ghi log nhập hàng
-            await db.collection('inventory_logs').add({
-                productId: existingDoc.id,
-                productName: expenseData.description,
-                type: 'restock',
-                quantity: expenseData.quantity,
-                unit: expenseData.unit,
-                unitPrice: expenseData.unitPrice,
-                totalAmount: expenseData.amount,
-                date: expenseData.date,
-                note: `Nhập thêm: ${expenseData.note || 'Không có ghi chú'}`,
-                companyId: 'milano',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-        } else {
-            // Thêm sản phẩm mới vào kho
-            const newProduct = await db.collection('inventory').add(inventoryData);
-            
-            // Ghi log nhập hàng lần đầu
-            await db.collection('inventory_logs').add({
-                productId: newProduct.id,
-                productName: expenseData.description,
-                type: 'initial_stock',
-                quantity: expenseData.quantity,
-                unit: expenseData.unit,
-                unitPrice: expenseData.unitPrice,
-                totalAmount: expenseData.amount,
-                date: expenseData.date,
-                note: `Nhập lần đầu: ${expenseData.note || 'Không có ghi chú'}`,
-                companyId: 'milano',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        }
-    } catch (err) {
-        console.error('Lỗi cập nhật kho:', err);
-        throw err;
-    }
-}
-
-function showSaveSuccessMessage(type, amount) {
-    const message = type === 'inventory' ? '📦 ĐÃ NHẬP KHO' : '💾 ĐÃ LƯU';
-    showToast(`${message} ${formatCurrency(amount)} THÀNH CÔNG!`, 'success');
-}
-
-// ==================== LUỒNG TẢI DỮ LIỆU ====================
-function loadInitialData() {
-    console.log('📥 Đang tải dữ liệu ban đầu...');
-    loadOperationalExpenses();
-}
-
-// Thêm vào hàm loadOverviewData
-async function loadOverviewData() {
-    try {
-        await loadInventorySummary();
-        await loadRecentExpenses();
-        updateOperationalSummary();
-        updateMonthLabel(); // THÊM DÒNG NÀY
-    } catch (error) {
-        console.error('❌ Lỗi tải overview:', error);
-    }
-}
-
-// Thêm hàm mới
-function updateMonthLabel() {
-    const monthLabel = document.getElementById('currentMonthLabel');
-    if (monthLabel) {
-        monthLabel.textContent = currentOperationalMonth;
-    }
-}
-
-// Cập nhật hàm refreshAllData
-function refreshAllData() {
-    console.log('🔄 Làm mới toàn bộ dữ liệu...');
-    loadOperationalExpenses();
-    updateMonthLabel(); // THÊM DÒNG NÀY
+function prepareExpenseData(formData, type) {
+    const baseData = {
+        description: formData.content,
+        amount: formData.amount,
+        type: type,
+        date: document.getElementById('expenseDate')?.value,
+        month: currentOperationalMonth,
+        note: document.getElementById('expenseNote')?.value?.trim() || '',
+        companyId: 'milano',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
     
-    // Refresh view hiện tại
+    if (type === 'inventory') {
+        baseData.quantity = Number(document.getElementById('expenseQuantity')?.value) || 1;
+        baseData.unit = document.getElementById('expenseUnit')?.value || 'cái';
+        baseData.unitPrice = Math.round(formData.amount / baseData.quantity);
+    }
+    
+    return baseData;
+}
+
+async function saveExpenseData(expenseData, type) {
+    // Lưu vào operational_expenses
+    await db.collection('operational_expenses').add(expenseData);
+    
+    // Nếu là hàng hóa, cập nhật kho
+    if (type === 'inventory') {
+        await updateInventory(expenseData);
+    }
+}
+
+async function updateInventory(expenseData) {
+    const existingProduct = await db.collection('inventory')
+        .where('productName', '==', expenseData.description)
+        .where('companyId', '==', 'milano')
+        .get();
+
+    const inventoryData = {
+        productName: expenseData.description,
+        quantity: expenseData.quantity,
+        unit: expenseData.unit,
+        unitPrice: expenseData.unitPrice,
+        totalAmount: expenseData.amount,
+        lastRestockDate: expenseData.date,
+        month: expenseData.month,
+        note: expenseData.note,
+        companyId: 'milano',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (!existingProduct.empty) {
+        // Cập nhật số lượng
+        const doc = existingProduct.docs[0];
+        const current = doc.data();
+        inventoryData.quantity = current.quantity + expenseData.quantity;
+        inventoryData.totalAmount = inventoryData.quantity * expenseData.unitPrice;
+        
+        await db.collection('inventory').doc(doc.id).update(inventoryData);
+    } else {
+        // Thêm mới
+        inventoryData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('inventory').add(inventoryData);
+    }
+}
+
+// ==================== TẢI DỮ LIỆU - TỐI ƯU TỐC ĐỘ ====================
+function refreshAllData() {
+    loadOperationalExpenses();
     loadDataForView(currentView);
 }
 
+function loadInitialData() {
+    loadOperationalExpenses();
+}
+
 function loadDataForView(view) {
-    console.log(`📊 Đang tải dữ liệu cho view: ${view}`);
-    
     switch(view) {
         case 'overview':
             loadOverviewData();
@@ -408,11 +604,35 @@ function loadDataForView(view) {
     }
 }
 
+async function loadOperationalExpenses() {
+    try {
+        const snapshot = await db.collection('operational_expenses')
+            .where('month', '==', currentOperationalMonth)
+            .get();
 
-let showAllExpenses = false;
-let allExpenses = [];
+        currentOperationalExpenses = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })).sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
 
-// Sửa hàm loadRecentExpenses
+        updateOperationalSummary();
+    } catch (error) {
+        console.error('Lỗi tải chi phí:', error);
+    }
+}
+
+async function loadOverviewData() {
+    try {
+        await Promise.all([
+            loadRecentExpenses(),
+            loadInventorySummary(),
+            loadStaffCost()
+        ]);
+    } catch (error) {
+        console.error('Lỗi tải overview:', error);
+    }
+}
+
 async function loadRecentExpenses() {
     try {
         const snapshot = await db.collection('operational_expenses')
@@ -421,282 +641,157 @@ async function loadRecentExpenses() {
             .get();
 
         allExpenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
-        // Hiển thị 5 mục đầu tiên hoặc toàn bộ
-        const expensesToShow = showAllExpenses ? allExpenses : allExpenses.slice(0, 5);
-        displayRecentExpenses(expensesToShow);
-        
-        // Cập nhật text nút toggle
-        updateToggleButton();
-    } catch (err) {
-        console.error('Lỗi tải chi phí gần đây:', err);
+        displayRecentExpenses(showAllExpenses ? allExpenses : allExpenses.slice(0, 5));
+    } catch (error) {
+        console.error('Lỗi tải chi phí gần đây:', error);
     }
 }
 
-// Hàm toggle hiển thị
-function toggleShowAllExpenses() {
-    showAllExpenses = !showAllExpenses;
-    const expensesToShow = showAllExpenses ? allExpenses : allExpenses.slice(0, 5);
-    displayRecentExpenses(expensesToShow);
-    updateToggleButton();
-}
-
-// Cập nhật text nút toggle
-function updateToggleButton() {
-    const toggleBtn = document.getElementById('toggleExpensesBtn');
-    if (toggleBtn) {
-        toggleBtn.textContent = showAllExpenses ? 'Ẩn bớt' : 'Xem toàn bộ';
-    }
-}
-
-// Sửa hàm displayRecentExpenses
 function displayRecentExpenses(expenses) {
     const container = document.getElementById('recentExpensesList');
     if (!container) return;
 
-    if (expenses.length === 0) {
-        container.innerHTML = `
-            <div style="text-align:center;padding:40px;color:#666;">
-                <div style="font-size:3rem;margin-bottom:10px;">📋</div>
-                Chưa có chi phí nào trong tháng ${currentOperationalMonth}
-            </div>
-        `;
-        return;
-    }
-
-    container.innerHTML = expenses.map(expense => `
-        <div style="background:white;margin:10px 0;padding:15px;border-radius:10px;border-left:4px solid ${expense.type === 'inventory' ? '#2196f3' : '#ff9800'};">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <div style="flex:1;">
-                    <div style="font-weight:bold;color:#333;">${expense.description}</div>
-                    <div style="color:#666;font-size:0.9rem;margin-top:4px;">
-                        ${expense.type === 'inventory' ? '📦 Hàng hóa' : '🔧 Dịch vụ'} • ${expense.date}
-                        ${expense.quantity ? ` • ${expense.quantity} ${expense.unit}` : ''}
-                    </div>
-                    ${expense.note ? `<div style="color:#888;font-size:0.85rem;margin-top:4px;">📝 ${expense.note}</div>` : ''}
+    container.innerHTML = expenses.length === 0 ? `
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <div>Chưa có chi phí nào trong tháng ${currentOperationalMonth}</div>
+        </div>
+    ` : expenses.map(expense => `
+        <div class="expense-item ${expense.type}">
+            <div class="expense-content">
+                <div class="expense-title">${expense.description}</div>
+                <div class="expense-meta">
+                    ${expense.type === 'inventory' ? '📦' : '🔧'} • ${expense.date}
+                    ${expense.quantity ? ` • ${expense.quantity} ${expense.unit}` : ''}
                 </div>
-                <div style="font-weight:bold;color:#e91e63;font-size:1.1rem;">
-                    ${formatCurrency(expense.amount)}
-                </div>
+                ${expense.note ? `<div class="expense-note">📝 ${expense.note}</div>` : ''}
             </div>
+            <div class="expense-amount">${formatCurrency(expense.amount)}</div>
         </div>
     `).join('');
-    
-    // Hiển thị thông báo nếu đang xem giới hạn
+
     if (!showAllExpenses && allExpenses.length > 5) {
         container.innerHTML += `
-            <div style="text-align:center;padding:10px;color:#666;font-size:0.9rem;">
+            <div class="expenses-count">
                 Đang hiển thị 5/${allExpenses.length} chi phí
             </div>
         `;
     }
 }
 
-function displayRecentExpenses(expenses) {
-    const container = document.getElementById('recentExpensesList');
-    if (!container) return;
-
-    if (expenses.length === 0) {
-        container.innerHTML = `
-            <div style="text-align:center;padding:40px;color:#666;">
-                <div style="font-size:3rem;margin-bottom:10px;">📋</div>
-                Chưa có chi phí nào trong tháng ${currentOperationalMonth}
-            </div>
-        `;
-        return;
-    }
-
-    container.innerHTML = expenses.map(expense => `
-        <div style="background:white;margin:10px 0;padding:15px;border-radius:10px;border-left:4px solid ${expense.type === 'inventory' ? '#2196f3' : '#ff9800'};">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                    <div style="font-weight:bold;color:#333;">${expense.description}</div>
-                    <div style="color:#666;font-size:0.9rem;margin-top:4px;">
-                        ${expense.type === 'inventory' ? '📦 Hàng hóa' : '🔧 Dịch vụ'} • ${expense.date}
-                        ${expense.quantity ? ` • ${expense.quantity} ${expense.unit}` : ''}
-                    </div>
-                    ${expense.note ? `<div style="color:#888;font-size:0.85rem;margin-top:4px;">📝 ${expense.note}</div>` : ''}
-                </div>
-                <div style="font-weight:bold;color:#e91e63;font-size:1.1rem;">
-                    ${formatCurrency(expense.amount)}
-                </div>
-            </div>
-        </div>
-    `).join('');
+function toggleShowAllExpenses() {
+    showAllExpenses = !showAllExpenses;
+    const expensesToShow = showAllExpenses ? allExpenses : allExpenses.slice(0, 5);
+    displayRecentExpenses(expensesToShow);
+    
+    const btn = document.getElementById('toggleExpensesBtn');
+    if (btn) btn.textContent = showAllExpenses ? 'Ẩn bớt' : 'Xem toàn bộ';
 }
 
-// Tải tổng quan kho
-// CÁCH 2: HIỂN THỊ GIỐNG TỔNG QUAN CHI PHÍ
+// ==================== QUẢN LÝ KHO HÀNG ====================
 async function loadInventorySummary() {
     try {
         const snapshot = await db.collection('inventory')
             .where('companyId', '==', 'milano')
             .get();
 
-        const totalInventoryValue = snapshot.docs.reduce((sum, doc) => {
-            const data = doc.data();
-            return sum + (data.totalAmount || 0);
-        }, 0);
-
+        const totalValue = snapshot.docs.reduce((sum, doc) => sum + (doc.data().totalAmount || 0), 0);
         const totalProducts = snapshot.docs.length;
-        const lowStockCount = snapshot.docs.filter(doc => {
-            const data = doc.data();
-            return data.quantity < 10;
-        }).length;
+        const lowStockCount = snapshot.docs.filter(doc => (doc.data().quantity || 0) < 10).length;
 
-        const inventorySummary = document.getElementById('inventorySummary');
-        if (inventorySummary) {
-            inventorySummary.innerHTML = `
-                <div onclick="switchToView('inventory')" 
-                     style="cursor: pointer; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.3s ease; border: 2px solid transparent;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <span style="color: #2196f3; font-weight: bold; font-size: 0.9rem;">
-                            Xem chi tiết →
-                        </span>
+        const container = document.getElementById('inventorySummary');
+        if (container) {
+            container.innerHTML = `
+                <div class="summary-card" onclick="switchToView('inventory')">
+                    <div class="summary-header">
+                        <span class="view-detail">Xem chi tiết →</span>
                     </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center;">
-                        <div style="padding: 15px; background: #e3f2fd; border-radius: 8px;">
-                            <div style="font-size: 0.8rem; color: #1976d2; margin-bottom: 5px;">Tổng SP</div>
-                            <div style="font-weight: bold; font-size: 1.4rem; color: #1976d2;">${totalProducts}</div>
+                    <div class="inventory-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">Tổng SP</div>
+                            <div class="stat-value">${totalProducts}</div>
                         </div>
-                        <div style="padding: 15px; background: #e8f5e8; border-radius: 8px;">
-                            <div style="font-size: 0.8rem; color: #2e7d32; margin-bottom: 5px;">Giá trị</div>
-                            <div style="font-weight: bold; font-size: 1.2rem; color: #2e7d32;">${formatCurrencyShort(totalInventoryValue)}</div>
+                        <div class="stat-item">
+                            <div class="stat-label">Giá trị</div>
+                            <div class="stat-value">${formatCurrencyShort(totalValue)}</div>
                         </div>
-                        <div style="padding: 15px; background: ${lowStockCount > 0 ? '#fff3e0' : '#f5f5f5'}; border-radius: 8px;">
-                            <div style="font-size: 0.8rem; color: ${lowStockCount > 0 ? '#e65100' : '#666'}; margin-bottom: 5px;">Sắp hết</div>
-                            <div style="font-weight: bold; font-size: 1.4rem; color: ${lowStockCount > 0 ? '#e65100' : '#666'};">${lowStockCount}</div>
+                        <div class="stat-item ${lowStockCount > 0 ? 'warning' : ''}">
+                            <div class="stat-label">Sắp hết</div>
+                            <div class="stat-value">${lowStockCount}</div>
                         </div>
                     </div>
                 </div>
             `;
-            
-            // Thêm hiệu ứng hover
-            const card = inventorySummary.querySelector('div');
-            if (card) {
-                card.addEventListener('mouseover', function() {
-                    this.style.transform = 'translateY(-2px)';
-                    this.style.boxShadow = '0 4px 15px rgba(0,0,0,0.15)';
-                    this.style.borderColor = '#2196f3';
-                });
-                card.addEventListener('mouseout', function() {
-                    this.style.transform = 'translateY(0)';
-                    this.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-                    this.style.borderColor = 'transparent';
-                });
-            }
         }
-    } catch (err) {
-        console.error('Lỗi tải tổng quan kho:', err);
-        
-        const inventorySummary = document.getElementById('inventorySummary');
-        if (inventorySummary) {
-            inventorySummary.innerHTML = `
-                <div onclick="switchToView('inventory')" 
-                     style="cursor: pointer; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; color: #666;">
-                    <div style="font-size: 3rem; margin-bottom: 10px;">📦</div>
-                    <div>Không thể tải dữ liệu kho</div>
-                    <small style="color: #2196f3;">Click để thử lại</small>
-                </div>
-            `;
-        }
+    } catch (error) {
+        console.error('Lỗi tải tổng quan kho:', error);
     }
 }
 
-// THÊM HÀM FORMAT CURRENCY SHORT (nếu chưa có)
-function formatCurrencyShort(amount) {
-    if (amount >= 1000000000) {
-        return (amount / 1000000000).toFixed(1) + 'B';
-    } else if (amount >= 1000000) {
-        return (amount / 1000000).toFixed(1) + 'M';
-    } else if (amount >= 1000) {
-        return (amount / 1000).toFixed(0) + 'K';
-    }
-    return amount.toString();
-}
-
-// LUỒNG TẢI INVENTORY
 async function loadInventoryData() {
     try {
         const snapshot = await db.collection('inventory')
             .where('companyId', '==', 'milano')
             .get();
 
-        currentInventory = snapshot.docs.map(doc => ({ 
-            id: doc.id, 
-            ...doc.data() 
+        currentInventory = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
         })).sort((a, b) => a.productName.localeCompare(b.productName));
 
         displayInventory();
     } catch (error) {
-        console.error('❌ Lỗi tải inventory:', error);
-        showToast('Lỗi tải dữ liệu kho', 'error');
+        console.error('Lỗi tải kho hàng:', error);
     }
 }
 
 function displayInventory() {
     const container = document.getElementById('inventoryList');
-    if (!container) {
-        console.log('❌ Không tìm thấy inventoryList container');
-        return;
-    }
+    if (!container) return;
 
-    // Cập nhật thống kê
     updateInventoryStats();
 
-    if (currentInventory.length === 0) {
-        container.innerHTML = `
-            <div style="text-align:center;padding:60px;color:#666;font-size:1.1rem;">
-                <div style="font-size:3rem;margin-bottom:20px;">📦</div>
-                Kho hàng trống<br>
-                <small>Nhấn "Thêm Hàng Hóa" để nhập hàng vào kho</small>
-            </div>
-        `;
-        return;
-    }
-
-    container.innerHTML = currentInventory.map(item => `
-        <div class="inventory-item" onclick="showInventoryHistory('${item.id}', '${item.productName}')">
-            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
-                <div style="flex:1;">
-                    <div style="font-weight:bold;font-size:1.2rem;color:#333;">${item.productName}</div>
-                    <div style="color:#666;margin-top:4px;font-size:0.9rem;">
-                        Tồn kho: <strong>${item.quantity} ${item.unit}</strong>
-                    </div>
-                    <div style="color:#888;font-size:0.85rem;">
-                        Giá nhập: ${formatCurrency(item.unitPrice)}/${item.unit}
-                    </div>
+    container.innerHTML = currentInventory.length === 0 ? `
+        <div class="empty-state">
+            <div class="empty-icon">📦</div>
+            <div>Kho hàng trống</div>
+            <small>Nhấn "Thêm Hàng Hóa" để nhập hàng</small>
+        </div>
+    ` : currentInventory.map(item => `
+        <div class="inventory-item" onclick="showInventoryHistory('${item.id}')">
+            <div class="inventory-info">
+                <div class="product-name">${item.productName}</div>
+                <div class="product-details">
+                    Tồn kho: <strong>${item.quantity} ${item.unit}</strong>
                 </div>
-                <div style="text-align:right;">
-                    <div style="font-weight:bold;font-size:1.1rem;color:#2196f3;">
-                        ${formatCurrency(item.totalAmount)}
-                    </div>
-                    <div style="color:#888;font-size:0.8rem;">
-                        Cập nhật: ${formatDate(item.lastRestockDate)}
-                    </div>
+                <div class="product-price">
+                    Giá nhập: ${formatCurrency(item.unitPrice)}/${item.unit}
                 </div>
             </div>
-            ${item.note ? `<div style="color:#666;font-size:0.9rem;margin-top:8px;padding:8px;background:#f5f5f5;border-radius:6px;">📝 ${item.note}</div>` : ''}
+            <div class="inventory-value">
+                <div class="total-amount">${formatCurrency(item.totalAmount)}</div>
+                <div class="last-update">Cập nhật: ${formatDate(item.lastRestockDate)}</div>
+            </div>
+            ${item.note ? `<div class="inventory-note">📝 ${item.note}</div>` : ''}
         </div>
     `).join('');
 }
 
 function updateInventoryStats() {
     const totalProducts = currentInventory.length;
-    const totalInventoryValue = currentInventory.reduce((sum, item) => sum + (item.totalAmount || 0), 0);
-    const lowStockCount = currentInventory.filter(item => item.quantity < 10).length;
+    const totalValue = currentInventory.reduce((sum, item) => sum + (item.totalAmount || 0), 0);
+    const lowStockCount = currentInventory.filter(item => (item.quantity || 0) < 10).length;
 
-    const totalProductsEl = document.getElementById('totalProducts');
-    const totalInventoryValueEl = document.getElementById('totalInventoryValue');
-    const lowStockCountEl = document.getElementById('lowStockCount');
-
-    if (totalProductsEl) totalProductsEl.textContent = totalProducts;
-    if (totalInventoryValueEl) totalInventoryValueEl.textContent = formatCurrency(totalInventoryValue);
-    if (lowStockCountEl) lowStockCountEl.textContent = lowStockCount;
+    ['totalProducts', 'totalInventoryValue', 'lowStockCount'].forEach((id, index) => {
+        const element = document.getElementById(id);
+        if (element) {
+            const values = [totalProducts, formatCurrency(totalValue), lowStockCount];
+            element.textContent = values[index];
+        }
+    });
 }
 
-// Thêm vào hàm loadServicesData
+// ==================== QUẢN LÝ DỊCH VỤ ====================
 async function loadServicesData() {
     try {
         const snapshot = await db.collection('operational_expenses')
@@ -706,74 +801,49 @@ async function loadServicesData() {
 
         const services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         displayServices(services);
-        updateServicesMonthLabel(); // THÊM DÒNG NÀY
     } catch (error) {
-        console.error('❌ Lỗi tải services:', error);
-        showToast('Lỗi tải dữ liệu dịch vụ', 'error');
-    }
-}
-
-// Thêm hàm mới
-function updateServicesMonthLabel() {
-    const monthLabel = document.getElementById('servicesMonthLabel');
-    if (monthLabel) {
-        monthLabel.textContent = currentOperationalMonth;
+        console.error('Lỗi tải dịch vụ:', error);
     }
 }
 
 function displayServices(services) {
     const container = document.getElementById('servicesList');
-    if (!container) {
-        console.log('❌ Không tìm thấy servicesList container');
-        return;
-    }
+    if (!container) return;
 
-    // Cập nhật thống kê dịch vụ
     updateServiceStats(services);
 
-    if (services.length === 0) {
-        container.innerHTML = `
-            <div style="text-align:center;padding:60px;color:#666;font-size:1.1rem;">
-                <div style="font-size:3rem;margin-bottom:20px;">🔧</div>
-                Chưa có chi phí dịch vụ nào trong tháng ${currentOperationalMonth}
-            </div>
-        `;
-        return;
-    }
-
     // Gom nhóm dịch vụ trùng tên
-    const groupedServices = {};
+    const grouped = {};
     services.forEach(service => {
         const key = service.description;
-        if (!groupedServices[key]) {
-            groupedServices[key] = [];
-        }
-        groupedServices[key].push(service);
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(service);
     });
 
-    container.innerHTML = Object.entries(groupedServices).map(([serviceName, serviceList]) => {
-        const totalAmount = serviceList.reduce((sum, s) => sum + (s.amount || 0), 0);
-        const hasMultiple = serviceList.length > 1;
+    container.innerHTML = Object.entries(grouped).length === 0 ? `
+        <div class="empty-state">
+            <div class="empty-icon">🔧</div>
+            <div>Chưa có chi phí dịch vụ</div>
+        </div>
+    ` : Object.entries(grouped).map(([name, list]) => {
+        const total = list.reduce((sum, s) => sum + (s.amount || 0), 0);
+        const hasMultiple = list.length > 1;
         
         return `
-            <div class="service-item" onclick="${hasMultiple ? `showServiceHistory('${serviceName}')` : 'void(0)'}">
-                <div style="display:flex;justify-content:space-between;align-items:start;">
-                    <div style="flex:1;">
-                        <div style="font-weight:bold;font-size:1.2rem;color:#333;">
-                            ${serviceName}
-                            ${hasMultiple ? `<span style="color:#666;font-size:0.9rem;"> (${serviceList.length} lần)</span>` : ''}
-                        </div>
-                        <div style="color:#666;margin-top:4px;font-size:0.9rem;">
-                            ${hasMultiple ? 'Click để xem lịch sử' : `Ngày: ${serviceList[0].date}`}
-                        </div>
-                        ${serviceList[0].note ? `<div style="color:#888;font-size:0.85rem;margin-top:4px;">📝 ${serviceList[0].note}</div>` : ''}
+            <div class="service-item" onclick="${hasMultiple ? `showServiceHistory('${name}')` : 'void(0)'}">
+                <div class="service-info">
+                    <div class="service-name">
+                        ${name}
+                        ${hasMultiple ? `<span class="service-count">(${list.length} lần)</span>` : ''}
                     </div>
-                    <div style="text-align:right;">
-                        <div style="font-weight:bold;font-size:1.3rem;color:#e91e63;">
-                            ${formatCurrency(totalAmount)}
-                        </div>
-                        ${hasMultiple ? '' : `<div style="color:#888;font-size:0.8rem;">${serviceList[0].date}</div>`}
+                    <div class="service-meta">
+                        ${hasMultiple ? 'Click để xem lịch sử' : `Ngày: ${list[0].date}`}
                     </div>
+                    ${list[0].note ? `<div class="service-note">📝 ${list[0].note}</div>` : ''}
+                </div>
+                <div class="service-amount">
+                    <div class="total-cost">${formatCurrency(total)}</div>
+                    ${!hasMultiple ? `<div class="service-date">${list[0].date}</div>` : ''}
                 </div>
             </div>
         `;
@@ -781,49 +851,485 @@ function displayServices(services) {
 }
 
 function updateServiceStats(services) {
-    const totalServicesCost = services.reduce((sum, service) => sum + (service.amount || 0), 0);
-    const serviceNames = [...new Set(services.map(s => s.description))];
-    
-    const totalServicesCostEl = document.getElementById('totalServicesCost');
-    const totalServiceTypesEl = document.getElementById('totalServiceTypes');
+    const totalCost = services.reduce((sum, s) => sum + (s.amount || 0), 0);
+    const uniqueServices = [...new Set(services.map(s => s.description))].length;
 
-    if (totalServicesCostEl) totalServicesCostEl.textContent = formatCurrency(totalServicesCost);
-    if (totalServiceTypesEl) totalServiceTypesEl.textContent = serviceNames.length;
+    ['totalServicesCost', 'totalServiceTypes'].forEach((id, index) => {
+        const element = document.getElementById(id);
+        if (element) {
+            const values = [formatCurrency(totalCost), uniqueServices];
+            element.textContent = values[index];
+        }
+    });
 }
 
-// Tải chi phí tổng quan
-async function loadOperationalExpenses() {
+// === TÍNH SỐ NGÀY LÀM VIỆC TRONG THÁNG ===
+function calculateWorkingDays(attendanceDoc, month) {
+    const [monthPart, yearPart] = month.split('/').map(Number);
+    const year = parseInt(yearPart);
+    const monthNum = parseInt(monthPart);
+    
+    // Tính số ngày trong tháng
+    const daysInMonth = new Date(year, monthNum, 0).getDate();
+    
+    let workingDays = 0;
+    let offDays = 0;
+    let overtimeDays = 0;
+
+    if (attendanceDoc.exists) {
+        const attendance = attendanceDoc.data();
+        const days = attendance.days || {};
+        
+        // Đếm số ngày làm việc (không phải off)
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayKey = `days.${day}`;
+            const status = days[day] || 'present'; // Mặc định là có làm nếu không có dữ liệu
+            
+            if (status === 'off') {
+                offDays++;
+            } else if (status === 'overtime') {
+                overtimeDays++;
+                workingDays++; // Tăng ca vẫn tính là ngày làm việc
+            } else if (status === 'present') {
+                workingDays++;
+            }
+            // Các trạng thái khác mặc định không tính
+        }
+    } else {
+        // Nếu không có dữ liệu chấm công, mặc định làm cả tháng (trừ CN)
+        workingDays = calculateDefaultWorkingDays(monthNum, year);
+    }
+
+    console.log(`📅 Thống kê ngày làm việc tháng ${month}:`, {
+        tổngNgàyTrongTháng: daysInMonth,
+        ngàyLàmViệc: workingDays,
+        ngàyOff: offDays,
+        tăngCa: overtimeDays
+    });
+
+    return { workingDays, offDays, overtimeDays };
+}
+
+// === TÍNH SỐ NGÀY LÀM VIỆC MẶC ĐỊNH (TRỪ CHỦ NHẬT) ===
+function calculateDefaultWorkingDays(month, year) {
+    const daysInMonth = new Date(year, month, 0).getDate();
+    let workingDays = 0;
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month - 1, day);
+        // Chủ nhật (0) là ngày nghỉ
+        if (date.getDay() !== 0) {
+            workingDays++;
+        }
+    }
+    
+    return workingDays;
+}
+// === TÍNH LƯƠNG CHO CHI PHÍ - SỬA LỖI KHÔNG TÍNH OFF/TĂNG CA ===
+// === TÍNH LƯƠNG CHO CHI PHÍ - SỬA LỖI ĐỌC DỮ LIỆU CHẤM CÔNG ===
+async function calculateEmployeeSalaryForChiphi(employeeId, month) {
     try {
-        const snapshot = await db.collection('operational_expenses')
-            .where('month', '==', currentOperationalMonth)
-            .get();
+        console.log(`🔍 Bắt đầu tính lương cho ${employeeId} tháng ${month}`);
+        
+        const [employeeDoc, attendanceDoc, bonusesSnapshot, penaltiesSnapshot] = await Promise.all([
+            db.collection('employees').doc(employeeId).get(),
+            db.collection('attendance').doc(`${employeeId}_${month.replace('/', '_')}`).get(),
+            db.collection('bonuses_penalties')
+                .where('employeeId', '==', employeeId)
+                .where('month', '==', month)
+                .where('type', '==', 'bonus')
+                .get(),
+            db.collection('bonuses_penalties')
+                .where('employeeId', '==', employeeId)
+                .where('month', '==', month)
+                .where('type', '==', 'penalty')
+                .get()
+        ]);
 
-        currentOperationalExpenses = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+        if (!employeeDoc.exists) {
+            console.log('❌ Không tìm thấy nhân viên:', employeeId);
+            return 0;
+        }
 
-        updateOperationalSummary();
-    } catch (err) {
-        console.error('Lỗi tải chi phí:', err);
-        showToast('Lỗi tải dữ liệu chi phí', 'error');
+        const employee = employeeDoc.data();
+        const monthlySalary = Number(employee.monthlySalary || 0);
+        const dailySalary = monthlySalary / 30;
+
+        // TÍNH NGÀY OFF VÀ TĂNG CA - SỬA LỖI QUAN TRỌNG
+        let offDays = 0, overtimeDays = 0;
+        
+        if (attendanceDoc.exists) {
+            const attendance = attendanceDoc.data();
+            console.log('📊 Dữ liệu chấm công RAW:', attendance);
+            
+            // ĐỌC ĐÚNG CẤU TRÚC DỮ LIỆU: days.16, days.17, days.18,...
+            Object.keys(attendance).forEach(key => {
+                if (key.startsWith('days.')) {
+                    const status = attendance[key];
+                    const dayNumber = key.replace('days.', '');
+                    console.log(`📅 Ngày ${dayNumber}: ${status}`);
+                    
+                    if (status === 'off') offDays++;
+                    if (status === 'overtime') overtimeDays++;
+                }
+            });
+            
+            console.log(`📊 Kết quả đếm: ${offDays} off, ${overtimeDays} overtime`);
+        } else {
+            console.log('❌ Không có dữ liệu chấm công');
+        }
+
+        // Tính tổng thưởng
+        const totalBonus = bonusesSnapshot.docs.reduce((sum, doc) => {
+            const data = doc.data();
+            return sum + Number(data.amount || 0);
+        }, 0);
+        
+        // Tính tổng phạt
+        const totalPenalty = penaltiesSnapshot.docs.reduce((sum, doc) => {
+            const data = doc.data();
+            return sum + Number(data.amount || 0);
+        }, 0);
+
+        // TÍNH LƯƠNG THỰC TẾ
+        const actualSalary = monthlySalary 
+            - (offDays * dailySalary) 
+            + (overtimeDays * dailySalary) 
+            + totalBonus 
+            - totalPenalty;
+
+        console.log(`💰 Lương thực tế ${employee.name}:`, {
+            lươngCơBản: monthlySalary,
+            ngàyOff: offDays,
+            trừOff: offDays * dailySalary,
+            tăngCa: overtimeDays,
+            cộngTăngCa: overtimeDays * dailySalary,
+            thưởng: totalBonus,
+            phạt: totalPenalty,
+            thựcLãnh: Math.round(actualSalary)
+        });
+
+        return Math.max(0, Math.round(actualSalary));
+        
+    } catch (error) {
+        console.error('❌ Lỗi tính lương thực tế (chiphi):', error, 'employeeId:', employeeId, 'month:', month);
+        return 0;
     }
 }
 
-
-function formatPercentage(part, total) {
-    if (!total || total === 0) return 0;
-    return Math.round((part / total) * 100);
-}
-// ==================== LUỒNG HIỂN THỊ LỊCH SỬ ====================
-async function showInventoryHistory(productId, productName) {
-    console.log(`📖 Đang mở lịch sử kho: ${productName}`);
-    
+// === HÀM DEBUG - KIỂM TRA DỮ LIỆU CHẤM CÔNG ===
+async function debugEmployeeAttendance(employeeId, month) {
     try {
-        const logs = await loadInventoryLogs(productId);
-        createInventoryHistoryModal(productName, logs);
+        console.log('🐛 DEBUG chấm công:', employeeId, month);
+        
+        const attendanceDoc = await db.collection('attendance')
+            .doc(`${employeeId}_${month.replace('/', '_')}`)
+            .get();
+
+        if (attendanceDoc.exists) {
+            const data = attendanceDoc.data();
+            console.log('📊 Dữ liệu chấm công RAW:', data);
+            console.log('📅 Days object:', data.days);
+            
+            if (data.days) {
+                Object.keys(data.days).forEach(key => {
+                    console.log(`📅 ${key}: ${data.days[key]}`);
+                });
+            }
+        } else {
+            console.log('❌ Không có dữ liệu chấm công');
+        }
     } catch (error) {
-        console.error('❌ Lỗi tải lịch sử kho:', error);
+        console.error('❌ Lỗi debug:', error);
+    }
+}
+
+// === TÍNH TỔNG CHI PHÍ NHÂN VIÊN - ĐẢM BẢO GỌI ĐÚNG ===
+async function loadStaffCost() {
+    try {
+        console.log('👥 Bắt đầu tính chi phí nhân viên cho tháng:', currentOperationalMonth);
+        
+        const snapshot = await db.collection('employees')
+            .where('status', '==', 'active')
+            .get();
+
+        let totalStaffCost = 0;
+        const staffDetails = [];
+
+        const salaryPromises = snapshot.docs.map(async (doc) => {
+            const employeeData = doc.data();
+            const employeeId = doc.id;
+            
+            const salary = await calculateEmployeeSalaryForChiphi(employeeId, currentOperationalMonth);
+            totalStaffCost += salary;
+            
+            // Thêm cả employeeId để dùng cho chi tiết
+            staffDetails.push({
+                name: employeeData.name,
+                salary: salary,
+                monthlySalary: employeeData.monthlySalary || 0,
+                employeeId: employeeId
+            });
+        });
+
+        await Promise.all(salaryPromises);
+        
+        console.log('📋 Danh sách nhân viên tính lương:', staffDetails);
+        updateOperationalSummary(totalStaffCost, staffDetails);
+        
+    } catch (error) {
+        console.error('❌ Lỗi tính chi phí nhân viên:', error);
+        updateOperationalSummary(0, []);
+    }
+}
+
+// ==================== THÊM HÀM TÍNH CHI PHÍ HÀNG NGÀY ====================
+async function loadDailyExpensesForChiphi(month) {
+    try {
+        const dateRange = getOperationalMonthDateRange(month);
+        
+        const snapshot = await db.collection('daily_expenses')
+            .where('date', '>=', dateRange.startDate)
+            .where('date', '<=', dateRange.endDate)
+            .get();
+            
+        let totalDaily = 0;
+        
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.expenses && Array.isArray(data.expenses)) {
+                data.expenses.forEach(expense => {
+                    totalDaily += Number(expense.amount) || 0;
+                });
+            }
+        });
+        
+        return totalDaily;
+        
+    } catch (error) {
+        console.error('Lỗi tải chi phí hàng ngày:', error);
+        return 0;
+    }
+}
+
+// ==================== SỬA HÀM UPDATE TỔNG QUAN ====================
+async function updateOperationalSummary(staffTotal = 0, staffDetails = []) {
+    const expensesTotal = currentOperationalExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const inventoryTotal = currentOperationalExpenses
+        .filter(e => e.type === 'inventory')
+        .reduce((sum, e) => sum + (e.amount || 0), 0);
+    const serviceTotal = currentOperationalExpenses
+        .filter(e => e.type === 'service')
+        .reduce((sum, e) => sum + (e.amount || 0), 0);
+    
+    // THÊM: Tính chi phí hàng ngày
+    const dailyTotal = await loadDailyExpensesForChiphi(currentOperationalMonth);
+
+    const totalAll = expensesTotal + staffTotal + dailyTotal;
+
+    const container = document.getElementById('operationalSummary');
+    if (container) {
+        container.innerHTML = `
+            <div class="summary-grid">
+                <div class="summary-item total" onclick="handleSummaryClick('overview')">
+                    <div class="summary-value">${formatCurrency(totalAll)}</div>
+                    <div class="summary-label">Tổng Chi Phí</div>
+                </div>
+                <div class="summary-item inventory" onclick="handleSummaryClick('inventory')">
+                    <div class="summary-value">${formatCurrency(inventoryTotal)}</div>
+                    <div class="summary-label">Hàng Hóa</div>
+                </div>
+                <div class="summary-item service" onclick="handleSummaryClick('services')">
+                    <div class="summary-value">${formatCurrency(serviceTotal)}</div>
+                    <div class="summary-label">Dịch Vụ</div>
+                </div>
+                <div class="summary-item staff" onclick="handleStaffCostClick(${JSON.stringify(staffDetails).replace(/"/g, '&quot;')}, ${staffTotal})">
+                    <div class="summary-value">${formatCurrency(staffTotal)}</div>
+                    <div class="summary-label">Nhân Viên</div>
+                </div>
+                <!-- THÊM: Chi phí hàng ngày -->
+                <div class="summary-item daily" onclick="handleSummaryClick('overview')">
+                    <div class="summary-value">${formatCurrency(dailyTotal)}</div>
+                    <div class="summary-label">Hàng Ngày</div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// ==================== THÊM HÀM LẤY DATE RANGE ====================
+function getOperationalMonthDateRange(month) {
+    const [monthNum, year] = month.split('/').map(Number);
+    
+    let startMonth = monthNum - 1;
+    let startYear = year;
+    if (startMonth === 0) {
+        startMonth = 12;
+        startYear = year - 1;
+    }
+    
+    const startDate = `${startYear}-${String(startMonth).padStart(2, '0')}-20`;
+    const endDate = `${year}-${String(monthNum).padStart(2, '0')}-19`;
+    
+    return { startDate, endDate };
+}
+
+// === XỬ LÝ CLICK SUMMARY - NGĂN NHIỀU LẦN ===
+let isHandlingClick = false;
+
+function handleSummaryClick(view) {
+    if (isHandlingClick) {
+        console.log('⚠️ Đang xử lý click, bỏ qua');
+        return;
+    }
+    
+    isHandlingClick = true;
+    console.log(`🖱️ Chuyển đến tab: ${view}`);
+    switchToView(view);
+    
+    // Reset sau 500ms
+    setTimeout(() => {
+        isHandlingClick = false;
+    }, 500);
+}
+
+function handleStaffCostClick(staffDetails, totalCost) {
+    if (isHandlingClick) {
+        console.log('⚠️ Đang xử lý click, bỏ qua');
+        return;
+    }
+    
+    isHandlingClick = true;
+    console.log('🖱️ Mở popup chi tiết nhân viên');
+    showStaffCostDetail(staffDetails, totalCost);
+    
+    // Reset sau 500ms
+    setTimeout(() => {
+        isHandlingClick = false;
+    }, 500);
+}
+// ==================== TIỆN ÍCH ====================
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
+}
+
+function formatCurrencyShort(amount) {
+    if (amount >= 1000000) {
+        return (amount / 1000000).toFixed(1) + 'M';
+    }
+    if (amount >= 1000) {
+        return (amount / 1000).toFixed(0) + 'K';
+    }
+    return amount.toString();
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('vi-VN');
+}
+
+function showToast(message, type = 'info') {
+    // Triển khai toast đơn giản
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        background: ${type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#333'};
+        color: white; padding: 12px 24px; border-radius: 25px; z-index: 10000;
+        font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+// ==================== QUẢN LÝ LỊCH SỬ ====================
+
+// === LỊCH SỬ KHO HÀNG ===
+// === LỊCH SỬ KHO HÀNG - THÊM NÚT XÓA ===
+async function showInventoryHistory(productId) {
+    try {
+        const [logs, productDoc] = await Promise.all([
+            loadInventoryLogs(productId),
+            db.collection('inventory').doc(productId).get()
+        ]);
+        
+        createInventoryHistoryModal(logs, productDoc.data());
+    } catch (error) {
+        console.error('Lỗi tải lịch sử kho:', error);
         showToast('Lỗi tải lịch sử nhập hàng', 'error');
+    }
+}
+
+function createInventoryHistoryModal(logs, productInfo) {
+    const modal = document.createElement('div');
+    modal.id = 'inventoryHistoryModal';
+    modal.className = 'modal-overlay active';
+    
+    modal.innerHTML = `
+        <div class="modal-content large">
+            <div class="modal-header inventory">
+                <h3>📦 Lịch Sử Nhập Kho - ${productInfo?.productName || 'Sản phẩm'}</h3>
+                <button class="modal-close" onclick="closeHistoryModal()">×</button>
+            </div>
+            <div class="modal-body">
+                ${logs.length === 0 ? `
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <div>Chưa có lịch sử nhập hàng</div>
+                    </div>
+                ` : `
+                    <div class="history-list">
+                        ${logs.map(log => `
+                            <div class="history-item ${log.type}" data-log-id="${log.id}">
+                                <div class="history-content">
+                                    <div class="history-title">
+                                        ${log.type === 'initial_stock' ? '📦 Nhập lần đầu' : '🔄 Nhập thêm'}
+                                    </div>
+                                    <div class="history-meta">
+                                        Ngày: ${log.date} | Số lượng: +${log.quantity} ${log.unit}
+                                    </div>
+                                    ${log.note ? `<div class="history-note">📝 ${log.note}</div>` : ''}
+                                </div>
+                                <div class="history-actions">
+                                    <div class="history-amount">
+                                        <div class="amount">${formatCurrency(log.totalAmount)}</div>
+                                        <div class="unit-price">${formatCurrency(log.unitPrice)}/${log.unit}</div>
+                                    </div>
+                                    <button class="btn-danger btn-small" onclick="deleteInventoryLog('${log.id}', '${log.productId}')">
+                                        🗑️ Xóa
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `}
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeHistoryModal()">Đóng</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+
+// === XÓA LỊCH SỬ NHẬP KHO ===
+async function deleteInventoryLog(logId, productId) {
+    if (!confirm('Bạn có chắc muốn xóa lịch sử nhập hàng này? Thao tác này không thể hoàn tác.')) {
+        return;
+    }
+
+    try {
+        await db.collection('inventory_logs').doc(logId).delete();
+        showToast('✅ Đã xóa lịch sử nhập hàng', 'success');
+        
+        // Reload lại lịch sử
+        closeHistoryModal();
+        setTimeout(() => showInventoryHistory(productId), 300);
+        
+    } catch (error) {
+        console.error('Lỗi xóa lịch sử kho:', error);
+        showToast('❌ Lỗi khi xóa lịch sử', 'error');
     }
 }
 
@@ -836,55 +1342,63 @@ async function loadInventoryLogs(productId) {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
-function createInventoryHistoryModal(productName, logs) {
-    const modal = document.createElement('div');
-    modal.id = 'inventoryHistoryModal';
-    modal.style.cssText = `
-        position:fixed;top:0;left:0;right:0;bottom:0;
-        background:rgba(0,0,0,0.85);z-index:99999;
-        display:flex;align-items:center;justify-content:center;
-        padding:20px;font-family:system-ui,sans-serif;
-    `;
 
+// === LỊCH SỬ DỊCH VỤ ===
+async function showServiceHistory(serviceName) {
+    try {
+        const services = await loadServiceHistory(serviceName);
+        createServiceHistoryModal(serviceName, services);
+    } catch (error) {
+        console.error('Lỗi tải lịch sử dịch vụ:', error);
+        showToast('Lỗi tải lịch sử dịch vụ', 'error');
+    }
+}
+
+async function loadServiceHistory(serviceName) {
+    const snapshot = await db.collection('operational_expenses')
+        .where('description', '==', serviceName)
+        .where('type', '==', 'service')
+        .orderBy('date', 'desc')
+        .get();
+
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+// === LỊCH SỬ DỊCH VỤ - THÊM NÚT XÓA ===
+function createServiceHistoryModal(serviceName, services) {
+    const modal = document.createElement('div');
+    modal.id = 'serviceHistoryModal';
+    modal.className = 'modal-overlay active';
+    
     modal.innerHTML = `
-        <div style="background:white;border-radius:20px;width:100%;max-width:800px;max-height:90vh;overflow-y:auto;">
-            <div style="background:#2196f3;color:white;padding:20px;border-radius:20px 20px 0 0;">
-                <h2 style="margin:0;font-size:1.4rem;">📦 Lịch Sử Nhập Kho: ${productName}</h2>
-                <button onclick="closeHistoryModal()" 
-                        style="position:absolute;top:15px;right:20px;background:none;border:none;color:white;font-size:30px;cursor:pointer;">×</button>
+        <div class="modal-content large">
+            <div class="modal-header service">
+                <h3>🔧 Lịch Sử: ${serviceName}</h3>
+                <button class="modal-close" onclick="closeServiceHistoryModal()">×</button>
             </div>
-            <div style="padding:20px;">
-                ${logs.length === 0 ? `
-                    <div style="text-align:center;padding:40px;color:#666;">
-                        Chưa có lịch sử nhập hàng
-                    </div>
-                ` : `
-                    <div style="display:grid;gap:10px;">
-                        ${logs.map(log => `
-                            <div style="padding:15px;border:1px solid #eee;border-radius:10px;background:#f9f9f9;">
-                                <div style="display:flex;justify-content:space-between;align-items:center;">
-                                    <div>
-                                        <strong>${log.type === 'initial_stock' ? '📦 Nhập lần đầu' : '🔄 Nhập thêm'}</strong>
-                                        <div style="color:#666;font-size:0.9rem;margin-top:4px;">
-                                            Ngày: ${log.date} | Số lượng: +${log.quantity} ${log.unit}
-                                        </div>
-                                        ${log.note ? `<div style="color:#888;font-size:0.85rem;margin-top:4px;">📝 ${log.note}</div>` : ''}
-                                    </div>
-                                    <div style="text-align:right;">
-                                        <div style="font-weight:bold;color:#2196f3;">${formatCurrency(log.totalAmount)}</div>
-                                        <div style="color:#666;font-size:0.8rem;">${formatCurrency(log.unitPrice)}/${log.unit}</div>
-                                    </div>
-                                </div>
+            <div class="modal-body">
+                <div class="history-list">
+                    ${services.map(service => `
+                        <div class="history-item service" data-service-id="${service.id}">
+                            <div class="history-content">
+                                <div class="history-title">${service.date}</div>
+                                <div class="history-meta">Tháng: ${service.month}</div>
+                                ${service.note ? `<div class="history-note">📝 ${service.note}</div>` : ''}
                             </div>
-                        `).join('')}
-                    </div>
-                `}
+                            <div class="history-actions">
+                                <div class="history-amount">
+                                    <div class="amount">${formatCurrency(service.amount)}</div>
+                                </div>
+                                <button class="btn-danger btn-small" onclick="deleteServiceRecord('${service.id}', '${serviceName}')">
+                                    🗑️ Xóa
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
-            <div style="padding:20px;background:#f5f5f5;border-top:1px solid #eee;text-align:center;">
-                <button onclick="closeHistoryModal()" 
-                        style="padding:10px 20px;background:#6c757d;color:white;border:none;border-radius:8px;cursor:pointer;">
-                    Đóng
-                </button>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeServiceHistoryModal()">Đóng</button>
             </div>
         </div>
     `;
@@ -892,92 +1406,346 @@ function createInventoryHistoryModal(productName, logs) {
     document.body.appendChild(modal);
 }
 
-function createServiceHistoryModal(serviceName, services) {
-    // Xóa modal cũ nếu có
-    document.getElementById('serviceHistoryModal')?.remove();
-    
-    const modal = document.createElement('div');
-    modal.id = 'serviceHistoryModal';
-    modal.style.cssText = `
-        position:fixed;top:0;left:0;right:0;bottom:0;
-        background:rgba(0,0,0,0.85);z-index:99999;
-        display:flex;align-items:center;justify-content:center;
-        padding:20px;font-family:system-ui,sans-serif;
-    `;
+// === XÓA DỊCH VỤ ===
+async function deleteServiceRecord(serviceId, serviceName) {
+    if (!confirm(`Bạn có chắc muốn xóa chi phí dịch vụ "${serviceName}" này? Thao tác này không thể hoàn tác.`)) {
+        return;
+    }
 
+    try {
+        await db.collection('operational_expenses').doc(serviceId).delete();
+        showToast('✅ Đã xóa chi phí dịch vụ', 'success');
+        
+        // Reload lại dữ liệu
+        closeServiceHistoryModal();
+        refreshAllData();
+        
+    } catch (error) {
+        console.error('Lỗi xóa dịch vụ:', error);
+        showToast('❌ Lỗi khi xóa dịch vụ', 'error');
+    }
+}
+// === DEBUG TOÀN BỘ DỮ LIỆU NHÂN VIÊN ===
+async function debugAllStaffAttendance() {
+    try {
+        console.log('🐛 Bắt đầu debug toàn bộ dữ liệu nhân viên...');
+        
+        const snapshot = await db.collection('employees')
+            .where('status', '==', 'active')
+            .get();
+
+        for (const doc of snapshot.docs) {
+            const employee = doc.data();
+            const employeeId = doc.id;
+            
+            console.log(`\n🔍 Debug nhân viên: ${employee.name} (${employeeId})`);
+            
+            const attendanceDoc = await db.collection('attendance')
+                .doc(`${employeeId}_${currentOperationalMonth.replace('/', '_')}`)
+                .get();
+
+            if (attendanceDoc.exists) {
+                const attendance = attendanceDoc.data();
+                console.log('📊 Dữ liệu chấm công:', attendance);
+                
+                let offCount = 0, overtimeCount = 0;
+                
+                // Kiểm tra cấu trúc days
+                if (attendance.days && typeof attendance.days === 'object') {
+                    Object.keys(attendance.days).forEach(day => {
+                        const status = attendance.days[day];
+                        console.log(`📅 Day ${day}: ${status}`);
+                        if (status === 'off') offCount++;
+                        if (status === 'overtime') overtimeCount++;
+                    });
+                }
+                
+                // Kiểm tra các trường riêng lẻ
+                Object.keys(attendance).forEach(key => {
+                    if (key.startsWith('days.')) {
+                        const status = attendance[key];
+                        console.log(`📅 ${key}: ${status}`);
+                        if (status === 'off') offCount++;
+                        if (status === 'overtime') overtimeCount++;
+                    }
+                });
+                
+                console.log(`📊 Kết quả: ${offCount} off, ${overtimeCount} overtime`);
+            } else {
+                console.log('❌ Không có dữ liệu chấm công');
+            }
+        }
+        
+        alert('✅ Đã debug xong. Kiểm tra Console để xem chi tiết.');
+        
+    } catch (error) {
+        console.error('❌ Lỗi debug:', error);
+        alert('❌ Lỗi khi debug. Kiểm tra Console.');
+    }
+}
+// === CHI TIẾT CHI PHÍ NHÂN VIÊN - SỬA LỖI HIỂN THỊ ===
+async function showStaffCostDetail(staffDetails, totalCost) {
+    // Load thêm thông tin chi tiết cho từng nhân viên
+    const detailedStaff = await Promise.all(
+        staffDetails.map(async (staff) => {
+            const detail = await getEmployeeSalaryDetail(staff.name, currentOperationalMonth);
+            return { 
+                ...staff, 
+                ...detail,
+                // Đảm bảo có dữ liệu mặc định nếu không có
+                offDays: detail.offDays || 0,
+                overtimeDays: detail.overtimeDays || 0,
+                offDeduction: detail.offDeduction || 0,
+                overtimeBonus: detail.overtimeBonus || 0
+            };
+        })
+    );
+
+    console.log('📋 Dữ liệu chi tiết nhân viên:', detailedStaff);
+
+    const modal = document.createElement('div');
+    modal.id = 'staffCostDetailModal';
+    modal.className = 'modal-overlay active';
+    
     modal.innerHTML = `
-        <div style="background:white;border-radius:20px;width:100%;max-width:700px;max-height:80vh;overflow-y:auto;">
-            <div style="background:#ff9800;color:white;padding:20px;border-radius:20px 20px 0 0;text-align:center;position:relative;">
-                <h2 style="margin:0;font-size:1.4rem;">🔧 Lịch Sử Chi Phí: ${serviceName}</h2>
-                <button onclick="closeServiceHistoryModal()" 
-                        style="position:absolute;top:15px;right:20px;background:none;border:none;color:white;font-size:30px;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;">×</button>
+        <div class="modal-content large">
+            <div class="modal-header staff">
+                <h3>💰 Chi Tiết Lương Nhân Viên</h3>
+                <button class="modal-close" onclick="closeStaffCostDetailModal()">×</button>
             </div>
-            <div style="padding:20px;">
-                <div style="display:grid;gap:10px;">
-                    ${services.map(service => `
-                        <div style="padding:15px;border:1px solid #eee;border-radius:10px;background:#f9f9f9;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <div>
-                                    <strong>${service.date}</strong>
-                                    ${service.note ? `<div style="color:#666;font-size:0.9rem;margin-top:4px;">📝 ${service.note}</div>` : ''}
+            <div class="modal-body">
+                <div class="total-cost-display">
+                    📊 Tổng chi phí lương thực tế: <strong>${formatCurrency(totalCost)}</strong>
+                    <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">
+                        Tháng ${currentOperationalMonth} • ${detailedStaff.length} nhân viên
+                    </div>
+                </div>
+                <div class="staff-list">
+                    ${detailedStaff.length === 0 ? `
+                        <div class="empty-state">
+                            <div class="empty-icon">👥</div>
+                            <div>Chưa có nhân viên nào</div>
+                        </div>
+                    ` : detailedStaff.map(staff => `
+                        <div class="staff-item-detailed">
+                            <div class="staff-header">
+                                <div class="staff-name">${staff.name}</div>
+                                <div class="staff-total">${formatCurrency(staff.calculatedSalary || staff.salary)}</div>
+                            </div>
+                            
+                            <div class="salary-breakdown">
+                                <div class="breakdown-item">
+                                    <span class="label">Lương cơ bản:</span>
+                                    <span class="value">${formatCurrency(staff.monthlySalary)}</span>
                                 </div>
-                                <div style="text-align:right;">
-                                    <div style="font-weight:bold;color:#e91e63;font-size:1.1rem;">
-                                        ${formatCurrency(service.amount)}
-                                    </div>
-                                    <div style="color:#666;font-size:0.8rem;">Tháng: ${service.month}</div>
+                                
+                                ${staff.offDays > 0 ? `
+                                <div class="breakdown-item negative">
+                                    <span class="label">❌ ${staff.offDays} ngày off:</span>
+                                    <span class="value">-${formatCurrency(staff.offDeduction)}</span>
+                                </div>
+                                ` : '<div class="breakdown-item"><span class="label">❌ Ngày off:</span><span class="value">0 ngày</span></div>'}
+                                
+                                ${staff.overtimeDays > 0 ? `
+                                <div class="breakdown-item positive">
+                                    <span class="label">⭐ ${staff.overtimeDays} tăng ca:</span>
+                                    <span class="value">+${formatCurrency(staff.overtimeBonus)}</span>
+                                </div>
+                                ` : '<div class="breakdown-item"><span class="label">⭐ Tăng ca:</span><span class="value">0 ngày</span></div>'}
+                                
+                                ${staff.totalBonus > 0 ? `
+                                <div class="breakdown-item positive">
+                                    <span class="label">🎁 Thưởng:</span>
+                                    <span class="value">+${formatCurrency(staff.totalBonus)}</span>
+                                </div>
+                                ` : ''}
+                                
+                                ${staff.totalPenalty > 0 ? `
+                                <div class="breakdown-item negative">
+                                    <span class="label">⚠️ Phạt:</span>
+                                    <span class="value">-${formatCurrency(staff.totalPenalty)}</span>
+                                </div>
+                                ` : ''}
+                            </div>
+                            
+                            <div class="salary-summary">
+                                <div class="final-salary">
+                                    Thực lãnh: <strong>${formatCurrency(staff.calculatedSalary || staff.salary)}</strong>
+                                </div>
+                                <div class="salary-percentage">
+                                    ${formatPercentage(staff.calculatedSalary || staff.salary, totalCost)}% tổng chi phí
                                 </div>
                             </div>
                         </div>
                     `).join('')}
                 </div>
             </div>
-            <div style="padding:20px;background:#f5f5f5;border-top:1px solid #eee;text-align:center;">
-                <button onclick="closeServiceHistoryModal()" 
-                        style="padding:10px 20px;background:#6c757d;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:bold;">
-                    Đóng
-                </button>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeStaffCostDetailModal()">Đóng</button>
+                <button class="btn-info" onclick="debugAllStaffAttendance()">🐛 Debug Dữ Liệu</button>
             </div>
         </div>
     `;
 
     document.body.appendChild(modal);
-    
-    // Thêm event listener để đóng khi click outside (tùy chọn)
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            closeServiceHistoryModal();
-        }
-    });
 }
 
-// Hàm đóng service history modal
-function closeServiceHistoryModal() {
-    const modal = document.getElementById('serviceHistoryModal');
-    if (modal) {
-        modal.remove();
-        console.log('✅ Đã đóng popup lịch sử dịch vụ');
+// === LẤY CHI TIẾT LƯƠNG TỪNG NHÂN VIÊN - SỬA LỖI HIỂN THỊ ===
+async function getEmployeeSalaryDetail(employeeName, month) {
+    try {
+        console.log(`🔍 Lấy chi tiết lương cho: ${employeeName} tháng ${month}`);
+        
+        // Tìm employeeId từ tên
+        const employeeSnapshot = await db.collection('employees')
+            .where('name', '==', employeeName)
+            .where('status', '==', 'active')
+            .get();
+
+        if (employeeSnapshot.empty) {
+            console.log('❌ Không tìm thấy nhân viên:', employeeName);
+            return {};
+        }
+
+        const employeeDoc = employeeSnapshot.docs[0];
+        const employeeId = employeeDoc.id;
+        const employee = employeeDoc.data();
+
+        // Load dữ liệu chấm công, thưởng, phạt
+        const [attendanceDoc, bonusesSnapshot, penaltiesSnapshot] = await Promise.all([
+            db.collection('attendance').doc(`${employeeId}_${month.replace('/', '_')}`).get(),
+            db.collection('bonuses_penalties')
+                .where('employeeId', '==', employeeId)
+                .where('month', '==', month)
+                .where('type', '==', 'bonus')
+                .get(),
+            db.collection('bonuses_penalties')
+                .where('employeeId', '==', employeeId)
+                .where('month', '==', month)
+                .where('type', '==', 'penalty')
+                .get()
+        ]);
+
+        const monthlySalary = Number(employee.monthlySalary || 0);
+        const dailySalary = monthlySalary / 30;
+
+        // TÍNH NGÀY OFF VÀ TĂNG CA - SỬA LỖI QUAN TRỌNG
+        let offDays = 0, overtimeDays = 0;
+        
+        if (attendanceDoc.exists) {
+            const attendance = attendanceDoc.data();
+            console.log('📊 Dữ liệu chấm công RAW:', attendance);
+            
+            // CÁCH 1: Kiểm tra trực tiếp các trường days
+            if (attendance.days) {
+                const days = attendance.days;
+                console.log('📅 Cấu trúc days:', days);
+                
+                // Duyệt qua tất cả các key trong days
+                Object.keys(days).forEach(key => {
+                    const status = days[key];
+                    console.log(`📅 ${key}: ${status}`);
+                    if (status === 'off') offDays++;
+                    if (status === 'overtime') overtimeDays++;
+                });
+            }
+            
+            // CÁCH 2: Kiểm tra các trường trực tiếp (days.1, days.2, ...)
+            Object.keys(attendance).forEach(key => {
+                if (key.startsWith('days.')) {
+                    const status = attendance[key];
+                    console.log(`📅 ${key}: ${status}`);
+                    if (status === 'off') offDays++;
+                    if (status === 'overtime') overtimeDays++;
+                }
+            });
+        }
+
+        console.log(`📊 Kết quả đếm: offDays=${offDays}, overtimeDays=${overtimeDays}`);
+
+        // Tính thưởng phạt
+        const totalBonus = bonusesSnapshot.docs.reduce((sum, doc) => {
+            const data = doc.data();
+            return sum + Number(data.amount || 0);
+        }, 0);
+        
+        const totalPenalty = penaltiesSnapshot.docs.reduce((sum, doc) => {
+            const data = doc.data();
+            return sum + Number(data.amount || 0);
+        }, 0);
+
+        const offDeduction = Math.round(offDays * dailySalary);
+        const overtimeBonus = Math.round(overtimeDays * dailySalary);
+        
+        // Tính lương thực tế
+        const calculatedSalary = monthlySalary - offDeduction + overtimeBonus + totalBonus - totalPenalty;
+
+        console.log(`📋 Chi tiết lương ${employeeName}:`, {
+            monthlySalary,
+            offDays,
+            overtimeDays,
+            dailySalary,
+            offDeduction,
+            overtimeBonus,
+            totalBonus,
+            totalPenalty,
+            calculatedSalary
+        });
+
+        return {
+            offDays,
+            overtimeDays,
+            totalBonus,
+            totalPenalty,
+            offDeduction,
+            overtimeBonus,
+            monthlySalary,
+            dailySalary: Math.round(dailySalary),
+            calculatedSalary: Math.max(0, Math.round(calculatedSalary))
+        };
+        
+    } catch (error) {
+        console.error('❌ Lỗi lấy chi tiết lương:', error);
+        return {
+            offDays: 0,
+            overtimeDays: 0,
+            totalBonus: 0,
+            totalPenalty: 0,
+            offDeduction: 0,
+            overtimeBonus: 0,
+            monthlySalary: 0,
+            dailySalary: 0,
+            calculatedSalary: 0
+        };
     }
 }
 
-// Cập nhật hàm closeHistoryModal tổng
+// === HÀM ĐÓNG MODAL ===
 function closeHistoryModal() {
     document.getElementById('inventoryHistoryModal')?.remove();
-    closeServiceHistoryModal();
 }
 
+function closeServiceHistoryModal() {
+    document.getElementById('serviceHistoryModal')?.remove();
+}
 
-async function showServiceHistory(serviceName) {
-    console.log(`📖 Đang mở lịch sử dịch vụ: ${serviceName}`);
-    
-    try {
-        const services = await loadServiceHistory(serviceName);
-        createServiceHistoryModal(serviceName, services);
-    } catch (error) {
-        console.error('❌ Lỗi tải lịch sử dịch vụ:', error);
-        showToast('Lỗi tải lịch sử dịch vụ', 'error');
+// === ĐÓNG POPUP CHI TIẾT NHÂN VIÊN - SỬA LỖI ĐÓNG NHIỀU LẦN ===
+function closeStaffCostDetailModal() {
+    const modal = document.getElementById('staffCostDetailModal');
+    if (modal) {
+        console.log('🔒 Đang đóng popup chi tiết nhân viên');
+        modal.remove();
+        console.log('✅ Đã đóng popup chi tiết nhân viên');
+    } else {
+        console.log('⚠️ Popup không tồn tại để đóng');
     }
 }
+
+// === HÀM TIỆN ÍCH BỔ SUNG ===
+function formatPercentage(part, total) {
+    if (!total || total === 0) return 0;
+    return Math.round((part / total) * 100);
+}
+
 function exportOperationalReport() {
     if (currentOperationalExpenses.length === 0) {
         showToast('Không có dữ liệu để xuất', 'error');
@@ -986,8 +1754,8 @@ function exportOperationalReport() {
     
     try {
         const data = currentOperationalExpenses.map(expense => ({
-            'Ngày': new Date(expense.date).toLocaleDateString('vi-VN'),
-            'Nội dung': expense.content,
+            'Ngày': expense.date,
+            'Nội dung': expense.description,
             'Loại': expense.type === 'inventory' ? 'Hàng hóa' : 'Dịch vụ',
             'Số tiền': expense.amount,
             'Số lượng': expense.quantity || '',
@@ -1003,619 +1771,30 @@ function exportOperationalReport() {
         const fileName = `Bao_Cao_Chi_Phi_${currentOperationalMonth.replace('/', '_')}.xlsx`;
         XLSX.writeFile(wb, fileName);
         
-        showToast(`Đã xuất file ${fileName}`, 'success');
+        showToast(`✅ Đã xuất file ${fileName}`, 'success');
         
     } catch (error) {
-        console.error('Error exporting report:', error);
-        showToast('Lỗi khi xuất file', 'error');
+        console.error('Lỗi xuất báo cáo:', error);
+        showToast('❌ Lỗi khi xuất file', 'error');
     }
 }
-async function loadServiceHistory(serviceName) {
-    const snapshot = await db.collection('operational_expenses')
-        .where('description', '==', serviceName)
-        .where('type', '==', 'service')
-        .orderBy('date', 'desc')
-        .get();
-
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-}
-
-
-// ==================== LUỒNG TIỆN ÍCH ====================
-function formatCurrency(n) {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
-}
-
-function formatDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN');
-}
-
-function showToast(msg, type = 'info') {
-    const t = document.createElement('div');
-    t.textContent = msg;
-    t.style.cssText = `position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:${type==='error'?'#dc3545':type==='success'?'#28a745':'#333'};color:white;padding:16px 32px;border-radius:50px;z-index:100000;font-weight:bold;box-shadow:0 10px 30px rgba(0,0,0,0.3);font-size:16px;`;
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 3500);
-}
-// Thêm biến lưu danh mục
-let productCategories = [];
-let serviceCategories = [];
-
-// Hàm tải danh mục từ Firestore
-async function loadCategories() {
-    try {
-        // Tải danh mục hàng hóa
-        const productSnapshot = await db.collection('product_categories')
-            .where('companyId', '==', 'milano')
-            .get();
-        productCategories = productSnapshot.docs.map(doc => doc.data().name);
-        
-        // Tải danh mục dịch vụ
-        const serviceSnapshot = await db.collection('service_categories')
-            .where('companyId', '==', 'milano')
-            .get();
-        serviceCategories = serviceSnapshot.docs.map(doc => doc.data().name);
-        
-        console.log('✅ Đã tải danh mục:', { productCategories, serviceCategories });
-    } catch (error) {
-        console.log('ℹ️ Chưa có danh mục, sẽ sử dụng danh mục mặc định');
-        // Danh mục mặc định nếu chưa có
-        productCategories = ['Cà phê hạt', 'Sữa tươi', 'Đường', 'Syrup', 'Bánh ngọt', 'Cốc giấy'];
-        serviceCategories = ['Tiền điện', 'Tiền nước', 'Tiền mạng', 'Tiền thuê mặt bằng', 'Lương nhân viên'];
-    }
-}
-
-// Cập nhật hàm createExpenseFormFields
-function createExpenseFormFields(type, today) {
-    const isInventory = type === 'inventory';
-    const categories = isInventory ? productCategories : serviceCategories;
-    
-    return `
-        <div style="display:grid;gap:20px;">
-            <div>
-                <label style="font-weight:600;margin-bottom:8px;display:block;">
-                    ${isInventory ? 'Tên hàng hóa' : 'Tên dịch vụ'} <span style="color:red">*</span>
-                </label>
-                <div style="display: flex; gap: 8px;">
-                    <select id="expenseCategorySelect" 
-                            style="flex:1;padding:16px;border:2px solid #ddd;border-radius:14px;font-size:17px;"
-                            onchange="handleCategorySelectChange(this.value, '${type}')">
-                        <option value="">-- Chọn ${isInventory ? 'hàng hóa' : 'dịch vụ'} --</option>
-                        ${categories.map(cat => `
-                            <option value="${cat}">${cat}</option>
-                        `).join('')}
-                        <option value="custom">+ Thêm mới</option>
-                    </select>
-                    <input type="text" id="expenseContentInput" 
-                           placeholder="${isInventory ? 'Nhập tên hàng hóa' : 'Nhập tên dịch vụ'}" 
-                           style="flex:1;padding:16px;border:2px solid #ddd;border-radius:14px;font-size:17px;display:none;">
-                </div>
-                <small style="color:#666;font-size:12px;display:block;margin-top:4px;">
-                    Chọn từ danh sách hoặc "Thêm mới" để nhập tên mới
-                </small>
-            </div>
-            <div>
-                <label style="font-weight:600;margin-bottom:8px;display:block;">Số tiền <span style="color:red">*</span></label>
-                <input type="text" id="expenseAmountInput" placeholder="1.500.000" inputmode="numeric"
-                       style="width:100%;padding:16px;border:2px solid #ddd;border-radius:14px;font-size:17px;box-sizing:border-box;">
-            </div>
-            ${isInventory ? `
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div>
-                    <label style="font-weight:600;margin-bottom:8px;display:block;">Số lượng</label>
-                    <input type="number" id="expenseQuantityInput" value="1" min="1"
-                           style="width:100%;padding:16px;border:2px solid #ddd;border-radius:14px;font-size:17px;">
-                </div>
-                <div>
-                    <label style="font-weight:600;margin-bottom:8px;display:block;">Đơn vị tính</label>
-                    <div style="display: flex; gap: 8px;">
-                        <select id="expenseUnitSelect" style="flex:1;padding:16px;border:2px solid #ddd;border-radius:14px;font-size:17px;"
-                                onchange="handleUnitSelectChange(this.value)">
-                            <option value="kg">kg</option>
-                            <option value="gói">gói</option>
-                            <option value="hộp">hộp</option>
-                            <option value="thùng">thùng</option>
-                            <option value="chai">chai</option>
-                            <option value="lon">lon</option>
-                            <option value="bao">bao</option>
-                            <option value="cái">cái</option>
-                            <option value="lít">lít</option>
-                            <option value="ml">ml</option>
-                            <option value="custom">+ Thêm đơn vị mới</option>
-                        </select>
-                        <input type="text" id="expenseUnitInput" 
-                               placeholder="Nhập đơn vị" 
-                               style="flex:1;padding:16px;border:2px solid #ddd;border-radius:14px;font-size:17px;display:none;">
-                    </div>
-                </div>
-            </div>
-            ` : ''}
-            <div>
-                <label style="font-weight:600;margin-bottom:8px;display:block;">
-                    Ngày ${isInventory ? 'nhập kho' : 'chi phí'}
-                </label>
-                <input type="date" id="expenseDateInput" value="${today}"
-                       style="width:100%;padding:16px;border:2px solid #ddd;border-radius:14px;font-size:17px;">
-            </div>
-            <div>
-                <label style="font-weight:600;margin-bottom:8px;display:block;">Ghi chú</label>
-                <textarea id="expenseNoteInput" rows="3" placeholder="Không bắt buộc..."
-                          style="width:100%;padding:16px;border:2px solid #ddd;border-radius:14px;font-size:17px;resize:vertical;"></textarea>
-            </div>
-        </div>
-    `;
-}
-
-// Hàm xử lý thay đổi dropdown danh mục
-function handleCategorySelectChange(selectedValue, type) {
-    const categorySelect = document.getElementById('expenseCategorySelect');
-    const contentInput = document.getElementById('expenseContentInput');
-    
-    if (selectedValue === 'custom') {
-        contentInput.style.display = 'block';
-        contentInput.focus();
-        contentInput.value = '';
-    } else if (selectedValue) {
-        contentInput.style.display = 'none';
-        contentInput.value = selectedValue;
-    } else {
-        contentInput.style.display = 'block';
-        contentInput.value = '';
-    }
-}
-
-// Hàm xử lý thay đổi dropdown đơn vị
-function handleUnitSelectChange(selectedValue) {
-    const unitSelect = document.getElementById('expenseUnitSelect');
-    const unitInput = document.getElementById('expenseUnitInput');
-    
-    if (selectedValue === 'custom') {
-        unitInput.style.display = 'block';
-        unitInput.focus();
-        unitInput.value = '';
-    } else {
-        unitInput.style.display = 'none';
-        unitInput.value = selectedValue;
-    }
-}
-
-// Hàm lưu danh mục mới vào Firestore
-async function saveNewCategory(categoryName, type) {
-    try {
-        const collectionName = type === 'inventory' ? 'product_categories' : 'service_categories';
-        
-        // Kiểm tra xem danh mục đã tồn tại chưa
-        const existing = await db.collection(collectionName)
-            .where('name', '==', categoryName)
-            .where('companyId', '==', 'milano')
-            .get();
-            
-        if (existing.empty) {
-            await db.collection(collectionName).add({
-                name: categoryName,
-                type: type,
-                companyId: 'milano',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                createdBy: currentUser?.email || 'admin@milano.com'
-            });
-            console.log(`✅ Đã thêm danh mục mới: ${categoryName}`);
-            
-            // Cập nhật danh sách danh mục
-            if (type === 'inventory') {
-                productCategories.push(categoryName);
-            } else {
-                serviceCategories.push(categoryName);
-            }
-        }
-    } catch (error) {
-        console.error('❌ Lỗi lưu danh mục:', error);
-    }
-}
-
-// Cập nhật hàm prepareExpenseData
-function prepareExpenseData(formData, type) {
-    const contentInput = document.getElementById('expenseContentInput');
-    const categorySelect = document.getElementById('expenseCategorySelect');
-    
-    // Lấy tên từ input hoặc select
-    const description = contentInput.style.display === 'block' ? 
-        contentInput.value.trim() : 
-        categorySelect.value;
-    
-    const baseData = {
-        description: description,
-        amount: formData.amount,
-        type: type,
-        category: type === 'inventory' ? 'Hàng hóa' : 'Dịch vụ',
-        date: document.getElementById('expenseDateInput')?.value || new Date().toISOString().split('T')[0],
-        month: currentOperationalMonth,
-        note: document.getElementById('expenseNoteInput')?.value?.trim() || '',
-        status: 'active',
-        companyId: 'milano',
-        creatorEmail: currentUser?.email || 'admin@milano.com',
-        creatorId: currentUser?.uid || 'unknown',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    
-    if (type === 'inventory') {
-        baseData.quantity = Number(document.getElementById('expenseQuantityInput')?.value) || 1;
-        
-        // Lấy đơn vị từ input hoặc select
-        const unitInput = document.getElementById('expenseUnitInput');
-        const unitSelect = document.getElementById('expenseUnitSelect');
-        baseData.unit = unitInput.style.display === 'block' ? 
-            unitInput.value.trim() : 
-            unitSelect.value;
-            
-        baseData.unitPrice = Math.round(formData.amount / baseData.quantity);
-    }
-    
-    return baseData;
-}
-
-// Cập nhật hàm processSaveExpense để lưu danh mục mới
-async function processSaveExpense(type) {
-    console.log(`💾 Bắt đầu lưu ${type}`);
-    
-    try {
-        // Bước 1: Validate dữ liệu
-        const formData = validateExpenseForm(type);
-        if (!formData) return;
-        
-        // Bước 2: Lấy thông tin danh mục
-        const contentInput = document.getElementById('expenseContentInput');
-        const categorySelect = document.getElementById('expenseCategorySelect');
-        const isNewCategory = contentInput.style.display === 'block' && contentInput.value.trim();
-        
-        // Bước 3: Nếu là danh mục mới, lưu vào Firestore
-        if (isNewCategory) {
-            await saveNewCategory(contentInput.value.trim(), type);
-        }
-        
-        // Bước 4: Chuẩn bị dữ liệu cho Firestore
-        const expenseData = prepareExpenseData(formData, type);
-        
-        // Bước 5: Lưu vào operational_expenses
-        await saveToOperationalExpenses(expenseData);
-        
-        // Bước 6: Nếu là hàng hóa, cập nhật kho
-        if (type === 'inventory') {
-            await updateInventoryData(expenseData);
-        }
-        
-        // Bước 7: Thông báo thành công & refresh
-        showSaveSuccessMessage(type, expenseData.amount);
-        closeExpenseModal();
-        refreshAllData();
-        
-    } catch (error) {
-        console.error('❌ Lỗi lưu dữ liệu:', error);
-        showToast('Lỗi lưu dữ liệu: ' + error.message, 'error');
-    }
-}
-
-// Cập nhật hàm openExpenseModal để reset form
-function openExpenseModal(type) {
-    console.log(`📝 Mở modal thêm ${type === 'inventory' ? 'hàng hóa' : 'dịch vụ'}`);
-    
-    // Xóa modal cũ nếu có
-    document.getElementById('milanoExpenseModal')?.remove();
-    
-    // Tạo modal mới
-    createExpenseModal(type);
-    
-    // Reset form
-    setTimeout(() => {
-        const categorySelect = document.getElementById('expenseCategorySelect');
-        const contentInput = document.getElementById('expenseContentInput');
-        const unitSelect = document.getElementById('expenseUnitSelect');
-        const unitInput = document.getElementById('expenseUnitInput');
-        
-        if (categorySelect && contentInput) {
-            categorySelect.value = '';
-            contentInput.style.display = 'block';
-            contentInput.value = '';
-        }
-        
-        if (unitSelect && unitInput) {
-            unitSelect.value = 'kg';
-            unitInput.style.display = 'none';
-            unitInput.value = 'kg';
-        }
-    }, 100);
-    
-    // Focus vào input đầu tiên
-    setTimeout(() => {
-        document.getElementById('expenseContentInput')?.focus();
-    }, 200);
-}
-
-// Cập nhật hàm initializeChiphiModule để tải danh mục
-async function initializeChiphiModule() {
-    console.log('🚀 Bắt đầu luồng khởi tạo module Chi Phí');
-    
-    try {
-        // Bước 1: Tải danh mục
-        await loadCategories();
-        
-        // Bước 2: Thiết lập dropdown tháng
-        setupMonthSelector();
-        
-        // Bước 3: Tạo navigation giữa các view
-        setupNavigation();
-        
-        // Bước 4: Tạo nút thao tác nhanh
-        setupQuickActions();
-        
-        // Bước 5: Tải dữ liệu ban đầu
-        loadInitialData();
-        
-        // Bước 6: Hiển thị view mặc định
-        switchToView('overview');
-        
-        console.log('✅ Module Chi Phí khởi tạo thành công');
-    } catch (error) {
-        console.error('❌ Lỗi khởi tạo module:', error);
-        showToast('Lỗi khởi tạo module Chi Phí', 'error');
-    }
-}
-// Thêm vào chiphi.js
-
-// Hàm lấy tổng chi phí nhân viên từ tab Nhân viên
-async function getTotalStaffCost() {
-    try {
-        const snapshot = await db.collection('employees')
-            .where('status', '==', 'active')
-            .get();
-            
-        let totalStaffCost = 0;
-        
-        for (const doc of snapshot.docs) {
-            const employee = doc.data();
-            const employeeId = doc.id;
-            
-            // Tính lương thực lãnh cho tháng hiện tại
-            const finalSalary = await calculateStaffFinalSalary(employeeId, currentOperationalMonth);
-            totalStaffCost += finalSalary;
-        }
-        
-        return totalStaffCost;
-    } catch (error) {
-        console.error('Error getting total staff cost:', error);
-        return 0;
-    }
-}
-
-// Hàm tính lương thực lãnh (dùng chung với tab Nhân viên)
-async function calculateStaffFinalSalary(employeeId, month) {
-    try {
-        const employeeDoc = await db.collection('employees').doc(employeeId).get();
-        if (!employeeDoc.exists) return 0;
-        
-        const employee = employeeDoc.data();
-        const monthlySalary = Number(employee.monthlySalary || 0);
-        
-        // Load attendance
-        const attendanceDoc = await db.collection('attendance')
-            .doc(`${employeeId}_${month.replace('/', '_')}`)
-            .get();
-            
-        let offDays = 0;
-        let overtimeDays = 0;
-        
-        if (attendanceDoc.exists) {
-            const attendanceData = attendanceDoc.data();
-            const days = attendanceData.days || {};
-            
-            Object.values(days).forEach(status => {
-                if (status === 'off') offDays++;
-                if (status === 'overtime') overtimeDays++;
-            });
-        }
-        
-        // Load bonuses và penalties
-        const [bonusesSnapshot, penaltiesSnapshot] = await Promise.all([
-            db.collection('bonuses_penalties')
-                .where('employeeId', '==', employeeId)
-                .where('month', '==', month)
-                .where('type', '==', 'bonus')
-                .get(),
-            db.collection('bonuses_penalties')
-                .where('employeeId', '==', employeeId)
-                .where('month', '==', month)
-                .where('type', '==', 'penalty')
-                .get()
-        ]);
-        
-        const totalBonus = bonusesSnapshot.docs.reduce((sum, doc) => sum + Number(doc.data().amount || 0), 0);
-        const totalPenalty = penaltiesSnapshot.docs.reduce((sum, doc) => sum + Number(doc.data().amount || 0), 0);
-        
-        // Tính lương thực lãnh
-        const dailySalary = monthlySalary / 30;
-        const finalSalary = monthlySalary 
-            - (offDays * dailySalary)
-            + (overtimeDays * dailySalary)
-            + totalBonus
-            - totalPenalty;
-            
-        return Math.round(finalSalary);
-    } catch (error) {
-        console.error('Error calculating final salary:', error);
-        return 0;
-    }
-}
-
-// Cập nhật hàm updateOperationalSummary để thêm chi phí nhân viên
-async function updateOperationalSummary() {
-    const total = currentOperationalExpenses.reduce((s, e) => s + (e.amount || 0), 0);
-    const inventoryTotal = currentOperationalExpenses
-        .filter(e => e.type === 'inventory')
-        .reduce((s, e) => s + (e.amount || 0), 0);
-    const serviceTotal = currentOperationalExpenses
-        .filter(e => e.type === 'service')
-        .reduce((s, e) => s + (e.amount || 0), 0);
-    
-    // Lấy tổng chi phí nhân viên
-    const staffTotal = await getTotalStaffCost();
-
-    const el = document.getElementById('operationalSummary');
-    if (el) {
-        el.innerHTML = `
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; text-align: center;">
-                <div style="padding:10px;background:#667eea;color:white;border-radius:10px;cursor:pointer;" onclick="switchToView('overview')">
-                    <div style="font-size:0.9rem;">Tổng Chi Phí</div>
-                    <div style="font-weight:bold;font-size:1.0rem;">${formatCurrency(total + staffTotal)}</div>
-                </div>
-                <div style="padding:10px;background:#2196f3;color:white;border-radius:10px;cursor:pointer;" onclick="switchToView('inventory')">
-                    <div style="font-size:0.9rem;">Hàng Hóa</div>
-                    <div style="font-weight:bold;font-size:1.0rem;">${formatCurrency(inventoryTotal)}</div>
-                </div>
-                <div style="padding:10px;background:#ff9800;color:white;border-radius:10px;cursor:pointer;" onclick="switchToView('services')">
-                    <div style="font-size:0.9rem;">Dịch Vụ</div>
-                    <div style="font-weight:bold;font-size:1.0rem;">${formatCurrency(serviceTotal)}</div>
-                </div>
-                <div style="padding:10px;background:#9c27b0;color:white;border-radius:10px;cursor:pointer;" onclick="showStaffCostDetail()">
-                    <div style="font-size:0.9rem;">Nhân Viên</div>
-                    <div style="font-weight:bold;font-size:1.0rem;">${formatCurrency(staffTotal)}</div>
-                </div>
-            </div>
-        `;
-    }
-}
-
-// Hàm hiển thị chi tiết chi phí nhân viên
-async function showStaffCostDetail() {
-    try {
-        const snapshot = await db.collection('employees')
-            .where('status', '==', 'active')
-            .get();
-            
-        const staffDetails = [];
-        let totalStaffCost = 0;
-        
-        for (const doc of snapshot.docs) {
-            const employee = doc.data();
-            const employeeId = doc.id;
-            
-            const finalSalary = await calculateStaffFinalSalary(employeeId, currentOperationalMonth);
-            totalStaffCost += finalSalary;
-            
-            staffDetails.push({
-                name: employee.name,
-                salary: finalSalary,
-                monthlySalary: employee.monthlySalary || 0
-            });
-        }
-        
-        createStaffCostDetailModal(staffDetails, totalStaffCost);
-    } catch (error) {
-        console.error('Error showing staff cost detail:', error);
-        showToast('Lỗi tải chi tiết chi phí nhân viên', 'error');
-    }
-}
-
-// Tạo modal chi tiết chi phí nhân viên
-function createStaffCostDetailModal(staffDetails, totalCost) {
-    const modal = document.createElement('div');
-    modal.id = 'staffCostDetailModal';
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.85);
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        font-family: system-ui, sans-serif;
-    `;
-
-    modal.innerHTML = `
-        <div style="background: white; border-radius: 20px; width: 100%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
-            <!-- Header -->
-            <div style="background: linear-gradient(135deg, #9c27b0, #7b1fa2); color: white; padding: 20px; border-radius: 20px 20px 0 0; text-align: center;">
-                <h2 style="margin: 0; font-size: 1.4rem;">
-                    👥 Chi Tiết Chi Phí Nhân Viên
-                </h2>
-                <div style="font-size: 1rem; margin-top: 8px;">
-                    Tháng ${currentOperationalMonth} - Tổng: ${formatCurrency(totalCost)}
-                </div>
-                <button onclick="closeStaffCostDetailModal()" 
-                        style="position: absolute; top: 15px; right: 20px; background: none; border: none; color: white; font-size: 30px; cursor: pointer;">×</button>
-            </div>
-
-            <!-- Content -->
-            <div style="padding: 20px;">
-                ${staffDetails.length === 0 ? `
-                    <div style="text-align: center; padding: 40px; color: #666;">
-                        Chưa có nhân viên nào
-                    </div>
-                ` : `
-                    <div style="display: grid; gap: 10px;">
-                        ${staffDetails.map(staff => `
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
-                                <div>
-                                    <div style="font-weight: bold; color: #333;">${staff.name}</div>
-                                    <div style="font-size: 0.8rem; color: #666;">
-                                        Lương cơ bản: ${formatCurrency(staff.monthlySalary)}
-                                    </div>
-                                </div>
-                                <div style="text-align: right;">
-                                    <div style="font-weight: bold; color: #e91e63; font-size: 1.1rem;">
-                                        ${formatCurrency(staff.salary)}
-                                    </div>
-                                    <div style="font-size: 0.8rem; color: #666;">
-                                        ${formatPercentage(staff.salary, totalCost)}%
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `}
-            </div>
-
-            <!-- Footer -->
-            <div style="padding: 20px; background: #f5f5f5; border-top: 1px solid #eee; text-align: center;">
-                <button onclick="closeStaffCostDetailModal()" 
-                        style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                    Đóng
-                </button>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-}
-
-// Hàm đóng modal
-function closeStaffCostDetailModal() {
-    document.getElementById('staffCostDetailModal')?.remove();
-}
-
-// Thêm CSS cho item nhân viên
-/*
-.staff-item {
-    background: linear-gradient(135deg, #9c27b0, #7b1fa2);
-    color: white;
-}
-*/
-window.openExpenseModal = openExpenseModal;
-window.processSaveExpense = processSaveExpense;
+// ==================== EXPORT FUNCTIONS ====================
+window.initializeChiphiModule = initializeChiphiModule;
 window.switchToView = switchToView;
+window.openExpenseModal = openExpenseModal;
+window.closeExpenseModal = closeExpenseModal;
+window.processSaveExpense = processSaveExpense;
+window.toggleShowAllExpenses = toggleShowAllExpenses;
 window.showInventoryHistory = showInventoryHistory;
 window.showServiceHistory = showServiceHistory;
-window.handleQuickAction = handleQuickAction;
-window.closeExpenseModal = closeExpenseModal;
+window.showStaffCostDetail = showStaffCostDetail;
 window.closeHistoryModal = closeHistoryModal;
 window.closeServiceHistoryModal = closeServiceHistoryModal;
-window.toggleShowAllExpenses = toggleShowAllExpenses;
-window.handleUnitSelectChange = handleUnitSelectChange;
-window.handleCategorySelectChange = handleCategorySelectChange;
-window.showStaffCostDetail = showStaffCostDetail;
 window.closeStaffCostDetailModal = closeStaffCostDetailModal;
-console.log('✅ Chiphi.js: Module đã sẵn sàng, chờ kích hoạt tab...');
+window.exportOperationalReport = exportOperationalReport;
+window.deleteInventoryLog = deleteInventoryLog;
+window.deleteServiceRecord = deleteServiceRecord;
+
+console.log('✅ Chiphi.js: Module đã cập nhật với tính năng mới');
+
+console.log('✅ Chiphi.js: Module độc lập đã sẵn sàng');

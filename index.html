@@ -216,35 +216,116 @@
             </div>
         </div>       
     </div>
+<!-- Thêm vào cuối file HTML, trước khi đóng thẻ body -->
+<!-- Export Inventory Popup -->
+<div id="exportInventoryPopup" class="popup">
+    <div class="popup-content large">
+        <div class="popup-header">
+            <h3>📦 Xuất Kho Hàng</h3>
+            <button class="popup-close" onclick="closeExportInventoryPopup()">×</button>
+        </div>
+        <div class="popup-body">
+            <div class="export-layout">
+                <div class="inventory-section">
+                    <h4>🛒 Chọn sản phẩm xuất kho</h4>
+                    <div id="inventoryExportList" class="inventory-list">
+                        <!-- Inventory items will be loaded here -->
+                    </div>
+                </div>
+                
+                <div class="cart-section">
+                    <div class="cart-header">
+                        <h4>Giỏ xuất kho (<span id="exportCartItemCount">0</span> sản phẩm)</h4>
+                        <button class="btn-clear-cart" onclick="clearExportCart()">🗑️ Xóa hết</button>
+                    </div>
+                    <div id="exportCartItems" class="cart-items">
+                        <!-- Cart items will be displayed here -->
+                    </div>
+                    <div class="cart-footer">
+                        <div class="cart-total">
+                            <strong>Tổng giá trị:</strong>
+                            <span id="exportCartTotal">0 ₫</span>
+                        </div>
+                        <button class="btn-confirm-export" onclick="processInventoryExport()">
+                            ✅ Xác Nhận Xuất Kho
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <!-- Nhân Viên Tab -->
+<!-- Inventory Reports Popup -->
+<div id="inventoryReportsPopup" class="popup">
+    <div class="popup-content xlarge">
+        <div class="popup-header">
+            <h3>📊 Báo Cáo Kho Hàng</h3>
+            <button class="popup-close" onclick="closeInventoryReportsPopup()">×</button>
+        </div>
+        <div class="popup-body">
+            <div class="reports-tabs">
+                <button class="tab-btn active" onclick="switchInventoryTab('current')">📦 Tồn Kho Hiện Tại</button>
+                <button class="tab-btn" onclick="switchInventoryTab('history')">📋 Lịch Sử Xuất Kho</button>
+            </div>
+            
+            <div class="reports-content">
+                <div id="currentInventoryTab" class="tab-content active">
+                    <h4>Tồn Kho Hiện Tại</h4>
+                    <div id="inventoryReportsList" class="reports-list">
+                        <!-- Current inventory will be loaded here -->
+                    </div>
+                </div>
+                
+                <div id="exportHistoryTab" class="tab-content">
+                    <h4>Lịch Sử Xuất Kho</h4>
+                    <div id="inventoryExportsList" class="reports-list">
+                        <!-- Export history will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Nhân Viên Tab -->
 <div id="nhanvienTab" class="tab-content">
-    <div class="tab-header">
-        <h2>👥 Quản Lý Nhân Viên</h2>
-        <div class="tab-actions">
-            <select id="nhanvienMonthSelector" class="month-selector">
-    <option value="" disabled>Đang tải tháng vận hành...</option>
-</select>
-            <input type="text" id="employeeSearch" placeholder="🔍 Tìm nhân viên..." class="search-input">
-            <button onclick="showAddEmployeeForm()" class="btn-primary">➕ Thêm NV</button>
-            <button onclick="exportSalaryReport()" class="btn-export">📊 Xuất Lương</button>
+    <!-- Bộ lọc tháng MỚI – SIÊU CHUYÊN NGHIỆP -->
+<div class="tab-header">
+    <h2>Quản Lý Nhân Viên</h2>
+    <div class="tab-actions">
+        <!-- BỘ LỌC THÁNG MỚI -->
+        <div class="month-filter-group">
+            <button id="prevMonthBtn" class="month-nav-btn">Trước</button>
+            
+            <div class="current-month-display" id="currentMonthDisplay">
+                Tháng <span id="displayMonth">11/2025</span>
+                <div class="month-note" id="monthNote">Đang xem tháng hiện tại</div>
+            </div>
+            
+            <button id="nextMonthBtn" class="month-nav-btn" ${new Date().getMonth() === new Date().getMonth() ? 'disabled' : ''}>Sau</button>
         </div>
+
+        <input type="text" id="employeeSearch" placeholder="Tìm nhân viên..." class="search-input">
+        <button onclick="showAddEmployeeForm()" class="btn-primary">Thêm NV</button>
+        <button onclick="exportSalaryReport()" class="btn-export">Xuất Lương</button>
+    </div>
+</div>
+
+<!-- Thông báo trạng thái tháng -->
+<div id="monthStatusBanner" class="info-banner" style="display:none;">
+    <span id="bannerText"></span>
+    <button onclick="this.parentElement.style.display='none'" style="margin-left:10px;">×</button>
+</div>
+
+    <!-- Tổng quan & Danh sách – HOÀN HẢO -->
+    <div class="card">
+        <h3>Tổng Quan Nhân Sự</h3>
+        <div id="nhanvienSummary"></div>
     </div>
 
-    <!-- Operational Summary -->
     <div class="card">
-        <h3>📊 Tổng Quan Nhân Sự</h3>
-        <div id="nhanvienSummary">
-            <!-- Tổng quan nhân sự sẽ được thêm bằng JavaScript -->
-        </div>
-    </div>
-
-    <!-- Employees List -->
-    <div class="card">
-        <h3>👥 Danh Sách Nhân Viên</h3>
-        <div id="employeesList" class="employees-grid">
-            <!-- Danh sách nhân viên sẽ được thêm bằng JavaScript -->
-        </div>
+        <h3>Danh Sách Nhân Viên</h3>
+        <div id="employeesList" class="employees-grid"></div>
     </div>
 </div>
 
@@ -267,13 +348,19 @@
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="card">
-        <h3>⚡ Thao Tác Nhanh</h3>
-        <div id="quickActions" class="quick-actions-grid">
-            <!-- Các nút thao tác nhanh sẽ được thêm bằng JavaScript -->
-        </div>
+<!-- Quick Actions -->
+<div class="card">
+    <h3 onclick="switchToView('overview')" 
+        style="cursor: pointer; padding: 10px; border-radius: 8px; transition: all 0.3s ease;"
+        onmouseover="this.style.background='#f0f0f0'"
+        onmouseout="this.style.background=''">
+        ⚡ Thao Tác Nhanh
+        <small style="font-size: 0.8rem; opacity: 0.7; display: block;">(Nhấn để về Tổng Quan)</small>
+    </h3>
+    <div id="quickActions" class="quick-actions-grid">
+        <!-- Các nút thao tác nhanh sẽ được thêm bằng JavaScript -->
     </div>
+</div>
 
     <!-- ==================== 3 VIEW SECTION ==================== -->
     
@@ -850,7 +937,7 @@
                 <button onclick="closeAlert()" class="btn-confirm">✅ OK</button>
             </div>
         </div>
-    </div>
+    </div>  
 
     <!-- Modal Container cho các modal động -->
     <div id="modalContainer"></div>
@@ -860,8 +947,9 @@
 
     <script src="firebase-config.js"></script>
     <script src="nhanvien.js"></script>
-    <script src="baocao.js"></script>
     <script src="chiphi.js"></script>
+    <script src="baocao.js"></script>
+        <script src="xuathang.js"></script>
     <script src="app.js"></script>
 
     <script>
