@@ -292,7 +292,7 @@ async function loadReportsWithFilter(filterType = 'today', customData = null) {
         
         // Sử dụng hàm mới
         displayReportsTable(reports);
-        updateReportsSummary(reports);
+        updateReportsSummary1(reports);
         drawReportsChart(reports);
         
     } catch (error) {
@@ -2227,7 +2227,7 @@ function getCycleDates(cycleString) {
     };
 }
 // ==================== UPDATE REPORTS SUMMARY ====================
-function updateReportsSummary(reports) {
+function updateReportsSummary1(reports) {
     if (!reports || reports.length === 0) {
         safeUpdate('totalRevenueSummary', formatCurrency(0));
         safeUpdate('totalExpensesSummary', formatCurrency(0));
