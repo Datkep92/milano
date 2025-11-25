@@ -4724,7 +4724,7 @@ function exportFullReport() {
         const transfersData = prepareTransfersData();
         
         // Thêm summary sheet
-        const summaryData = prepareSummaryData();
+        const summaryData = prepareSummaryData1();
         const wsSummary = XLSX.utils.json_to_sheet(summaryData);
         XLSX.utils.book_append_sheet(wb, wsSummary, 'Tổng Quan');
         
@@ -4773,7 +4773,7 @@ function exportFullReport() {
     }
 }
 
-function prepareSummaryData() {
+function prepareSummaryData1() {
     if (!currentReportsData || currentReportsData.length === 0) return [];
     
     const totalRevenue = currentReportsData.reduce((sum, r) => sum + r.revenue, 0);
