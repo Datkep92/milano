@@ -1,0 +1,22 @@
+[
+  {
+    "employeeId": "NV092844",
+    "name": "Nghĩa",
+    "phone": "987654321",
+    "baseSalary": 5000000,
+    "role": "employee",
+    "status": "active",
+    "createdBy": "admin",
+    "createdAt": "2025-12-04T10:44:52.844Z"
+  },
+  {
+    "employeeId": "NV118533",
+    "name": "uyên",
+    "phone": "9876543211",
+    "baseSalary": 5000000,
+    "role": "employee",
+    "status": "active",
+    "createdBy": "admin",
+    "createdAt": "2025-12-04T10:45:18.533Z"
+  }
+]
