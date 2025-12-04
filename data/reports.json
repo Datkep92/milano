@@ -33,16 +33,19 @@
     "reportId": "2025-12-04",
     "date": "2025-12-04",
     "openingBalance": 0,
-    "closingBalance": 0,
-    "revenue": 0,
+    "closingBalance": 400000,
+    "revenue": 4000000,
     "expenses": [],
     "transfers": [],
     "exports": [],
     "createdBy": "admin",
     "updatedBy": "admin",
     "createdAt": "2025-12-04T12:53:28.435Z",
-    "updatedAt": "2025-12-04T12:53:28.435Z",
-    "_autoCalculated": true
+    "updatedAt": "2025-12-04T14:10:34.242Z",
+    "_autoCalculated": true,
+    "actualReceived": 3600000,
+    "_deviceId": "unknown",
+    "_hasExports": false
   },
   {
     "reportId": "2025-12-05",
