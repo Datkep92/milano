@@ -1,17 +1,16 @@
 [
   {
-    "totalValue": 12000000,
-    "unit": "kg",
-    "currentQuantity": 200,
-    "averagePrice": 60000,
-    "name": "Cà phê Hạt",
+    "id": "prod_k3gnaz1",
+    "itemId": "prod_k3gnaz1",
+    "productId": "prod_k3gnaz1",
+    "name": "Cà phê đen",
+    "unit": "Kg",
+    "currentQuantity": 100,
     "minStock": 0,
-    "_syncTimestamp": 1764851472137,
-    "productId": "prod_laurbk4",
-    "updatedAt": "2025-12-04T12:52:58.704Z",
-    "createdAt": "2025-12-01T05:00:00.000Z",
-    "id": "c__ph__h_t_1764870055610",
-    "itemId": "c__ph__h_t_1764870055610"
+    "averagePrice": 85400,
+    "totalValue": 8540000,
+    "createdAt": "2025-12-05T05:00:00.000Z",
+    "updatedAt": "2025-12-05T05:00:00.000Z"
   },
   {
     "totalValue": 12000000,
@@ -25,21 +24,8 @@
     "updatedAt": "2025-12-04T12:52:58.704Z",
     "createdAt": "2025-12-01T05:00:00.000Z",
     "id": "c__ph__h_t_1764870055611",
-    "itemId": "c__ph__h_t_1764870055611"
-  },
-  {
-    "minStock": 0,
-    "unit": "kg",
-    "totalValue": 1200000,
-    "updatedAt": "2025-12-04T12:52:58.706Z",
-    "createdAt": "2025-12-01T05:00:00.000Z",
-    "averagePrice": 120000,
-    "name": "cà phê sữa",
-    "productId": "prod_x50gd5p",
-    "_syncTimestamp": 1764836277588,
-    "currentQuantity": 10,
-    "id": "c__ph__s_a_1764870055612",
-    "itemId": "c__ph__s_a_1764870055612"
+    "itemId": "c__ph__h_t_1764870055611",
+    "_lastPull": "2025-12-04T23:00:50.478Z"
   },
   {
     "minStock": 0,
@@ -53,6 +39,7 @@
     "_syncTimestamp": 1764836277588,
     "currentQuantity": 10,
     "id": "c__ph__s_a_1764870055613",
-    "itemId": "c__ph__s_a_1764870055613"
+    "itemId": "c__ph__s_a_1764870055613",
+    "_lastPull": "2025-12-04T23:00:50.483Z"
   }
 ]
