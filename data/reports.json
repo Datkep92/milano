@@ -67,15 +67,15 @@
       {
         "productId": "prod_pgnsh7x",
         "name": "đường",
-        "quantity": 2,
+        "quantity": 3,
         "unit": "kg",
-        "exportedAt": "2025-12-04T14:11:10.889Z"
+        "exportedAt": "2025-12-04T14:17:32.291Z"
       }
     ],
     "createdBy": "admin",
     "updatedBy": "admin",
     "createdAt": "2025-12-04T13:37:39.689Z",
-    "updatedAt": "2025-12-04T14:11:10.889Z",
+    "updatedAt": "2025-12-04T14:17:32.292Z",
     "_autoCalculated": true,
     "actualReceived": 400000,
     "_deviceId": "unknown",
