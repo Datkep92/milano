@@ -1,0 +1,50 @@
+[
+  {
+    "productId": "prod_45to1wc",
+    "name": "đường",
+    "unit": "kg",
+    "currentQuantity": 100,
+    "minStock": 0,
+    "averagePrice": 120000,
+    "totalValue": 12000000,
+    "createdAt": "2025-12-04T05:00:00.000Z",
+    "updatedAt": "2025-12-04T05:00:00.000Z",
+    "itemId": "prod_45to1wc"
+  },
+  {
+    "name": "Cà phê Hạt",
+    "productId": "prod_laurbk4",
+    "_syncTimestamp": 1764820217028,
+    "averagePrice": 60000,
+    "updatedAt": "2025-12-04T03:46:36.159Z",
+    "minStock": 0,
+    "currentQuantity": 298,
+    "totalValue": 17880000,
+    "createdAt": "2025-12-01T05:00:00.000Z",
+    "unit": "kg"
+  },
+  {
+    "productId": "prod_lv1f0tm",
+    "name": "1",
+    "unit": "1",
+    "currentQuantity": 2,
+    "minStock": 0,
+    "averagePrice": 1,
+    "totalValue": 2,
+    "createdAt": "2025-12-04T05:00:00.000Z",
+    "updatedAt": "2025-12-04T05:00:00.000Z",
+    "itemId": "prod_lv1f0tm"
+  },
+  {
+    "unit": "kg",
+    "currentQuantity": 98,
+    "productId": "prod_x50gd5p",
+    "createdAt": "2025-12-01T05:00:00.000Z",
+    "totalValue": 11760000,
+    "updatedAt": "2025-12-04T03:46:36.723Z",
+    "_syncTimestamp": 1764820277389,
+    "minStock": 0,
+    "name": "cà phê sữa",
+    "averagePrice": 120000
+  }
+]
