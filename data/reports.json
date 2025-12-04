@@ -37,23 +37,15 @@
     "revenue": 4000000,
     "expenses": [],
     "transfers": [],
-    "exports": [
-      {
-        "productId": "prod_pgnsh7x",
-        "name": "đường",
-        "quantity": 2,
-        "unit": "kg",
-        "exportedAt": "2025-12-04T14:16:56.037Z"
-      }
-    ],
+    "exports": [],
     "createdBy": "admin",
     "updatedBy": "admin",
     "createdAt": "2025-12-04T12:53:28.435Z",
-    "updatedAt": "2025-12-04T14:16:56.038Z",
+    "updatedAt": "2025-12-04T15:26:42.810Z",
     "_autoCalculated": true,
     "actualReceived": 3600000,
     "_deviceId": "unknown",
-    "_hasExports": true
+    "_hasExports": false
   },
   {
     "reportId": "2025-12-05",
