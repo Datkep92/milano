@@ -3,30 +3,6 @@ let currentTab = 'reports';
 // Main application initialization
 
 
-// Setup main event listeners
-function setupAppEventListeners() {
-    // Tab switching
-    document.addEventListener('click', function(e) {
-        if (e.target.matches('.tab-btn')) {
-            switchTab(e.target.dataset.tab);
-        }
-    });
-    
-    // Popup close
-    document.addEventListener('click', function(e) {
-        if (e.target.matches('[data-action="close-popup"]') || 
-            e.target.matches('.popup-container')) {
-            closePopup();
-        }
-    });
-    
-    // Prevent popup close when clicking inside popup
-    document.addEventListener('click', function(e) {
-        if (e.target.matches('.popup')) {
-            e.stopPropagation();
-        }
-    });
-}
 
 // Switch tab function
 function switchTab(tabName) {
@@ -124,40 +100,7 @@ function isAdmin() {
     return user && user.role === 'admin';
 }
 
-// Initialize app
-async function initializeApp() {
-    try {
-        showLoading(true);
-        
-        // Check authentication
-        if (!checkAuth()) {
-            window.location.href = 'login.html';
-            return;
-        }
-        
-        // Initialize database
-        await initializeDatabase();
-        
-        // Sync from GitHub if needed
-        await checkAndSyncFromGitHub();
-        
-        // Load user info
-        loadUserInfo();
-        
-        // Setup event listeners
-        setupAppEventListeners();
-        
-        // Initialize current tab
-        initializeCurrentTab();
-        
-        showLoading(false);
-        
-    } catch (error) {
-        console.error('App initialization error:', error);
-        showMessage('Lỗi khởi tạo ứng dụng', 'error');
-        showLoading(false);
-    }
-}
+
 
 // Format currency
 function formatCurrency(amount) {
@@ -205,10 +148,7 @@ function showMessage(message, type = 'info') {
     }, 5000);
 }
 
-// Initialize app when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    initializeApp();
-});
+
 
 // Make functions global
 window.isAdmin = isAdmin;
@@ -264,40 +204,6 @@ function loadUserInfo() {
 }
 
 
-// FIX: Sửa hàm switchTab - thêm tab statistics
-function switchTab(tabName) {
-    console.log('🔄 Switching to tab:', tabName);
-    
-    // Reset reports state nếu chuyển sang tab khác
-    if (tabName !== 'reports') {
-        isReportsInitialized = false;
-    }
-    
-    // Update active tab button
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    const tabButton = document.querySelector(`[data-tab="${tabName}"]`);
-    if (tabButton) {
-        tabButton.classList.add('active');
-    }
-    
-    // Update active tab content
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-        content.style.display = 'none';
-    });
-    
-    const tabContent = document.getElementById(tabName);
-    if (tabContent) {
-        tabContent.classList.add('active');
-        tabContent.style.display = 'block';
-    }
-    
-    currentTab = tabName;
-    initializeCurrentTab();
-}
 // Hàm kiểm tra quyền admin
 function isAdmin() {
     const user = getCurrentUser();
@@ -360,35 +266,8 @@ function showPopup(html) {
     }
 }
 
-// Close popup
-function closePopup() {
-    const container = document.getElementById('popupContainer');
-    if (container) {
-        container.classList.remove('active');
-        container.innerHTML = '';
-    }
-}
 
-// Show message
-function showMessage(message, type = 'info') {
-    // Remove existing messages
-    const existingMessages = document.querySelectorAll('.message');
-    existingMessages.forEach(msg => msg.remove());
-    
-    const messageElement = document.createElement('div');
-    messageElement.className = `message ${type}`;
-    messageElement.textContent = message;
-    
-    // Add to page
-    document.body.appendChild(messageElement);
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        if (messageElement.parentNode) {
-            messageElement.parentNode.removeChild(messageElement);
-        }
-    }, 5000);
-}
+
 
 // Trong app.js, thay vì dùng template literal trong HTML,
 // chúng ta sẽ render bằng JavaScript sau khi DOM ready
@@ -617,22 +496,7 @@ const style = document.createElement('style');
 style.textContent = additionalCSS;
 document.head.appendChild(style);
 
-// THÊM vào app.js - các hàm utility
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('vi-VN', {
-        style: 'currency',
-        currency: 'VND'
-    }).format(amount);
-}
 
-function formatDate(date = new Date()) {
-    return date.toISOString().split('T')[0];
-}
-
-function formatDateDisplay(dateString) {
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('vi-VN');
-}
 
 function formatMonthDisplay(monthString) {
     const [year, month] = monthString.split('-');
@@ -652,44 +516,6 @@ function getPreviousMonth(monthString) {
     return `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
 }
 
-// Hàm hiển thị message toàn cục
-function showMessage(message, type = 'info') {
-    // Remove existing messages
-    const existingMessages = document.querySelectorAll('.global-message');
-    existingMessages.forEach(msg => msg.remove());
-    
-    const messageElement = document.createElement('div');
-    messageElement.className = `global-message message ${type}`;
-    messageElement.textContent = message;
-    messageElement.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 10000;
-        padding: 15px 20px;
-        border-radius: 5px;
-        color: white;
-        font-weight: bold;
-        max-width: 300px;
-    `;
-    
-    if (type === 'error') {
-        messageElement.style.background = '#dc3545';
-    } else if (type === 'success') {
-        messageElement.style.background = '#28a745';
-    } else {
-        messageElement.style.background = '#17a2b8';
-    }
-    
-    document.body.appendChild(messageElement);
-    
-    setTimeout(() => {
-        if (messageElement.parentNode) {
-            messageElement.parentNode.removeChild(messageElement);
-        }
-    }, 5000);
-}
-// app.js (hoặc file khởi tạo chính)
 
 async function initApp() {
     try {
