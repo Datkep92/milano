@@ -1,10 +1,9 @@
-
 // =========================================================
 // DATABASE SYSTEM - CORE CONFIGURATION với GitHub Sync
 // =========================================================
 
 const DB_NAME = 'CafeManagementDB';
-const DB_VERSION = 15; // ⬅️ TĂNG LÊN 15
+const DB_VERSION = 16; // ⬅️ ĐÃ TĂNG LÊN 16 để buộc chạy lại logic onupgradeneeded
 
 // Database instance
 let db = null;
@@ -64,33 +63,38 @@ function initializeDatabase() {
             const stores = [
                 { name: 'reports', keyPath: 'reportId' },
                 { name: 'employees', keyPath: 'employeeId' },
-                { name: 'inventory', keyPath: 'id' }, // ⬅️ QUAN TRỌNG: inventory cần 'id'
+                { name: 'inventory', keyPath: 'id' }, // QUAN TRỌNG: inventory cần 'id'
                 { name: 'statistics', keyPath: 'id' },
                 { name: 'operations', keyPath: 'id' },
                 { name: 'inventoryHistory', keyPath: 'historyId' },
-                { name: 'attendance', keyPath: 'attendanceId' },
+                { name: 'attendance', keyPath: 'attendanceId' }, // ✅ KHÓA ĐÃ ĐƯỢC FIX
                 { name: 'discipline_records', keyPath: 'recordId' },
                 { name: 'sync_status', keyPath: 'key' },
-                // ⬇️ THÊM CÁC STORE MỚI
+                // THÊM CÁC STORE MỚI
                 { name: 'sync_queue', keyPath: 'id' },
                 { name: 'sync_metadata', keyPath: 'storeName' }
             ];
             
             stores.forEach(storeConfig => {
+                // 🔑 FIX CỐT LÕI: Nếu store attendance đã tồn tại, ta xóa và tạo lại 
+                // để chắc chắn nó dùng keyPath mới ('attendanceId') và không bị lỗi schema cũ.
+                if (storeConfig.name === 'attendance' && db.objectStoreNames.contains(storeConfig.name)) {
+                    db.deleteObjectStore(storeConfig.name);
+                    console.log(`⚠️ Deleted old store: ${storeConfig.name} for keyPath correction.`);
+                }
+                
                 if (!db.objectStoreNames.contains(storeConfig.name)) {
-                    db.createObjectStore(storeConfig.name, { 
+                    const store = db.createObjectStore(storeConfig.name, { 
                         keyPath: storeConfig.keyPath 
                     });
                     console.log(`✅ Created store: ${storeConfig.name} with keyPath: ${storeConfig.keyPath}`);
                     
                     // Tạo indexes cho các store quan trọng
                     if (storeConfig.name === 'inventory') {
-                        const store = event.target.transaction.objectStore('inventory');
                         store.createIndex('name', 'name', { unique: false });
                         console.log(`✅ Created index 'name' for inventory`);
                     }
                     if (storeConfig.name === 'employees') {
-                        const store = event.target.transaction.objectStore('employees');
                         store.createIndex('phone', 'phone', { unique: true });
                         console.log(`✅ Created index 'phone' for employees`);
                     }
