@@ -36,6 +36,7 @@
     "_autoFixed": true
   },
   {
+    "id": "20251206",
     "reportId": "2025-12-06",
     "date": "2025-12-06",
     "openingBalance": 0,
@@ -50,6 +51,24 @@
     "updatedAt": "2025-12-04T10:38:13.443Z",
     "_autoCalculated": true,
     "actualReceived": 1000000,
+    "_deviceId": "unknown",
+    "_hasExports": false
+  },
+  {
+    "reportId": "2025-12-07",
+    "date": "2025-12-07",
+    "openingBalance": 2000000,
+    "closingBalance": 500000,
+    "revenue": 1000000,
+    "expenses": [],
+    "transfers": [],
+    "exports": [],
+    "createdBy": "admin",
+    "updatedBy": "admin",
+    "createdAt": "2025-12-04T10:41:04.894Z",
+    "updatedAt": "2025-12-04T10:41:24.517Z",
+    "_autoCalculated": true,
+    "actualReceived": 2500000,
     "_deviceId": "unknown",
     "_hasExports": false
   }
