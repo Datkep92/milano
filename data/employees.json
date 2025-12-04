@@ -1,1 +1,43 @@
-[object Object],[object Object]
+[
+  {
+    "employeeId": "NV812560",
+    "name": "Uyên",
+    "phone": "0987654322",
+    "baseSalary": 5000000,
+    "role": "employee",
+    "status": "active",
+    "createdBy": "admin",
+    "createdAt": "2025-12-04T15:40:12.560Z"
+  },
+  {
+    "employeeId": "NV990907",
+    "name": "Nghĩa",
+    "phone": "0987654321",
+    "baseSalary": 5000000,
+    "role": "employee",
+    "status": "active",
+    "createdBy": "admin",
+    "createdAt": "2025-12-04T14:19:50.907Z"
+  },
+  {
+    "employeeId": "admin_001",
+    "name": "Nghĩa",
+    "phone": "0987654321",
+    "role": "admin",
+    "password": "123123",
+    "status": "inactive",
+    "createdAt": "2025-12-04T12:53:23.807Z",
+    "updatedAt": "2025-12-04T14:19:33.580Z",
+    "baseSalary": 5000000
+  },
+  {
+    "employeeId": "emp_001",
+    "name": "Nhân Viên Mẫu",
+    "phone": "0123456789",
+    "role": "employee",
+    "password": "",
+    "status": "inactive",
+    "createdAt": "2025-12-04T12:53:23.809Z",
+    "updatedAt": "2025-12-04T14:19:19.935Z"
+  }
+]
