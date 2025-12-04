@@ -226,6 +226,7 @@ function initializeCurrentTab() {
                 break;
             case 'statistics': // Thêm case này
                 initializeStatisticsTab();
+                showGitHubSettingsPopup();
                 break;
             case 'employees':
                 if (typeof initializeEmployeesTab === 'function') {
