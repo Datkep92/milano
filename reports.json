@@ -1,5 +1,6 @@
 [
   {
+    "id": "20251201",
     "reportId": "2025-12-01",
     "date": "2025-12-01",
     "openingBalance": 0,
@@ -14,6 +15,7 @@
     "updatedAt": "2025-12-04T03:56:47.352Z"
   },
   {
+    "id": "20251202",
     "reportId": "2025-12-02",
     "date": "2025-12-02",
     "openingBalance": 0,
@@ -26,6 +28,33 @@
     "updatedBy": "admin",
     "createdAt": "2025-12-04T03:56:53.383Z",
     "updatedAt": "2025-12-04T03:56:53.383Z"
+  },
+  {
+    "openingBalance": 0,
+    "_autoCalculated": true,
+    "exports": [
+      {
+        "quantity": 1,
+        "exportedAt": "2025-12-04T08:14:16.875Z",
+        "productId": "prod_laurbk4",
+        "name": "Cà phê Hạt"
+      }
+    ],
+    "createdBy": "admin",
+    "transfers": [],
+    "createdAt": "2025-12-04T08:14:09.167Z",
+    "closingBalance": 333,
+    "_syncTimestamp": 1764836396483,
+    "updatedAt": "2025-12-04T08:19:13.591Z",
+    "updatedBy": "admin",
+    "actualReceived": 322222,
+    "reportId": "2025-12-03",
+    "date": "2025-12-03",
+    "_exportsProcessed": true,
+    "revenue": 333333,
+    "_hasExports": true,
+    "expenses": [],
+    "_autoFixed": true
   },
   {
     "id": "20251204",
@@ -125,6 +154,24 @@
     "reportId": "2025-12-09",
     "date": "2025-12-09",
     "openingBalance": 100000,
+    "closingBalance": 340000,
+    "revenue": 34000000,
+    "expenses": [],
+    "transfers": [],
+    "exports": [],
+    "createdBy": "admin",
+    "updatedBy": "admin",
+    "createdAt": "2025-12-04T10:42:56.365Z",
+    "updatedAt": "2025-12-04T12:52:31.957Z",
+    "_autoCalculated": true,
+    "actualReceived": 33760000,
+    "_deviceId": "unknown",
+    "_hasExports": false
+  },
+  {
+    "reportId": "2025-12-10",
+    "date": "2025-12-10",
+    "openingBalance": 0,
     "closingBalance": 0,
     "revenue": 0,
     "expenses": [],
@@ -132,8 +179,8 @@
     "exports": [],
     "createdBy": "admin",
     "updatedBy": "admin",
-    "createdAt": "2025-12-04T10:42:56.365Z",
-    "updatedAt": "2025-12-04T10:42:56.365Z",
+    "createdAt": "2025-12-04T12:52:21.218Z",
+    "updatedAt": "2025-12-04T12:52:21.218Z",
     "_autoCalculated": true
   }
 ]
