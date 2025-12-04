@@ -85,10 +85,25 @@
     "createdBy": "admin",
     "updatedBy": "admin",
     "createdAt": "2025-12-04T10:42:40.515Z",
-    "updatedAt": "2025-12-04T10:42:47.569Z",
+    "updatedAt": "2025-12-04T10:43:55.388Z",
     "_autoCalculated": true,
     "actualReceived": 1400000,
     "_deviceId": "unknown",
     "_hasExports": false
+  },
+  {
+    "reportId": "2025-12-09",
+    "date": "2025-12-09",
+    "openingBalance": 100000,
+    "closingBalance": 0,
+    "revenue": 0,
+    "expenses": [],
+    "transfers": [],
+    "exports": [],
+    "createdBy": "admin",
+    "updatedBy": "admin",
+    "createdAt": "2025-12-04T10:42:56.365Z",
+    "updatedAt": "2025-12-04T10:42:56.365Z",
+    "_autoCalculated": true
   }
 ]
