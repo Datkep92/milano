@@ -1,5 +1,6 @@
 [
   {
+    "id": "20251204",
     "reportId": "2025-12-04",
     "date": "2025-12-04",
     "openingBalance": 0,
@@ -18,9 +19,10 @@
     "_hasExports": false
   },
   {
+    "id": "20251205",
     "reportId": "2025-12-05",
     "date": "2025-12-05",
-    "openingBalance": 0,
+    "openingBalance": 1000000,
     "closingBalance": 0,
     "revenue": 0,
     "expenses": [],
@@ -29,7 +31,26 @@
     "createdBy": "admin",
     "updatedBy": "admin",
     "createdAt": "2025-12-04T10:33:07.175Z",
-    "updatedAt": "2025-12-04T10:33:07.175Z",
-    "_autoCalculated": true
+    "updatedAt": "2025-12-04T10:37:57.286Z",
+    "_autoCalculated": true,
+    "_autoFixed": true
+  },
+  {
+    "reportId": "2025-12-06",
+    "date": "2025-12-06",
+    "openingBalance": 0,
+    "closingBalance": 2000000,
+    "revenue": 3000000,
+    "expenses": [],
+    "transfers": [],
+    "exports": [],
+    "createdBy": "admin",
+    "updatedBy": "admin",
+    "createdAt": "2025-12-04T10:38:05.756Z",
+    "updatedAt": "2025-12-04T10:38:13.443Z",
+    "_autoCalculated": true,
+    "actualReceived": 1000000,
+    "_deviceId": "unknown",
+    "_hasExports": false
   }
 ]
