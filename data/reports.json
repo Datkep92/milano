@@ -12,7 +12,8 @@
     "createdBy": "admin",
     "updatedBy": "admin",
     "createdAt": "2025-12-04T03:56:47.352Z",
-    "updatedAt": "2025-12-04T03:56:47.352Z"
+    "updatedAt": "2025-12-04T03:56:47.352Z",
+    "_lastPull": "2025-12-05T03:14:41.770Z"
   },
   {
     "reportId": "2025-12-02",
@@ -27,7 +28,8 @@
     "createdBy": "admin",
     "updatedBy": "admin",
     "createdAt": "2025-12-04T03:56:53.383Z",
-    "updatedAt": "2025-12-04T03:56:53.383Z"
+    "updatedAt": "2025-12-04T03:56:53.383Z",
+    "_lastPull": "2025-12-05T03:14:41.771Z"
   },
   {
     "reportId": "2025-12-03",
@@ -55,7 +57,8 @@
     "revenue": 333333,
     "_hasExports": true,
     "expenses": [],
-    "_autoFixed": true
+    "_autoFixed": true,
+    "_lastPull": "2025-12-05T03:14:41.772Z"
   },
   {
     "reportId": "2025-12-04",
@@ -75,7 +78,8 @@
     "actualReceived": -700000,
     "_deviceId": "unknown",
     "_hasExports": false,
-    "_autoFixed": true
+    "_autoFixed": true,
+    "_lastPull": "2025-12-05T03:14:41.774Z"
   },
   {
     "reportId": "2025-12-05",
@@ -92,7 +96,8 @@
     "createdAt": "2025-12-04T10:33:07.175Z",
     "updatedAt": "2025-12-04T10:37:57.286Z",
     "_autoCalculated": true,
-    "_autoFixed": true
+    "_autoFixed": true,
+    "_lastPull": "2025-12-05T03:14:41.775Z"
   },
   {
     "reportId": "2025-12-06",
@@ -111,7 +116,8 @@
     "_autoCalculated": true,
     "actualReceived": 1000000,
     "_deviceId": "unknown",
-    "_hasExports": false
+    "_hasExports": false,
+    "_lastPull": "2025-12-05T03:14:41.776Z"
   },
   {
     "reportId": "2025-12-07",
@@ -130,7 +136,8 @@
     "_autoCalculated": true,
     "actualReceived": 2500000,
     "_deviceId": "unknown",
-    "_hasExports": false
+    "_hasExports": false,
+    "_lastPull": "2025-12-05T03:14:41.777Z"
   },
   {
     "reportId": "2025-12-08",
@@ -149,7 +156,8 @@
     "_autoCalculated": true,
     "actualReceived": 1400000,
     "_deviceId": "unknown",
-    "_hasExports": false
+    "_hasExports": false,
+    "_lastPull": "2025-12-05T03:14:41.778Z"
   },
   {
     "reportId": "2025-12-09",
@@ -168,7 +176,8 @@
     "_autoCalculated": true,
     "actualReceived": 33760000,
     "_deviceId": "unknown",
-    "_hasExports": false
+    "_hasExports": false,
+    "_lastPull": "2025-12-05T03:14:41.779Z"
   },
   {
     "reportId": "2025-12-10",
@@ -203,21 +212,52 @@
     "_autoFixed": true,
     "actualReceived": 49840000,
     "_deviceId": "unknown",
-    "_hasExports": true
+    "_hasExports": true,
+    "_lastPull": "2025-12-05T03:14:41.780Z"
   },
   {
     "reportId": "2025-12-11",
     "date": "2025-12-11",
     "openingBalance": 500000,
-    "closingBalance": 0,
-    "revenue": 0,
-    "expenses": [],
-    "transfers": [],
+    "closingBalance": 300000,
+    "revenue": 3000000,
+    "expenses": [
+      {
+        "expenseId": "exp_1764904508556",
+        "name": "Đá",
+        "amount": 50000,
+        "createdAt": "2025-12-05T03:15:08.556Z"
+      },
+      {
+        "expenseId": "exp_1764904514950",
+        "name": "Đá",
+        "amount": 20000,
+        "createdAt": "2025-12-05T03:15:14.950Z"
+      }
+    ],
+    "transfers": [
+      {
+        "transferId": "trf_1764904495708",
+        "content": "Sa",
+        "amount": 0,
+        "createdAt": "2025-12-05T03:14:55.708Z"
+      },
+      {
+        "transferId": "trf_1764904498653",
+        "content": "Chuyển khoản 20.000 ₫",
+        "amount": 20000,
+        "createdAt": "2025-12-05T03:14:58.653Z"
+      }
+    ],
     "exports": [],
     "createdBy": "admin",
     "updatedBy": "admin",
     "createdAt": "2025-12-04T12:53:11.609Z",
-    "updatedAt": "2025-12-04T12:53:11.609Z",
-    "_autoCalculated": true
+    "updatedAt": "2025-12-05T03:16:13.639Z",
+    "_autoCalculated": true,
+    "_lastPull": "2025-12-05T03:14:41.781Z",
+    "actualReceived": 3110000,
+    "_deviceId": "admin_device",
+    "_hasExports": false
   }
 ]
