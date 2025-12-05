@@ -28,7 +28,9 @@
   "timestamp": "2025-12-05T06:18:48.623Z",
   "totalExpenses": 60000,
   "totalTransfers": 60000,
-  "edited": false,
-  "editCount": 0,
-  "id": 3
+  "edited": true,
+  "editCount": 4,
+  "id": 3,
+  "previousVersion": 3,
+  "lastEdited": "2025-12-05T06:21:18.160Z"
 }
