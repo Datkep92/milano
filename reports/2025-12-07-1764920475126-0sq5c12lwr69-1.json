@@ -1,0 +1,32 @@
+{
+  "date": "2025-12-07",
+  "openingBalance": 0,
+  "revenue": 11222,
+  "expenses": [],
+  "transfers": [],
+  "closingBalance": 1111,
+  "inventory": [
+    {
+      "productId": 38,
+      "productName": "Sinh tố bơ",
+      "quantity": 1,
+      "price": 35000,
+      "stockBefore": 30
+    },
+    {
+      "productId": 37,
+      "productName": "Nước cam",
+      "quantity": 1,
+      "price": 22000,
+      "stockBefore": 40
+    }
+  ],
+  "actualProfit": 10111,
+  "totalExpenses": 0,
+  "totalTransfers": 0,
+  "timestamp": "2025-12-05T07:41:15.111Z",
+  "edited": false,
+  "editCount": 0,
+  "id": 11,
+  "syncId": "sync-1764920475126-6m9qvqsch"
+}
