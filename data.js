@@ -3,7 +3,7 @@
 class DataManager {
     constructor() {
         this.dbName = 'SalesManagementDB';
-        this.dbVersion = 1;
+        this.dbVersion = 14;
         this.db = null;
         this.currentDate = new Date().toISOString().split('T')[0];
         this.initDB();
@@ -692,4 +692,5 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         initializeSampleData();
     }, 1000);
+
 });
