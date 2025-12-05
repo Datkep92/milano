@@ -94,10 +94,13 @@
     "createdBy": "admin",
     "updatedBy": "admin",
     "createdAt": "2025-12-04T10:33:07.175Z",
-    "updatedAt": "2025-12-04T10:37:57.286Z",
+    "updatedAt": "2025-12-05T03:40:55.558Z",
     "_autoCalculated": true,
     "_autoFixed": true,
-    "_lastPull": "2025-12-05T03:14:41.775Z"
+    "_lastPull": "2025-12-05T03:14:41.775Z",
+    "actualReceived": 1000000,
+    "_deviceId": "unknown",
+    "_hasExports": false
   },
   {
     "reportId": "2025-12-06",
