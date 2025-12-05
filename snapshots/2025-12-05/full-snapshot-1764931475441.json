@@ -1,0 +1,401 @@
+{
+  "metadata": {
+    "snapshotDate": "2025-12-05",
+    "createdAt": "2025-12-05T10:44:35.435Z",
+    "version": "1.0",
+    "source": "Daily Snapshot"
+  },
+  "data": {
+    "reports": [],
+    "products": [
+      {
+        "name": "CÃÂ  phÃÂª ÃÂen",
+        "price": 15000,
+        "stock": 100,
+        "id": 64
+      },
+      {
+        "name": "CÃÂ  phÃÂª sÃ¡Â»Â¯a",
+        "price": 20000,
+        "stock": 80,
+        "id": 65
+      },
+      {
+        "name": "TrÃÂ  ÃÂÃÂ o",
+        "price": 25000,
+        "stock": 50,
+        "id": 66
+      },
+      {
+        "name": "TrÃÂ  sÃ¡Â»Â¯a trÃÂ¢n chÃÂ¢u",
+        "price": 30000,
+        "stock": 60,
+        "id": 67
+      },
+      {
+        "name": "NÃÂ°Ã¡Â»Âc cam",
+        "price": 22000,
+        "stock": 40,
+        "id": 68
+      },
+      {
+        "name": "Sinh tÃ¡Â»Â bÃÂ¡",
+        "price": 35000,
+        "stock": 30,
+        "id": 69
+      },
+      {
+        "name": "cÃÂ  phÃÂª",
+        "unit": "kg",
+        "price": 240000,
+        "stock": 100,
+        "category": "NguyÃÂªn liÃ¡Â»Âu",
+        "createdAt": "2025-12-05T09:41:00.584Z",
+        "id": 70
+      }
+    ],
+    "employees": [
+      {
+        "name": "NghÃÂ©a",
+        "phone": "0987654321",
+        "baseSalary": 5000000,
+        "createdAt": "2025-12-05T10:26:01.511Z",
+        "id": 10
+      },
+      {
+        "name": "NghÃÂ©a",
+        "phone": "0987654321",
+        "baseSalary": 5000000,
+        "createdAt": "2025-12-05T10:26:01.512Z",
+        "id": 11
+      },
+      {
+        "name": "NghÃÂ©a",
+        "phone": "0987654321",
+        "baseSalary": 5000000,
+        "createdAt": "2025-12-05T10:26:01.513Z",
+        "id": 12
+      },
+      {
+        "name": "NghÃÂ©a",
+        "phone": "0987654321",
+        "baseSalary": 5000000,
+        "createdAt": "2025-12-05T10:26:01.514Z",
+        "id": 13
+      }
+    ],
+    "attendance": {
+      "attendance_10_2025-12-05": "overtime",
+      "attendance_10_2025-12-02": "off",
+      "attendance_10_2025-12-03": "off",
+      "attendance_10_2025-12-04": "overtime",
+      "attendance_10_2025-12-15": "off"
+    },
+    "rewards": {
+      "rewards_10_2025-12": "50000"
+    },
+    "purchases": [
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      },
+      {
+        "type": "purchase",
+        "date": "2025-12-05",
+        "product": {
+          "id": 70,
+          "name": "cÃÂ  phÃÂª",
+          "unit": "kg"
+        },
+        "quantity": 100,
+        "price": 240000,
+        "total": 24000000,
+        "note": "",
+        "timestamp": "2025-12-05T09:41:00.591Z"
+      }
+    ],
+    "services": [],
+    "inventoryOutput": [],
+    "githubSettings": {
+      "token": "********ELYa",
+      "repo": "Datkep92/milano",
+      "branch": "main",
+      "folder": "reports",
+      "initialized": true
+    },
+    "appState": {
+      "currentTab": "report",
+      "selectedDate": "2025-12-05"
+    }
+  },
+  "stats": {
+    "totalReports": 0,
+    "totalProducts": 7,
+    "totalEmployees": 4,
+    "todayReports": 0,
+    "todayPurchases": 20,
+    "todayServices": 0
+  }
+}
