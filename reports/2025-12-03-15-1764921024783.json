@@ -1,0 +1,17 @@
+{
+  "date": "2025-12-03",
+  "openingBalance": 0,
+  "revenue": 222222222222222230000,
+  "expenses": [],
+  "transfers": [],
+  "closingBalance": 0,
+  "inventory": [],
+  "actualProfit": 222222222222222230000,
+  "totalExpenses": 0,
+  "totalTransfers": 0,
+  "timestamp": "2025-12-05T07:50:24.775Z",
+  "edited": false,
+  "editCount": 0,
+  "id": 15,
+  "syncId": "sync-1764921024783-izcgq4dq7"
+}
