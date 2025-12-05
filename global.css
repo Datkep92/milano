@@ -166,3 +166,375 @@
 @media print {
     .no-print { display: none; }
 }
+
+/* ===== HEADER OPTIMIZATION ===== */
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    min-height: 60px;
+    box-sizing: border-box;
+    flex-wrap: nowrap;
+}
+
+.header-top h1 {
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
+}
+
+/* Settings button optimization */
+.settings-container {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.settings-btn {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    min-height: 36px;
+}
+
+.settings-btn i {
+    font-size: 1rem;
+}
+
+/* Header tabs - Fixed width */
+.header-tabs {
+    display: flex;
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 0;
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: space-between;
+}
+
+.header-tab {
+    flex: 1;
+    min-width: 0; /* Cho phép flex item co lại */
+    padding: 10px 8px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: all 0.3s;
+    position: relative;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    flex-shrink: 1; /* Cho phép co lại */
+}
+
+.header-tab:last-child {
+    border-right: none;
+}
+
+/* Optimize tab content */
+.tab-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    display: block;
+}
+
+.header-tab i {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+/* Status indicator optimization */
+.status-indicator {
+    padding: 6px 15px;
+    background-color: rgba(0, 0, 0, 0.1);
+    font-size: 0.8rem;
+    text-align: center;
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#status {
+    display: inline-block;
+    padding: 2px 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90%;
+}
+
+/* Dropdown optimization */
+.settings-dropdown {
+    min-width: 180px;
+    max-width: 250px;
+}
+
+.dropdown-item {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    gap: 8px;
+}
+
+/* ===== RESPONSIVE DESIGN - TABLET ===== */
+@media (max-width: 992px) {
+    .header-top {
+        padding: 10px 12px;
+    }
+    
+    .header-top h1 {
+        font-size: 1.2rem;
+        max-width: 55%;
+    }
+    
+    .settings-btn {
+        padding: 5px 10px;
+        font-size: 0.85rem;
+    }
+    
+    .header-tab {
+        padding: 8px 6px;
+    }
+    
+    .tab-label {
+        font-size: 0.7rem;
+    }
+    
+    .header-tab i {
+        font-size: 0.9rem;
+    }
+}
+
+/* ===== RESPONSIVE DESIGN - MOBILE ===== */
+@media (max-width: 768px) {
+    .header-top {
+        flex-direction: row;
+        padding: 8px 10px;
+        min-height: 50px;
+    }
+    
+    .header-top h1 {
+        font-size: 1.1rem;
+        max-width: 50%;
+    }
+    
+    .header-top h1 span {
+        display: none; /* Ẩn text dài, chỉ hiển thị icon */
+    }
+    
+    .header-top h1::after {
+        content: "QL Báo cáo";
+        font-size: 1rem;
+    }
+    
+    .settings-btn {
+        padding: 4px 8px;
+        font-size: 0.8rem;
+        min-height: 32px;
+    }
+    
+    .settings-btn span {
+        display: none; /* Ẩn text "Cài đặt" trên mobile */
+    }
+    
+    .settings-btn i {
+        margin: 0;
+    }
+    
+    .header-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .header-tab {
+        min-width: 80px;
+        padding: 6px 4px;
+        flex-shrink: 0; /* Ngăn không cho co quá nhỏ */
+    }
+    
+    .tab-label {
+        font-size: 0.65rem;
+    }
+    
+    .header-tab i {
+        font-size: 0.8rem;
+    }
+    
+    /* Hide tab labels on very small screens */
+    @media (max-width: 480px) {
+        .tab-label {
+            font-size: 0.6rem;
+        }
+        
+        .header-tab {
+            min-width: 70px;
+            padding: 6px 3px;
+        }
+        
+        .header-tab i {
+            font-size: 0.75rem;
+        }
+    }
+    
+    @media (max-width: 360px) {
+        .header-top h1::after {
+            content: "QL";
+            font-size: 0.9rem;
+        }
+        
+        .header-tab {
+            min-width: 65px;
+        }
+        
+        .tab-label {
+            font-size: 0.55rem;
+        }
+    }
+}
+
+/* ===== COMPACT MODE FOR EXTRA SMALL SCREENS ===== */
+@media (max-width: 320px) {
+    .header-top {
+        padding: 6px 8px;
+    }
+    
+    .header-top h1 {
+        font-size: 0.9rem;
+        max-width: 45%;
+    }
+    
+    .header-top h1 i {
+        font-size: 0.9rem;
+    }
+    
+    .settings-btn {
+        padding: 3px 6px;
+        min-height: 28px;
+    }
+    
+    .header-tab {
+        min-width: 60px;
+        padding: 5px 2px;
+    }
+    
+    .tab-label {
+        font-size: 0.5rem;
+    }
+    
+    .header-tab i {
+        font-size: 0.7rem;
+    }
+}
+
+/* ===== PREVENT TEXT OVERFLOW ===== */
+.prevent-text-overflow {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+/* ===== FIX FOR VERY LONG TITLES ===== */
+.header-compact-title {
+    display: none;
+}
+
+@media (max-width: 576px) {
+    .header-full-title {
+        display: none;
+    }
+    
+    .header-compact-title {
+        display: inline;
+    }
+}
+
+/* Global styles for new layout */
+.report-container {
+    padding: 20px;
+}
+
+.btn-smallest {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid #dee2e6;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.btn-smallest:hover {
+    background: #f8f9fa;
+    border-color: #3498db;
+}
+
+.clickable:hover {
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+/* Animations */
+.summary-card {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .report-container {
+        padding: 10px;
+    }
+    
+    .section {
+        padding: 15px;
+    }
+    
+    .amount {
+        font-size: 20px;
+    }
+    
+    .amount-input {
+        font-size: 16px;
+        padding: 10px;
+    }
+}

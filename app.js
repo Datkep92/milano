@@ -26,25 +26,9 @@ async initializeApp() {
         await reportsManager.initialize();
         console.log('ReportsManager đã khởi tạo');
         
-        // 4. KHỞI TẠO BACKUP SETTINGS TRƯỚC
-        console.log('⚙️ Khởi tạo Backup Settings...');
-        window.backupSettings = new BackupSettings();
+      
         
-        // 5. KHỞI TẠO DAILY SNAPSHOT SAU (để dùng settings)
-        console.log('📸 Khởi tạo Daily Snapshot...');
-        window.dailySnapshot = new DailySnapshotManager();
-        
-        // 6. Tải snapshot gần nhất
-        setTimeout(async () => {
-            try {
-                const loaded = await dailySnapshot.loadLatestSnapshot();
-                if (loaded) {
-                    this.showStatus('Đã tải dữ liệu từ snapshot gần nhất');
-                }
-            } catch (error) {
-                console.warn('Không thể tải snapshot:', error);
-            }
-        }, 1500);
+       
         
         // 7. Tải dữ liệu từ GitHub
         if (githubManager.initialized) {
@@ -68,12 +52,7 @@ async initializeApp() {
         
         console.log('Ứng dụng đã sẵn sàng');
         
-        // 8. Tạo snapshot khi app khởi động xong
-        setTimeout(() => {
-            if (window.dailySnapshot) {
-                window.dailySnapshot.createTodaySnapshot();
-            }
-        }, 3000);
+     
         
     } catch (error) {
         console.error('Lỗi khởi tạo ứng dụng:', error);
