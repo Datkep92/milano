@@ -2,168 +2,659 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Quản Lý Cafe</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Báo cáo & Kho hàng</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="global.css">
+    <link rel="stylesheet" href="reports.css">
     <link rel="stylesheet" href="employees.css">
+    <link rel="stylesheet" href="inventory.css">
+    <link rel="stylesheet" href="daily-snapshot.css">
+    <link rel="stylesheet" href="reports-dashboard.css">
+    <link rel="stylesheet" href="backup-settings.css">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div id="app">
-        <!-- Header với tabs -->
-        <header class="header">
-            <div class="user-info">
-                <button class="tab-btn active" data-tab="reports" title="Báo cáo">📈</button>
-                <button class="tab-btn" data-tab="inventory" title="Kho">📦</button>
-                <button class="tab-btn" data-tab="statistics" title="Thống kê">📊</button>
-                <button class="tab-btn" data-tab="employees" title="Nhân viên">👥</button>
-                <button class="tab-btn" data-tab="overview" title="Tổng quan">👁</button>
-                <button class="tab-btn" data-tab="settings" title="Cài đặt">⚙️</button>
+    <div class="container">
+        <!-- Header với cài đặt debug -->
+        <header>
+            <div class="debug-panel">
+                <button id="debugBtn"><i class="fas fa-bug"></i> Debug</button>
+                <button id="githubSettingsBtn"><i class="fab fa-github"></i> Cài đặt GitHub</button>
+                <button id="loadDataBtn"><i class="fas fa-sync-alt"></i> Tải dữ liệu</button>
+                <div class="status" id="status">Sẵn sàng</div>
             </div>
         </header>
 
-        <!-- Nội dung chính -->
-        <main class="main-content">
-            <!-- Tab Báo cáo -->
-            <div id="reports" class="tab-content active"></div>
+        <!-- Tab navigation - ĐÃ SỬA: Thêm tab mới vào đây -->
+        <div class="tabs">
+            <button class="tab active" data-tab="report"><i class="fas fa-file-alt"></i> Báo cáo</button>
+            <button class="tab" data-tab="employees"><i class="fas fa-users"></i> Quản lý nhân viên</button>
+            <button class="tab" data-tab="inventory"><i class="fas fa-boxes"></i> Kho & Mua sắm</button>
+            <!-- Thêm tab mới vào đây -->
+            <button class="tab" data-tab="reports-dashboard">
+                <i class="fas fa-chart-bar"></i> Thống kê & Báo cáo
+            </button>
+        </div>
 
-            <!-- Tab Kho -->
-            <div id="inventory" class="tab-content"></div>
+        <!-- Report Tab -->
+        <div id="reportTab" class="tab-content active">
+            <!-- ... existing report tab content ... -->
+            <div class="date-selector">
+                <label for="reportDate"><i class="fas fa-calendar-alt"></i> Ngày báo cáo:</label>
+                <input type="date" id="reportDate" value="">
+                <button id="todayBtn">Hôm nay</button>
+                <button id="prevDayBtn"><i class="fas fa-chevron-left"></i></button>
+                <button id="nextDayBtn"><i class="fas fa-chevron-right"></i></button>
+            </div>
 
-            <!-- Tab Thống kê -->
-            <div id="statistics" class="tab-content"></div>
+            <div class="report-form">
+                <!-- ... existing form sections ... -->
+                <div class="form-section">
+                    <label>Số dư đầu kỳ:</label>
+                    <input type="number" id="openingBalance" readonly>
+                </div>
 
-            <!-- Tab Nhân viên -->
-            <div id="employees" class="tab-content"></div>
+                <div class="form-section">
+                    <label>Doanh thu:</label>
+                    <input type="number" id="revenue" placeholder="Nhập doanh thu">
+                </div>
 
-            <!-- Tab Tổng quan -->
-            <div id="overview" class="tab-content"></div>
+                <div class="form-section">
+                    <label>Chi phí:</label>
+                    <div class="expenses-container">
+                        <button id="expensesBtn" class="list-btn">
+                            <span id="expensesTotal">0</span> đ
+                        </button>
+                        <span class="expenses-count" id="expensesCount">(0 khoản)</span>
+                    </div>
+                </div>
 
-            <!-- Tab Cài đặt -->
-            <div id="settings" class="tab-content"></div>
-        </main>
+                <div class="form-section">
+                    <label>Chuyển khoản:</label>
+                    <div class="transfers-container">
+                        <button id="transfersBtn" class="list-btn">
+                            <span id="transfersTotal">0</span> đ
+                        </button>
+                        <span class="transfers-count" id="transfersCount">(0 khoản)</span>
+                    </div>
+                </div>
 
-        <!-- Popup container -->
-        <div id="popupContainer" class="popup-container"></div>
+                <div class="form-section">
+                    <label>Số dư cuối kỳ:</label>
+                    <input type="number" id="closingBalance" placeholder="Nhập số dư cuối kỳ">
+                </div>
 
-        <!-- Loading overlay -->
-        <div id="loadingOverlay" class="loading-overlay">
-            <div class="loading-spinner">Đang tải...</div>
+                <div class="form-section highlight">
+                    <label>Thực lãnh:</label>
+                    <input type="number" id="actualProfit" readonly style="font-weight: bold; color: #2ecc71;">
+                </div>
+
+                <div class="form-section">
+                    <button id="toggleInventoryBtn" class="toggle-btn">
+                        <i class="fas fa-warehouse"></i> Kho hàng <span id="inventoryToggleIcon">▼</span>
+                    </button>
+                </div>
+
+                <!-- Inventory Table Section -->
+                <div id="inventorySection" class="inventory-section" style="display: none;">
+                    <div class="inventory-table-section">
+                        <div class="section-header">
+                            <h3>
+                                <i class="fas fa-boxes"></i>
+                                Kho hàng hiện tại
+                                <button id="refreshInventory" class="small-btn">
+                                    <i class="fas fa-sync-alt"></i> Làm mới
+                                </button>
+                            </h3>
+                            <div class="today-output-summary" id="todayOutputSummary">
+                                <!-- Sẽ được điền bằng JavaScript -->
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="inventory-table">
+                                <thead>
+                                    <tr>
+                                        <th width="40%">Tên sản phẩm</th>
+                                        <th width="20%">Tồn kho</th>
+                                        <th width="20%">Xuất hôm nay</th>
+                                        <th width="20%">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventoryTableBody">
+                                    <!-- Sẽ được điền bằng JavaScript -->
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="4">
+                                            <div class="table-summary">
+                                                <span>Tổng xuất kho hôm nay: <strong id="todayTotalOutput">0</strong> sản phẩm</span>
+                                                <button id="resetTodayOutput" class="small-btn danger">
+                                                    <i class="fas fa-undo"></i> Reset xuất hôm nay
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nút mở modal xóa báo cáo -->
+                <button id="openDeleteReportsModal" class="btn danger">
+                    <i class="fas fa-trash"></i> Xóa báo cáo
+                </button>
+
+                <div class="action-buttons">
+                    <button id="saveReportBtn" class="primary-btn"><i class="fas fa-save"></i> Lưu báo cáo</button>
+                    <button id="viewHistoryBtn" class="secondary-btn"><i class="fas fa-history"></i> Lịch sử báo cáo</button>
+                </div>
+            </div>
+
+            <!-- Báo cáo đã lưu trong ngày -->
+            <div id="dailyReports" class="daily-reports">
+                <h3><i class="fas fa-clipboard-list"></i> Báo cáo trong ngày</h3>
+                <div id="reportsList"></div>
+            </div>
+        </div>
+
+        <!-- Employees Tab -->
+<div id="employeesTab" class="tab-content">
+    <div class="employees-tab-content">
+        <div class="tab-header">
+            <h2><i class="fas fa-users"></i> Quản lý nhân viên</h2>
+            <div>
+                <button id="addEmployeeBtn" class="primary-btn">
+                    <i class="fas fa-user-plus"></i> Thêm nhân viên
+                </button>
+            </div>
+        </div>
+        
+        <!-- Bộ chọn tháng -->
+        <div class="month-selector">
+            <label for="employeeMonthSelect"><i class="fas fa-calendar-alt"></i> Chọn tháng:</label>
+            <select id="employeeMonthSelect" class="form-control">
+                <!-- Sẽ được điền bằng JavaScript -->
+            </select>
+        </div>
+        
+        <!-- Tổng quan tháng -->
+        <div id="monthlySummary" class="monthly-summary">
+            <!-- Sẽ được điền bằng JavaScript -->
+        </div>
+        
+        <!-- Danh sách nhân viên -->
+        <div id="employeesList" class="employees-list">
+            <!-- Sẽ được điền bằng JavaScript -->
+        </div>
+    </div>
+</div>
+
+        <!-- Inventory Tab -->
+<div id="inventoryTab" class="tab-content">
+    <div class="inventory-tab-content">
+        <div class="tab-header">
+            <h2><i class="fas fa-warehouse"></i> Quản lý kho hàng</h2>
+            <div>
+                <button id="importInventoryBtn" class="primary-btn">
+                    <i class="fas fa-shopping-cart"></i> Mua sắm hàng hóa
+                </button>
+                <button id="addServiceBtn" class="secondary-btn">
+                    <i class="fas fa-concierge-bell"></i> Dịch vụ/Chi phí
+                </button>
+            </div>
+        </div>
+        
+        <!-- Bộ chọn kỳ -->
+        <div class="period-selector">
+            <label for="periodSelect"><i class="fas fa-calendar-alt"></i> Chọn kỳ:</label>
+            <select id="periodSelect" class="form-control">
+                <!-- Sẽ được điền bằng JavaScript -->
+            </select>
+        </div>
+        
+        <!-- Thống kê kỳ -->
+        <div id="inventoryStats" class="inventory-stats">
+            <!-- Sẽ được điền bằng JavaScript -->
+        </div>
+        
+        <!-- Danh sách kho hàng -->
+        <div id="inventoryTabList" class="inventory-tab-list">
+            <!-- Sẽ được điền bằng JavaScript -->
+        </div>
+    </div>
+</div>
+
+        <!-- Reports Dashboard Tab - ĐÃ SỬA: Đây là vị trí đúng cho tab content mới -->
+        <div id="reports-dashboardTab" class="tab-content">
+            <div class="tab-header">
+                <h2><i class="fas fa-chart-bar"></i> Thống kê & Báo cáo tổng quan</h2>
+                <div>
+                    <button id="exportReportBtn" class="secondary-btn">
+                        <i class="fas fa-download"></i> Xuất báo cáo
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Bộ lọc thời gian -->
+            <div class="reports-filter">
+                <div class="filter-section">
+                    <div class="form-group">
+                        <label for="reportStartDate">Từ ngày:</label>
+                        <input type="date" id="reportStartDate" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reportEndDate">Đến ngày:</label>
+                        <input type="date" id="reportEndDate" class="form-control">
+                    </div>
+                    
+                    <button id="loadReportsBtn" class="primary-btn">
+                        <i class="fas fa-search"></i> Tải báo cáo
+                    </button>
+                </div>
+                
+                <div class="view-mode-toggle">
+                    <button id="viewModeDaily" class="view-mode-btn active">
+                        <i class="fas fa-calendar-day"></i> Xem theo ngày
+                    </button>
+                    <button id="viewModeAggregated" class="view-mode-btn">
+                        <i class="fas fa-chart-pie"></i> Xem gộp tổng hợp
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Loading indicator -->
+            <div id="reportsLoading" class="loading" style="display: none;">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Đang tải báo cáo...</p>
+            </div>
+            
+            <!-- Tổng quan thống kê -->
+            <div id="reportsSummary" class="reports-summary">
+                <!-- Sẽ được điền bằng JavaScript -->
+            </div>
+            
+            <!-- Danh sách báo cáo -->
+            <div class="reports-dashboard-content">
+                <div id="reportsDashboardList">
+                    <!-- Danh sách báo cáo sẽ hiển thị ở đây -->
+                    <div class="empty-state">
+                        <i class="fas fa-chart-line"></i>
+                        <p>Vui lòng chọn khoảng thời gian và nhấn "Tải báo cáo"</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    
-    <script>
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyAcYhLhEiJk0WjQvQdwk0oNgyotp-ewKsk",
-            authDomain: "milano259.firebaseapp.com",
-            projectId: "milano259",
-            storageBucket: "milano259.firebasestorage.app",
-            messagingSenderId: "681812166818",
-            appId: "1:681812166818:web:24e638784a239b0021effb",
-            measurementId: "G-FSL6MSC7CT",
-            databaseURL: "https://milano259-default-rtdb.asia-southeast1.firebasedatabase.app"
-        };
+    <!-- Modal cho chi phí -->
+    <div id="expensesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-money-bill-wave"></i> Quản lý chi phí</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="add-expense">
+                    <input type="text" id="expenseName" placeholder="Tên chi phí">
+                    <input type="number" id="expenseAmount" placeholder="Số tiền">
+                    <button id="addExpenseBtn" class="small-btn"><i class="fas fa-plus"></i> Thêm</button>
+                </div>
+                <div id="expensesList" class="items-list">
+                    <!-- Danh sách chi phí sẽ được thêm ở đây -->
+                </div>
+                <div class="modal-total">
+                    <strong>Tổng chi phí: <span id="modalExpensesTotal">0</span> đ</strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveExpensesBtn" class="primary-btn">Lưu chi phí</button>
+            </div>
+        </div>
+    </div>
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-    </script>
+    <!-- Modal cho chuyển khoản -->
+    <div id="transfersModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-exchange-alt"></i> Quản lý chuyển khoản</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="add-transfer">
+                    <input type="text" id="transferName" placeholder="Nội dung chuyển khoản (tùy chọn)">
+                    <input type="number" id="transferAmount" placeholder="Số tiền">
+                    <button id="addTransferBtn" class="small-btn"><i class="fas fa-plus"></i> Thêm</button>
+                </div>
+                <div id="transfersList" class="items-list">
+                    <!-- Danh sách chuyển khoản sẽ được thêm ở đây -->
+                </div>
+                <div class="modal-total">
+                    <strong>Tổng chuyển khoản: <span id="modalTransfersTotal">0</span> đ</strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveTransfersBtn" class="primary-btn">Lưu chuyển khoản</button>
+            </div>
+        </div>
+    </div>
 
-    <!-- Core scripts -->
-     <script src="fix-issues.js"></script>
-    <script src="database.js"></script>
-    <script src="auth.js"></script>
-    
-    <!-- Feature scripts -->
+    <!-- Modal lịch sử báo cáo -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content wide-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-history"></i> Lịch sử báo cáo</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="historyList">
+                    <!-- Lịch sử báo cáo sẽ được thêm ở đây -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal xóa báo cáo -->
+    <div id="deleteReportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-trash-alt"></i> Xóa báo cáo</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="filter-section">
+                    <input type="date" id="deleteReportDateFilter" class="form-control" 
+                           placeholder="Lọc theo ngày">
+                    <button id="clearDateFilter" class="small-btn">Xóa lọc</button>
+                </div>
+                
+                <div class="reports-to-delete-container">
+                    <h4>Danh sách báo cáo (mới nhất trước)</h4>
+                    <div class="reports-list" id="reportsToDeleteList">
+                        <!-- Danh sách báo cáo sẽ hiển thị ở đây -->
+                    </div>
+                </div>
+                
+                <div class="delete-options">
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="deleteFromGitHub">
+                        <span>Đồng thời xóa file trên GitHub</span>
+                    </label>
+                    <div class="warning-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Hành động này không thể hoàn tác!</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn secondary" onclick="app.closeModal('deleteReportModal')">Hủy</button>
+                <button class="btn danger" id="confirmDeleteSelected">Xóa báo cáo đã chọn</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal cài đặt GitHub -->
+    <div id="githubModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fab fa-github"></i> Cài đặt GitHub</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-section">
+                    <label>GitHub Token:</label>
+                    <input type="password" id="githubToken" placeholder="Nhập token GitHub">
+                </div>
+                <div class="form-section">
+                    <label>Tên repository:</label>
+                    <input type="text" id="githubRepo" placeholder="username/repository">
+                </div>
+                <div class="form-section">
+                    <label>Chi nhánh (branch):</label>
+                    <input type="text" id="githubBranch" value="main" placeholder="main">
+                </div>
+                <div class="form-section">
+                    <label>Thư mục lưu trữ:</label>
+                    <input type="text" id="githubFolder" value="reports" placeholder="reports">
+                </div>
+                <div class="test-section">
+                    <button id="testGithubBtn" class="secondary-btn">Kiểm tra kết nối</button>
+                    <div id="githubTestResult"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveGithubSettingsBtn" class="primary-btn">Lưu cài đặt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal debug -->
+    <div id="debugModal" class="modal">
+        <div class="modal-content wide-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-bug"></i> Công cụ Debug</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="debug-controls">
+                    <button id="clearDataBtn" class="danger-btn">Xóa toàn bộ dữ liệu local</button>
+                    <button id="exportDataBtn" class="secondary-btn">Xuất dữ liệu JSON</button>
+                    <button id="importDataBtn" class="secondary-btn">Nhập dữ liệu JSON</button>
+                    <input type="file" id="importFileInput" accept=".json" style="display: none;">
+                </div>
+                <div class="debug-info">
+                    <h4>Thông tin ứng dụng:</h4>
+                    <pre id="debugInfo">Đang tải...</pre>
+                </div>
+                <div class="debug-console">
+                    <h4>Console:</h4>
+                    <textarea id="debugConsole" readonly rows="10"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- Modal thêm/sửa nhân viên -->
+<div id="addEmployeeModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-plus"></i> Thông tin nhân viên</h3>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form class="add-employee-form" onsubmit="return false;">
+                <input type="hidden" id="employeeId" value="">
+                
+                <div class="form-group">
+                    <label for="employeeName">Tên nhân viên:</label>
+                    <input type="text" id="employeeName" placeholder="Nhập tên nhân viên" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="employeePhone">Số điện thoại:</label>
+                    <input type="tel" id="employeePhone" placeholder="Nhập số điện thoại">
+                </div>
+                
+                <div class="form-group">
+                    <label for="employeeSalary">Lương cơ bản (VND):</label>
+                    <input type="number" id="employeeSalary" placeholder="Nhập lương cơ bản" min="0" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn secondary" onclick="employeeManager.closeModals()">Hủy</button>
+            <button id="saveEmployeeBtn" class="btn primary">Lưu nhân viên</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal chi tiết nhân viên -->
+<div id="employeeDetailModal" class="modal wide-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-circle"></i> Chi tiết nhân viên</h3>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="employeeDetailContent">
+                <!-- Sẽ được điền bằng JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal thưởng/phạt -->
+<div id="rewardModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-award"></i> Thưởng/Phạt nhân viên</h3>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form class="reward-form" onsubmit="return false;">
+                <input type="hidden" id="rewardEmployeeId" value="">
+                
+                <div class="form-group">
+                    <label for="rewardType">Loại:</label>
+                    <select id="rewardType" class="form-control">
+                        <option value="reward">Thưởng</option>
+                        <option value="penalty">Phạt</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="rewardAmount">Số tiền (VND):</label>
+                    <input type="number" id="rewardAmount" placeholder="Nhập số tiền" min="0" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="rewardReason">Lý do:</label>
+                    <textarea id="rewardReason" placeholder="Nhập lý do thưởng/phạt" required></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn secondary" onclick="employeeManager.closeModals()">Hủy</button>
+            <button class="btn primary" onclick="employeeManager.saveReward()">Lưu</button>
+        </div>
+    </div>
+</div>
+<!-- Modal nhập kho -->
+<div id="purchaseModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-shopping-cart"></i> Mua sắm hàng hóa</h3>
+            <span class="close" onclick="inventoryManager.closeModals()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form class="modal-form" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="purchaseDate">📅 Ngày mua:</label>
+                    <div class="date-input-group">
+                        <i class="fas fa-calendar-alt"></i>
+                        <input type="date" id="purchaseDate" class="form-control" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="productName">🛒 Tên Nguyên liệu/Hàng hóa:</label>
+                    <input type="text" id="productName" list="productList" 
+                           placeholder="Nhập tên sản phẩm hoặc chọn từ danh sách" required>
+                    <datalist id="productList">
+                        <!-- Sẽ được điền bằng JavaScript -->
+                    </datalist>
+                </div>
+                
+                <div class="form-group">
+                    <label for="productUnit">📏 Đơn vị (vd: kg, gói):</label>
+                    <input type="text" id="productUnit" placeholder="Nhập đơn vị" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="purchaseQuantity">🔢 Số lượng (SL nhập):</label>
+                        <input type="number" id="purchaseQuantity" 
+                               placeholder="Số lượng" min="1" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="purchasePrice">💰 Đơn giá:</label>
+                        <input type="number" id="purchasePrice" 
+                               placeholder="Đơn giá" min="0" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="purchaseTotal">💸 Tổng số tiền đã chi:</label>
+                    <input type="number" id="purchaseTotal" 
+                           placeholder="Tổng tiền" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label for="purchaseNote">📝 Ghi chú:</label>
+                    <textarea id="purchaseNote" placeholder="Ghi chú (tùy chọn)"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn secondary" onclick="inventoryManager.closeModals()">Đóng</button>
+            <button id="savePurchaseBtn" class="btn primary">💾 Lưu - Cập nhật kho</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal dịch vụ/chi phí -->
+<div id="serviceModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fas fa-concierge-bell"></i> Dịch vụ / Chi phí khác</h3>
+            <span class="close" onclick="inventoryManager.closeModals()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form class="modal-form" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="serviceDate">📅 Ngày:</label>
+                    <div class="date-input-group">
+                        <i class="fas fa-calendar-alt"></i>
+                        <input type="date" id="serviceDate" class="form-control" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="serviceName">📝 Tên dịch vụ/chi phí:</label>
+                    <input type="text" id="serviceName" 
+                           placeholder="Nhập tên dịch vụ hoặc chi phí" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="serviceAmount">💰 Số tiền:</label>
+                    <input type="number" id="serviceAmount" 
+                           placeholder="Nhập số tiền" min="0" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="serviceNote">📝 Ghi chú:</label>
+                    <textarea id="serviceNote" placeholder="Ghi chú (tùy chọn)"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn secondary" onclick="inventoryManager.closeModals()">Đóng</button>
+            <button id="saveServiceBtn" class="btn primary">💾 Lưu</button>
+        </div>
+    </div>
+</div>
+    <script src="data.js"></script>
+    <script src="github.js"></script>
     <script src="reports.js"></script>
     <script src="employees.js"></script>
     <script src="inventory.js"></script>
-    <script src="statistics.js"></script>
-    <script src="overview.js"></script>
-    <script src="github-sync.js"></script>
+    <script src="reports-dashboard.js"></script>
+    <script src="daily-snapshot.js"></script>
+    <script src="backup-settings.js"></script>
     <script src="app.js"></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            try {
-                const user = getCurrentUser();
-                if (!user) {
-                    window.location.href = 'login.html';
-                    return;
-                }
-                
-                // Ẩn loading
-                setTimeout(() => {
-                    const loading = document.getElementById('loadingOverlay');
-                    if (loading) loading.style.display = 'none';
-                }, 500);
-                
-                // Load tab đầu tiên
-                loadTabContent('reports');
-                
-            } catch (error) {
-                console.error('App initialization error:', error);
-                showErrorMessage(error);
-            }
-        });
-
-        function loadTabContent(tabId) {
-            const tabContents = document.querySelectorAll('.tab-content');
-            tabContents.forEach(content => {
-                content.classList.remove('active');
-                if (content.id === tabId) {
-                    content.classList.add('active');
-                }
-            });
-            
-            const tabContent = document.getElementById(tabId);
-            if (tabContent) {
-                tabContent.innerHTML = '<div class="tab-loading">Đang tải...</div>';
-            }
-            
-            setTimeout(() => {
-                switch(tabId) {
-                    case 'reports':
-                        if (typeof loadReports === 'function') loadReports();
-                        break;
-                    case 'inventory':
-                        if (typeof loadInventory === 'function') loadInventory();
-                        break;
-                    case 'statistics':
-                        if (typeof loadStatistics === 'function') loadStatistics();
-                        break;
-                    case 'employees':
-                        if (typeof loadEmployeesData === 'function') loadEmployeesData();
-                        break;
-                    case 'overview':
-                        if (typeof loadOverview === 'function') loadOverview();
-                        break;
-                    case 'settings':
-                        if (typeof loadSettings === 'function') loadSettings();
-                        break;
-                }
-            }, 100);
-        }
-
-        function showErrorMessage(error) {
-            const loading = document.getElementById('loadingOverlay');
-            if (loading) {
-                loading.innerHTML = `
-                    <div class="error-message">
-                        <h3>⚠️ Lỗi khởi tạo ứng dụng</h3>
-                        <p>${error.message || 'Vui lòng tải lại trang'}</p>
-                        <button onclick="location.reload()" class="reload-btn">
-                            Tải lại trang
-                        </button>
-                    </div>
-                `;
-            }
-        }
-    </script>
 </body>
 </html>
