@@ -1,0 +1,36 @@
+{
+  "date": "2025-12-05",
+  "openingBalance": 0,
+  "revenue": 11111111111111110,
+  "expenses": [],
+  "transfers": [],
+  "closingBalance": 1111111111110,
+  "inventory": [
+    {
+      "productId": 5,
+      "productName": "NÆ°á»c cam",
+      "quantity": 1,
+      "price": 22000,
+      "stockBefore": 40
+    },
+    {
+      "productId": 4,
+      "productName": "TrÃ  sá»¯a trÃ¢n chÃ¢u",
+      "quantity": 1,
+      "price": 30000,
+      "stockBefore": 60
+    }
+  ],
+  "actualProfit": 0,
+  "totalExpenses": 0,
+  "totalTransfers": 0,
+  "id": 1,
+  "previousVersion": 1,
+  "edited": true,
+  "editCount": 6,
+  "lastEdited": "2025-12-05T16:52:18.111Z",
+  "_localId": 1,
+  "_inventoryCount": 2,
+  "_savedAt": "2025-12-05T16:52:18.128Z",
+  "_version": "1.1"
+}
