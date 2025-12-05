@@ -1,4 +1,12 @@
 // github.js - Xử lý lưu trữ và đồng bộ với GitHub
+function decodeBase64UTF8(base64String) {
+    const binary = atob(base64String);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return new TextDecoder('utf-8').decode(bytes);
+}
 
 class GitHubManager {
     constructor() {
@@ -98,53 +106,48 @@ class GitHubManager {
         }
     }
 
-    // Tải file từ GitHub
-async getFile(path) {
+    async getFile(path) {
     if (!this.initialized) {
         throw new Error('GitHub chưa được cấu hình');
     }
-    
+
     try {
         const apiUrl = `${this.baseUrl}/repos/${this.repo}/contents/${path}?ref=${this.branch}`;
         const response = await fetch(apiUrl, {
             headers: {
-                'Authorization': `token ${this.token}`,
-                'Accept': 'application/vnd.github.v3+json'
+                "Authorization": `token ${this.token}`,
+                "Accept": "application/vnd.github.v3+json"
             }
         });
-        
+
         if (response.ok) {
             const data = await response.json();
-            
-            // Nếu file là base64 encoded, decode nó
-            if (data.content && data.encoding === 'base64') {
-                // Sửa: Giải mã Base64 và xử lý UTF-8 đúng cách
-                const binaryString = atob(data.content);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-                const content = new TextDecoder('utf-8').decode(bytes);
-                
+
+            if (data.content && data.encoding === "base64") {
+                const content = decodeBase64UTF8(data.content);
+
                 return {
                     content: content,
                     sha: data.sha,
                     path: data.path
                 };
             }
-            
+
             return data;
-        } else if (response.status === 404) {
-            // File không tồn tại
+        } 
+        else if (response.status === 404) {
             return null;
-        } else {
+        } 
+        else {
             throw new Error(`Lỗi tải file: ${response.status} - ${response.statusText}`);
         }
+
     } catch (error) {
-        console.error('Error getting file from GitHub:', error);
+        console.error("Error getting file from GitHub:", error);
         throw error;
     }
 }
+
 
    // Tạo file mới trên GitHub - FIXED 409 Conflict
 async saveFile(path, content, sha = null, message = null) {
@@ -452,9 +455,12 @@ async getSimpleFile(path) {
                 
                 try {
                     // Cách 1: Sử dụng atob
-                    const decodedContent = atob(base64Content);
-                    console.log(`✅ Đã decode file ${data.name}, kích thước: ${decodedContent.length} chars`);
-                    return decodedContent;
+                  if (data.content && data.encoding === 'base64') {
+    const base64Content = data.content.replace(/\s/g, '');
+    const decodedContent = decodeBase64UTF8(base64Content);
+    return decodedContent;
+}
+
                 } catch (decodeError) {
                     console.error('Lỗi decode base64 (atob):', decodeError);
                     
