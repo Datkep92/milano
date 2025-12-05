@@ -1,0 +1,32 @@
+{
+  "date": "2025-12-05",
+  "openingBalance": 0,
+  "revenue": 3000000,
+  "expenses": [
+    {
+      "name": "mua đá",
+      "amount": 30000
+    },
+    {
+      "name": "mua cam",
+      "amount": 20000
+    }
+  ],
+  "transfers": [
+    {
+      "name": "Chuyển khoản",
+      "amount": 18000
+    }
+  ],
+  "closingBalance": 500000,
+  "inventory": [],
+  "actualProfit": 2432000,
+  "timestamp": "2025-12-05T05:26:33.417Z",
+  "totalExpenses": 50000,
+  "totalTransfers": 18000,
+  "edited": true,
+  "editCount": 3,
+  "id": 1,
+  "previousVersion": 1,
+  "lastEdited": "2025-12-05T05:22:43.819Z"
+}
