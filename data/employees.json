@@ -1,0 +1,45 @@
+[
+  {
+    "employeeId": "NV438512",
+    "name": "test",
+    "phone": "0990090009",
+    "baseSalary": 5000000,
+    "role": "employee",
+    "status": "active",
+    "createdBy": "admin",
+    "createdAt": "2025-12-05T04:37:18.512Z"
+  },
+  {
+    "employeeId": "NV965212",
+    "name": "uyên",
+    "phone": "9876543211",
+    "baseSalary": 5000000,
+    "role": "employee",
+    "status": "active",
+    "createdBy": "admin",
+    "createdAt": "2025-12-04T17:39:25.212Z"
+  },
+  {
+    "employeeId": "admin_001",
+    "name": "NGHĨA",
+    "phone": "0987654321",
+    "role": "admin",
+    "password": "123123",
+    "status": "active",
+    "updatedAt": "2025-12-04T17:39:58.939Z",
+    "createdAt": "2025-12-04T10:31:26.252Z",
+    "_syncTimestamp": 1764852619395,
+    "baseSalary": 5000000
+  },
+  {
+    "employeeId": "emp_001",
+    "name": "Nhân Viên Mẫu",
+    "phone": "0123456789",
+    "role": "employee",
+    "password": "",
+    "status": "inactive",
+    "updatedAt": "2025-12-04T16:49:01.084Z",
+    "createdAt": "2025-12-04T10:31:26.254Z",
+    "_syncTimestamp": 1764852619663
+  }
+]
