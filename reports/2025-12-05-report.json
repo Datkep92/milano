@@ -4,7 +4,7 @@
   "revenue": 3000000,
   "expenses": [
     {
-      "name": "mua ÄÃ¡",
+      "name": "mua ÃÂÃÂ¡",
       "amount": 30000
     },
     {
@@ -14,19 +14,19 @@
   ],
   "transfers": [
     {
-      "name": "Chuyá»n khoáº£n",
+      "name": "ChuyÃ¡Â»Ân khoÃ¡ÂºÂ£n",
       "amount": 18000
     }
   ],
   "closingBalance": 500000,
   "inventory": [],
   "actualProfit": 2432000,
-  "timestamp": "2025-12-05T05:29:18.229Z",
+  "timestamp": "2025-12-05T06:11:25.436Z",
   "totalExpenses": 50000,
   "totalTransfers": 18000,
   "edited": true,
-  "editCount": 7,
+  "editCount": 6,
   "id": 1,
   "previousVersion": 1,
-  "lastEdited": "2025-12-05T05:28:56.587Z"
+  "lastEdited": "2025-12-05T06:10:59.516Z"
 }
