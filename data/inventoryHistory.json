@@ -1,0 +1,17 @@
+[
+  {
+    "id": "hist_1764909333618_qs8gvod",
+    "historyId": "hist_1764909333618_qs8gvod",
+    "productId": "prod_wiam2jn",
+    "type": "in",
+    "quantity": 200,
+    "unitPrice": 10000,
+    "totalPrice": 2000000,
+    "note": "Mua sắm vận hành: đường - Ngày: 5/12/2025",
+    "createdBy": "admin",
+    "date": "2025-12-05T05:00:00.000Z",
+    "reportDate": "2025-12-05",
+    "createdAt": "2025-12-05T05:00:00.000Z",
+    "updatedAt": "2025-12-05T05:00:00.000Z"
+  }
+]
