@@ -1,0 +1,49 @@
+{
+  "date": "2025-12-13",
+  "openingBalance": 0,
+  "revenue": 1111111111111111,
+  "expenses": [],
+  "transfers": [],
+  "closingBalance": 0,
+  "inventory": [
+    {
+      "productId": 61,
+      "productName": "Trà sữa trân châu",
+      "quantity": 1,
+      "price": 30000,
+      "stockBefore": 55
+    },
+    {
+      "productId": 60,
+      "productName": "Trà đào",
+      "quantity": 1,
+      "price": 25000,
+      "stockBefore": 45
+    },
+    {
+      "productId": 59,
+      "productName": "Cà phê sữa",
+      "quantity": 1,
+      "price": 20000,
+      "stockBefore": 70
+    },
+    {
+      "productId": 58,
+      "productName": "Cà phê đen",
+      "quantity": 3,
+      "price": 15000,
+      "stockBefore": 83
+    }
+  ],
+  "actualProfit": 1111111111111111,
+  "totalExpenses": 0,
+  "totalTransfers": 0,
+  "timestamp": "2025-12-05T08:25:53.567Z",
+  "edited": false,
+  "editCount": 0,
+  "id": 26,
+  "_localId": 26,
+  "_inventoryCount": 4,
+  "_savedAt": "2025-12-05T08:25:53.586Z",
+  "_version": "1.1"
+}
