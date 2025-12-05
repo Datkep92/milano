@@ -23,26 +23,12 @@
     }
   ],
   "closingBalance": 500000,
-  "inventory": [
-    {
-      "productId": 21,
-      "productName": "Cà phê đen",
-      "quantity": 1,
-      "price": 15000,
-      "stockBefore": 100
-    },
-    {
-      "productId": 26,
-      "productName": "Sinh tố bơ",
-      "quantity": 10,
-      "price": 35000,
-      "stockBefore": 30
-    }
-  ],
+  "inventory": [],
   "actualProfit": 2380000,
-  "timestamp": "2025-12-05T06:17:46.558Z",
+  "timestamp": "2025-12-05T06:18:48.623Z",
   "totalExpenses": 60000,
   "totalTransfers": 60000,
   "edited": false,
-  "editCount": 0
+  "editCount": 0,
+  "id": 3
 }
