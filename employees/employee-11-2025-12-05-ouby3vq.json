@@ -1,0 +1,12 @@
+{
+  "type": "employee",
+  "action": "update",
+  "data": {
+    "name": "Nghĩa",
+    "phone": "0987654321",
+    "baseSalary": 5000000,
+    "createdAt": "2025-12-05T09:37:46.791Z",
+    "id": 11
+  },
+  "timestamp": "2025-12-05T09:37:46.803Z"
+}
