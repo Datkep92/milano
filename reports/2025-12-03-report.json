@@ -1,0 +1,17 @@
+{
+  "date": "2025-12-03",
+  "openingBalance": 0,
+  "revenue": 1,
+  "expenses": [],
+  "transfers": [],
+  "closingBalance": 0,
+  "inventory": [],
+  "actualProfit": 1,
+  "totalExpenses": 0,
+  "totalTransfers": 0,
+  "id": 9,
+  "previousVersion": 9,
+  "edited": true,
+  "editCount": 1,
+  "lastEdited": "2025-12-05T06:52:50.158Z"
+}
