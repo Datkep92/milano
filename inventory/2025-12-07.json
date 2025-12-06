@@ -1,0 +1,21 @@
+{
+  "type": "inventory",
+  "data": {
+    "date": "2025-12-07",
+    "purchases": [
+      {
+        "id": 1765043172266,
+        "date": "07/12/2025",
+        "type": "material",
+        "name": "Cà phê đen",
+        "quantity": 100,
+        "unit": "kg",
+        "total": 1200000,
+        "unitPrice": 12000,
+        "addedAt": "2025-12-06T17:46:12.266Z"
+      }
+    ],
+    "services": [],
+    "lastUpdated": "2025-12-06T17:46:12.267Z"
+  }
+}
