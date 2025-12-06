@@ -1,0 +1,28 @@
+{
+  "date": "09/12/2025",
+  "openingBalance": 5550555,
+  "revenue": 3000000,
+  "expenses": [],
+  "transfers": [],
+  "closingBalance": 100000,
+  "actualReceived": 8450555,
+  "inventoryExports": [
+    {
+      "id": 1765010997827,
+      "productId": 1765010960955,
+      "product": "111",
+      "quantity": 3,
+      "unit": "kg",
+      "time": "15:49",
+      "date": "2025-12-09",
+      "unitPrice": 0,
+      "totalValue": 0,
+      "productCode": "",
+      "processed": true,
+      "processedAt": "2025-12-06T08:50:22.499Z"
+    }
+  ],
+  "savedAt": "2025-12-06T08:50:25.976Z",
+  "version": 2,
+  "inventoryUpdated": true
+}
