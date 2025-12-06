@@ -1,0 +1,13 @@
+{
+  "type": "purchase",
+  "data": {
+    "id": 1765012087265,
+    "date": "06/12/2025",
+    "type": "material",
+    "name": "CÀ PHÊ SỮA",
+    "quantity": 100,
+    "unit": "kg",
+    "total": 1200000,
+    "addedAt": "2025-12-06T09:08:07.265Z"
+  }
+}
