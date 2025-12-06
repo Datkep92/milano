@@ -29,6 +29,16 @@
     "employees/2025-12-11.json": {
       "sha": "0df745c4954325473822545ac158f39a32aff9af",
       "lastModified": "2025-12-06T07:19:29.424Z"
+    },
+    "db.json": {
+      "hash": "cff7cae58b2ef13da2f4d18eb272697de67b0eb3",
+      "updated": "2025-12-06T07:20:17.524Z",
+      "size": 2619
+    },
+    "dbindex.json": {
+      "hash": "fc576375cb9c38c5ac22ef0ec0fe9996fb38a930",
+      "updated": "2025-12-06T07:20:18.130Z",
+      "size": 2470
     }
   },
   "modules": {
@@ -75,5 +85,6 @@
         }
       }
     }
-  }
+  },
+  "lastSync": "2025-12-06T07:20:26.964Z"
 }
