@@ -1,20 +1,55 @@
 {
-  "version": "1.0",
-  "lastUpdated": "2025-12-06T04:17:01.845Z",
+  "version": "2.0",
+  "lastUpdated": "2025-12-06T07:01:29.709Z",
+  "files": {
+    "reports/06-12-2025.json": {
+      "sha": "75ad2440c902d65eb236d2ee0638bffbffefb2f6",
+      "lastModified": "2025-12-06T07:01:28.384Z"
+    },
+    "reports/2025-12-06.json": {
+      "sha": "a2b5c0e575d53a65dc95f794aa6e6f7d7e58fe11",
+      "lastModified": "2025-12-06T07:01:28.384Z"
+    },
+    "inventory/2025-12-05.json": {
+      "sha": "99465b8035821b4159c478996ba7c0b13ed4a45d",
+      "lastModified": "2025-12-06T07:01:29.058Z"
+    },
+    "employees/2025-12-05.json": {
+      "sha": "e86c793058812c1d5eeacb1d66e5ad1e852abe37",
+      "lastModified": "2025-12-06T07:01:29.709Z"
+    }
+  },
   "modules": {
     "reports": {
-      "latest": "06-12-2025.json",
-      "files": [
-        "06-12-2025.json"
-      ]
+      "latest": "2025-12-06.json",
+      "files": {
+        "06-12-2025.json": {
+          "sha": "75ad2440c902d65eb236d2ee0638bffbffefb2f6",
+          "lastModified": "2025-12-06T07:01:28.384Z"
+        },
+        "2025-12-06.json": {
+          "sha": "a2b5c0e575d53a65dc95f794aa6e6f7d7e58fe11",
+          "lastModified": "2025-12-06T07:01:28.384Z"
+        }
+      }
     },
     "inventory": {
-      "productsLastUpdated": null,
-      "purchasesLastMonth": null
+      "latest": "2025-12-05.json",
+      "files": {
+        "2025-12-05.json": {
+          "sha": "99465b8035821b4159c478996ba7c0b13ed4a45d",
+          "lastModified": "2025-12-06T07:01:29.058Z"
+        }
+      }
     },
     "employees": {
-      "count": 0,
-      "salariesCurrentMonth": null
+      "latest": "2025-12-05.json",
+      "files": {
+        "2025-12-05.json": {
+          "sha": "e86c793058812c1d5eeacb1d66e5ad1e852abe37",
+          "lastModified": "2025-12-06T07:01:29.709Z"
+        }
+      }
     }
   }
 }
