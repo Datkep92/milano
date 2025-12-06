@@ -8,8 +8,6 @@ class ReportsModule {
         this.inventoryExports = [];
         this.isLoading = false;
         this.currentReport = null;
-        this.calculatedRevenue = 0; // Thêm biến này
-
     }
     
     formatDateForDisplay(date) {
@@ -79,59 +77,70 @@ class ReportsModule {
             // Lấy số dư đầu kỳ từ ngày trước đó
             let openingBalance = await this.getOpeningBalance(this.currentDateKey);
             
-             mainContent.innerHTML = `
-            <div class="report-container">
-                <div class="report-header">
-                    <h3><i class="fas fa-chart-line"></i> ${this.currentDate}: Dư đầu kỳ: ${openingBalance.toLocaleString()}</h3> 
-                    <div class="date-picker">
-                        <input type="date" id="reportDate" value="${this.getInputDateValue()}"
-                               onchange="window.reportsModule.changeDate()">
+            mainContent.innerHTML = `
+                <div class="report-container">
+        <div class="report-header">
+            <h1><i class="fas fa-chart-line"></i> BÁO CÁO: ${this.currentDate}</h1>
+            <div class="date-picker">
+                <input type="date" id="reportDate" value="${this.getInputDateValue()}"
+                       onchange="window.reportsModule.changeDate()">
+                <!-- Xóa nút button -->
+            </div>
+        </div>
+                    
+                    <div class="report-card">
+                        <label>SỐ DƯ ĐẦU KỲ</label>
+                        <div class="input-group">
+                            <input type="text" id="openingBalance" value="${openingBalance.toLocaleString()}" readonly>
+                            <span class="currency">₫</span>
+                        </div>
+                        <small class="hint">(Tự động từ ngày trước)</small>
                     </div>
-                </div>
-                <div class="action-card" onclick="window.reportsModule.showExpensesModal()">
-                    <i class="fas fa-credit-card"></i>
-                    <span>💳 CHI PHÍ</span>
-                    <span id="expensesTotal" class="amount">${this.getTotalExpenses().toLocaleString()} ₫</span>
-                </div>
-                
-                <div class="action-card" onclick="window.reportsModule.showTransfersModal()">
-                    <i class="fas fa-university"></i>
-                    <span>🏦 CHUYỂN KHOẢN</span>
-                    <span id="transfersTotal" class="amount">${this.getTotalTransfers().toLocaleString()} ₫</span>
-                </div>
-                
-                
-                <div class="report-card">
-                    <label>THỰC NHẬN (tiền mặt)</label>
-                    <div class="input-group">
-                        <input type="text" id="actualReceived" value="${this.currentReport?.actualReceived || 0}" 
-                               oninput="window.reportsModule.formatCurrency(this); window.reportsModule.calculate()" 
-                               placeholder="0">
-                        <span class="currency">₫</span>
+                    
+                    <div class="report-card">
+                        <label>DOANH THU</label>
+                        <div class="input-group">
+                            <input type="text" id="revenue" value="${this.currentReport?.revenue || 0}" 
+                                   oninput="window.reportsModule.formatCurrency(this); window.reportsModule.calculate()" 
+                                   placeholder="0">
+                            <span class="currency">₫</span>
+                        </div>
                     </div>
-                </div>
-                
-                
-                
-                <div class="report-card">
-                    <label>SỐ DƯ CUỐI KỲ</label>
-                    <div class="input-group">
-                        <input type="text" id="closingBalance" value="${this.currentReport?.closingBalance || 0}" 
-                               oninput="window.reportsModule.formatCurrency(this); window.reportsModule.calculate()" 
-                               placeholder="0">
-                        <span class="currency">₫</span>
+                    
+                    <div class="action-card" onclick="window.reportsModule.showExpensesModal()">
+                        <i class="fas fa-credit-card"></i>
+                        <span>💳 CHI PHÍ</span>
+                        <span id="expensesTotal" class="amount">${this.getTotalExpenses().toLocaleString()} ₫</span>
                     </div>
-                </div>
-
-                
-                <div class="action-buttons">
-                    <button class="btn-primary" onclick="window.reportsModule.saveReport()" id="saveButton">
-                        <i class="fas fa-save"></i> 💾 LƯU
-                    </button>
-                    <button class="btn-secondary" onclick="window.reportsModule.sendToZalo()">
-                        <i class="fas fa-paper-plane"></i> 📱 GỬI ZALO
-                    </button>
-                </div>
+                    
+                    <div class="action-card" onclick="window.reportsModule.showTransfersModal()">
+                        <i class="fas fa-university"></i>
+                        <span>🏦 CHUYỂN KHOẢN</span>
+                        <span id="transfersTotal" class="amount">${this.getTotalTransfers().toLocaleString()} ₫</span>
+                    </div>
+                    
+                    <div class="report-card">
+                        <label>SỐ DƯ CUỐI KỲ</label>
+                        <div class="input-group">
+                            <input type="text" id="closingBalance" value="${this.currentReport?.closingBalance || 0}" 
+                                   oninput="window.reportsModule.formatCurrency(this); window.reportsModule.calculate()" 
+                                   placeholder="0">
+                            <span class="currency">₫</span>
+                        </div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <h3>THỰC NHẬN</h3>
+                        <div class="result-amount" id="actualReceived">0 ₫</div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-primary" onclick="window.reportsModule.saveReport()" id="saveButton">
+                            <i class="fas fa-save"></i> 💾 LƯU
+                        </button>
+                        <button class="btn-secondary" onclick="window.reportsModule.sendToZalo()">
+                            <i class="fas fa-paper-plane"></i> 📱 GỬI ZALO
+                        </button>
+                    </div>
                     <div class="action-card" onclick="window.reportsModule.toggleInventory()">
                         <i class="fas fa-boxes"></i>
                         <span>📦 XUẤT KHO</span>
@@ -158,12 +167,18 @@ class ReportsModule {
             `;
             
             // Tính toán ban đầu
-        this.calculate();
-        
-    } catch (error) {
-        console.error('Error rendering reports:', error);
-        // ... (phần error giữ nguyên)
-    } finally {
+            this.calculate();
+            
+        } catch (error) {
+            console.error('Error rendering reports:', error);
+            mainContent.innerHTML = `
+                <div class="error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Lỗi khi tải báo cáo: ${error.message}</p>
+                    <button onclick="window.reportsModule.render()">Thử lại</button>
+                </div>
+            `;
+        } finally {
         this.isLoading = false;
     }
 }
@@ -261,40 +276,31 @@ class ReportsModule {
 }
     
     calculate() {
-    const openingBalance = this.getCurrencyValue('openingBalance');
-    const actualReceived = this.getCurrencyValue('actualReceived'); // Đổi tên từ 'revenue'
-    const closingBalance = this.getCurrencyValue('closingBalance');
-    
-    const expensesTotal = this.getTotalExpenses();
-    const transfersTotal = this.getTotalTransfers();
-    
-    // Công thức mới: Doanh thu = Thực nhận + Chi phí + Chuyển khoản - Số dư đầu kỳ + Số dư cuối kỳ
-    const revenue = actualReceived + expensesTotal + transfersTotal - openingBalance + closingBalance;
-    
-    const revenueEl = document.getElementById('revenue'); // Giữ tên revenue để hiển thị doanh thu
-    if (revenueEl) {
-        revenueEl.textContent = `${revenue.toLocaleString()} ₫`;
+        const openingBalance = this.getCurrencyValue('openingBalance');
+        const revenue = this.getCurrencyValue('revenue');
+        const closingBalance = this.getCurrencyValue('closingBalance');
+        
+        const expensesTotal = this.getTotalExpenses();
+        const transfersTotal = this.getTotalTransfers();
+        
+        const actualReceived = openingBalance + revenue - expensesTotal - transfersTotal - closingBalance;
+        
+        const actualReceivedEl = document.getElementById('actualReceived');
+        if (actualReceivedEl) {
+            actualReceivedEl.textContent = `${actualReceived.toLocaleString()} ₫`;
+            actualReceivedEl.className = `result-amount ${actualReceived >= 0 ? 'positive' : 'negative'}`;
+        }
+        
+        const expensesTotalEl = document.getElementById('expensesTotal');
+        if (expensesTotalEl) {
+            expensesTotalEl.textContent = `${expensesTotal.toLocaleString()} ₫`;
+        }
+        
+        const transfersTotalEl = document.getElementById('transfersTotal');
+        if (transfersTotalEl) {
+            transfersTotalEl.textContent = `${transfersTotal.toLocaleString()} ₫`;
+        }
     }
-    
-    const actualReceivedEl = document.getElementById('actualReceived');
-    if (actualReceivedEl) {
-        actualReceivedEl.textContent = `${actualReceived.toLocaleString()} ₫`;
-        actualReceivedEl.className = `result-amount ${actualReceived >= 0 ? 'positive' : 'negative'}`;
-    }
-    
-    const expensesTotalEl = document.getElementById('expensesTotal');
-    if (expensesTotalEl) {
-        expensesTotalEl.textContent = `${expensesTotal.toLocaleString()} ₫`;
-    }
-    
-    const transfersTotalEl = document.getElementById('transfersTotal');
-    if (transfersTotalEl) {
-        transfersTotalEl.textContent = `${transfersTotal.toLocaleString()} ₫`;
-    }
-    
-    // Lưu giá trị doanh thu đã tính
-    this.calculatedRevenue = revenue;
-}
     
     getTotalExpenses() {
         return this.expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
@@ -1092,14 +1098,11 @@ async restoreVersion(date, versionIndex) {
     async saveReport() {
     try {
         const openingBalance = this.getCurrencyValue('openingBalance');
-        const actualReceived = this.getCurrencyValue('actualReceived'); // Đổi từ revenue sang actualReceived
+        const revenue = this.getCurrencyValue('revenue');
         const closingBalance = this.getCurrencyValue('closingBalance');
-        const expensesTotal = this.getTotalExpenses();
-        const transfersTotal = this.getTotalTransfers();
         
-        // Validation
-        if (actualReceived < 0) {
-            window.showToast('Số tiền thực nhận không hợp lệ', 'warning');
+        if (revenue < 0) {
+            window.showToast('Doanh thu không hợp lệ', 'warning');
             return;
         }
         
@@ -1108,9 +1111,7 @@ async restoreVersion(date, versionIndex) {
             return;
         }
         
-        // Tính toán doanh thu theo công thức mới
-        // Doanh thu = Thực nhận + Chi phí + Chuyển khoản - Số dư đầu kỳ + Số dư cuối kỳ
-        const revenue = actualReceived + expensesTotal + transfersTotal - openingBalance + closingBalance;
+        const actualReceived = openingBalance + revenue - this.getTotalExpenses() - this.getTotalTransfers() - closingBalance;
         
         // **KIỂM TRA NẾU CÓ XUẤT KHO**
         let exportSuccess = true;
@@ -1125,11 +1126,11 @@ async restoreVersion(date, versionIndex) {
         const reportData = {
             date: this.currentDate,
             openingBalance,
-            actualReceived, // Lưu thực nhận (tiền mặt nhận được)
-            revenue, // Lưu doanh thu đã tính toán
+            revenue,
             expenses: this.expenses,
             transfers: this.transfers,
             closingBalance,
+            actualReceived,
             inventoryExports: this.inventoryExports, // Lưu danh sách đã xuất
             savedAt: new Date().toISOString(),
             version: (this.currentReport?.version || 0) + 1,
@@ -1161,34 +1162,19 @@ async restoreVersion(date, versionIndex) {
             
             // **QUAN TRỌNG: RESET DANH SÁCH CHỜ XUẤT SAU KHI LƯU**
             if (this.inventoryExports.length > 0) {
-                console.log(`🔄 Resetting ${this.inventoryExports.length} pending exports`);
+                //console.log(`🔄 Resetting ${this.inventoryExports.length} pending exports`);
                 this.inventoryExports = []; // Reset danh sách chờ xuất
             }
             
             // Cập nhật UI
             this.updateInventoryUI();
             
-            window.showToast(`✅ Đã lưu báo cáo ngày ${this.currentDate}${exportSuccess && this.inventoryExports.length > 0 ? ' và xuất kho' : ''}`, 'success');
+            window.showToast(`✅ Đã lưu báo cáo ngày ${this.currentDate}${this.inventoryExports.length > 0 ? ' và xuất kho' : ''}`, 'success');
             
             // Render lại để hiển thị trạng thái mới
             await this.render();
         } else {
-            window.showToast('Lưu cục bộ thành công, chưa đồng bộ GitHub', 'warning');
-            
-            // Vẫn lưu cục bộ ngay cả khi GitHub lỗi
-            window.dataManager.data.reports[dateKey] = reportData;
-            window.dataManager.saveToLocalStorage();
-            
-            // Cập nhật currentReport
-            this.currentReport = reportData;
-            
-            // Reset danh sách chờ xuất
-            if (this.inventoryExports.length > 0) {
-                this.inventoryExports = [];
-                this.updateInventoryUI();
-            }
-            
-            await this.render();
+            window.showToast('Lỗi khi lưu báo cáo', 'error');
         }
         
     } catch (error) {
@@ -1337,31 +1323,43 @@ async processInventoryExports() {
 }
     
     sendToZalo() {
-    const openingBalance = this.getCurrencyValue('openingBalance');
-    const actualReceived = this.getCurrencyValue('actualReceived');
-    const closingBalance = this.getCurrencyValue('closingBalance');
-    const revenue = this.calculatedRevenue || 0; // Lấy doanh thu đã tính
-    
-    const message = `
+        const openingBalance = this.getCurrencyValue('openingBalance');
+        const revenue = this.getCurrencyValue('revenue');
+        const closingBalance = this.getCurrencyValue('closingBalance');
+        const actualReceived = openingBalance + revenue - this.getTotalExpenses() - this.getTotalTransfers() - closingBalance;
+        
+        const message = `
 📊 BÁO CÁO NGÀY ${this.currentDate}
 
 💰 Số dư đầu kỳ: ${openingBalance.toLocaleString()} ₫
-💵 Thực nhận (tiền mặt): ${actualReceived.toLocaleString()} ₫
+📈 Doanh thu: ${revenue.toLocaleString()} ₫
 💳 Chi phí: ${this.getTotalExpenses().toLocaleString()} ₫
 🏦 Chuyển khoản: ${this.getTotalTransfers().toLocaleString()} ₫
 💰 Số dư cuối kỳ: ${closingBalance.toLocaleString()} ₫
-📈 Doanh thu tính toán: ${revenue.toLocaleString()} ₫
+✅ Thực nhận: ${actualReceived.toLocaleString()} ₫
 
 ${this.expenses.length > 0 ? `📝 Chi tiết chi phí:\n${this.expenses.map(e => `• ${e.name}: ${e.amount.toLocaleString()} ₫`).join('\n')}\n` : ''}
 ${this.transfers.length > 0 ? `🏦 Chi tiết chuyển khoản:\n${this.transfers.map(t => `• ${t.content}: ${t.amount.toLocaleString()} ₫`).join('\n')}\n` : ''}
+${this.inventoryExports.length > 0 ? `📦 Xuất kho (${this.inventoryExports.length} sản phẩm):\n${this.inventoryExports.map(item => `• ${item.time} - ${item.product} - ${item.quantity} ${item.unit}`).join('\n')}` : '📦 Chưa xuất kho sản phẩm nào'}
 
 --- 
 Hệ thống Milano ☕
 ${new Date().toLocaleString('vi-VN')}
-    `.trim();
-    
-    // ... (phần copy và mở Zalo giữ nguyên)
-}
+        `.trim();
+        
+        navigator.clipboard.writeText(message).then(() => {
+            window.showToast('Đã copy nội dung, mở Zalo để gửi', 'success');
+            
+            const encodedMessage = encodeURIComponent(message);
+            const zaloUrl = `https://zalo.me/?text=${encodedMessage}`;
+            
+            window.open(zaloUrl, '_blank');
+            
+        }).catch(err => {
+            console.error('Copy failed:', err);
+            window.showToast('Lỗi khi copy nội dung', 'error');
+        });
+    }
 }
 
 // Khởi tạo module

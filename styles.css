@@ -1496,3 +1496,84 @@ body.modal-open {
     background: #d1fae5;
     color: #059669;
 }
+
+.action-buttons {
+    display: flex; /* Kích hoạt Flexbox để sắp xếp các mục con */
+    gap: 10px; /* Tạo khoảng cách giữa các nút */
+    padding: 10px; /* Thêm padding xung quanh (tùy chọn) */
+    width: 100%; /* Đảm bảo div chiếm toàn bộ chiều rộng có thể */
+    box-sizing: border-box; /* Quan trọng để padding không làm tăng chiều rộng tổng */
+}
+
+.action-buttons button {
+    flex-grow: 1; /* Quan trọng: Các nút sẽ tự động co dãn để lấp đầy không gian */
+    flex-shrink: 1; /* Cho phép các nút co lại khi không gian hẹp */
+    flex-basis: 0; /* Đảm bảo các nút chia đều không gian ban đầu */
+    white-space: nowrap; /* Ngăn không cho chữ trong nút bị xuống dòng */
+    /* Thêm các style khác cho nút nếu cần, ví dụ: */
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+/* Container chứa các nút, sử dụng Flexbox để sắp xếp cùng hàng và co giãn */
+.button-radio-group {
+    display: flex;
+    gap: 10px; /* Khoảng cách giữa các nút */
+    width: 100%;
+}
+
+/* Label bao quanh input và span, quan trọng để kích hoạt Flexbox cho các nút con */
+.radio-button-label {
+    display: flex;
+    flex-grow: 1; /* Quan trọng: Cho phép nút co dãn để chiếm đều không gian */
+    cursor: pointer;
+}
+
+/* Ẩn radio button mặc định */
+.radio-button-label input[type="radio"] {
+    display: none;
+}
+
+/* Tạo kiểu cho nút bấm (span) */
+.button-radio {
+    display: block;
+    width: 100%; /* Chiếm hết chiều rộng của label cha */
+    padding: 10px 15px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f8f8f8;
+    color: #333;
+    transition: all 0.2s ease;
+}
+
+/* Màu nền và viền khi nút được chọn */
+.radio-button-label input[type="radio"]:checked + .button-radio {
+    color: #fff;
+    font-weight: bold;
+    border-color: transparent;
+}
+
+/* Màu khi Thưởng được chọn */
+.radio-button-label input[type="radio"]:checked + .button-radio.reward {
+    background-color: #5cb85c; /* Xanh lá cây */
+}
+
+/* Màu khi Phạt được chọn */
+.radio-button-label input[type="radio"]:checked + .button-radio.penalty {
+    background-color: #d9534f; /* Đỏ */
+}
+
+/* Màu viền mặc định cho nút Thưởng (tùy chọn) */
+.button-radio.reward {
+    border-color: #5cb85c;
+    color: #5cb85c;
+}
+
+/* Màu viền mặc định cho nút Phạt (tùy chọn) */
+.button-radio.penalty {
+    border-color: #d9534f;
+    color: #d9534f;
+}

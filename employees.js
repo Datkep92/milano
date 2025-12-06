@@ -421,7 +421,6 @@ class EmployeesModule {
             mainContent.innerHTML = `
                 <div class="employees-container">
                     <div class="employees-header">
-                        <h1><i class="fas fa-users"></i> NHÂN VIÊN</h1>
                         <button class="btn-primary" onclick="window.employeesModule.showAddEmployeeModal()">
                             <i class="fas fa-plus"></i> THÊM NHÂN VIÊN
                         </button>
@@ -478,7 +477,7 @@ class EmployeesModule {
                             return `
                                 <div class="employee-card" onclick="window.employeesModule.showEmployeeDetail(${index})">
                                     <div class="employee-avatar">
-                                        <i class="fas fa-user"></i>
+                                        <i class="fas fa-user"></i> 
                                     </div>
                                     <div class="employee-info">
                                         <div class="employee-name">${employee.name}</div>
@@ -511,15 +510,7 @@ class EmployeesModule {
                         ` : ''}
                     </div>
                     
-                    <div class="action-card" onclick="window.employeesModule.toggleWorkCalendar()">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span>📅 LỊCH LÀM VIỆC THÁNG ${this.currentMonth}</span>
-                        <i class="fas fa-chevron-down" id="calendarToggle"></i>
-                    </div>
                     
-                    <div id="calendarSection" class="collapsible-section" style="display: none;">
-                        <!-- Calendar sẽ được render riêng -->
-                    </div>
                 </div>
             `;
             
@@ -748,53 +739,24 @@ class EmployeesModule {
         const modalContent = `
             <div class="modal-header">
                 <h2><i class="fas fa-user"></i> ${this.selectedEmployee.name.toUpperCase()}</h2>
+                <div class="employee-phone">
+                        <i class="fas fa-phone"></i> ${this.selectedEmployee.phone || 'Chưa có SĐT'}
+                    </div>
+                <button class="btn-icon danger" onclick="window.employeesModule.deleteCurrentEmployee()">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 <button class="modal-close" onclick="closeModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="employee-detail-header">
-                    <div class="employee-phone">
-                        <i class="fas fa-phone"></i> ${this.selectedEmployee.phone || 'Chưa có SĐT'}
-                    </div>
-                    <button class="btn-icon danger" onclick="window.employeesModule.deleteCurrentEmployee()">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-                
-                <div class="salary-card">
-                    <h3>LƯƠNG THÁNG ${this.currentMonth}</h3>
-                    <div class="salary-details">
-                        <div><span>Lương cơ bản:</span> <span>${salary.base.toLocaleString()} ₫</span></div>
-                        <div><span>Lương ngày:</span> <span>${Math.round(salary.base / 30).toLocaleString()} ₫/ngày</span></div>
-                        <div><span>Ngày bình thường:</span> <span>${salary.normalDays} ngày</span></div>
-                        <div><span>Ngày OFF:</span> <span>${salary.off} ngày</span></div>
-                        <div><span>Ngày tăng ca:</span> <span>${salary.overtime} ngày</span></div>
-                        <div><span>Thưởng/Phạt:</span> <span>${this.getPenaltiesTotal(penalties).toLocaleString()} ₫</span></div>
-                    </div>
-                    
-                    <div class="actual-salary">
                         <strong>THỰC LÃNH:</strong>
                         <span>${salary.actual.toLocaleString()} ₫</span>
                     </div>
-                </div>
-                
+            <div class="modal-body">
                 <div class="calendar-section">
                     <h3>LỊCH LÀM VIỆC THÁNG ${month}</h3>
                     ${calendarHTML}
                     
-                    <div class="calendar-legend">
-                        <div class="legend-item">
-                            <span class="legend-color normal"></span>
-                            <span>Bình thường</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-color off"></span>
-                            <span>OFF (-1 ngày lương)</span>
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-color overtime"></span>
-                            <span>Tăng ca (+1 ngày lương)</span>
-                        </div>
-                    </div>
+                    
                 </div>
                 
                 ${penalties.length > 0 ? `
@@ -816,17 +778,32 @@ class EmployeesModule {
                 
                 <div class="action-buttons">
                     <button class="btn-primary" onclick="window.employeesModule.showPenaltyModal()">
-                        <i class="fas fa-balance-scale"></i> CHẾ TÀI THƯỞNG/PHẠT
+                        <i class="fas fa-balance-scale"></i> CHẾ TÀI
                     </button>
                     <button class="btn-secondary" onclick="window.employeesModule.showEditModal()">
-                        <i class="fas fa-edit"></i> SỬA THÔNG TIN
+                        <i class="fas fa-edit"></i> SỬA
                     </button>
-                </div>
-                
+             
                 <button class="btn-outline" onclick="closeModal()">
                     ĐÓNG
                 </button>
             </div>
+            
+                <div class="salary-card">
+                    <h3>LƯƠNG THÁNG ${this.currentMonth}</h3>
+                    <div class="salary-details">
+                        <div><span>Lương cơ bản:</span> <span>${salary.base.toLocaleString()} ₫</span></div>
+                        <div><span>Lương ngày:</span> <span>${Math.round(salary.base / 30).toLocaleString()} ₫/ngày</span></div>
+                        <div><span>Ngày bình thường:</span> <span>${salary.normalDays} ngày</span></div>
+                        <div><span>Ngày OFF:</span> <span>${salary.off} ngày</span></div>
+                        <div><span>Ngày tăng ca:</span> <span>${salary.overtime} ngày</span></div>
+                        <div><span>Thưởng/Phạt:</span> <span>${this.getPenaltiesTotal(penalties).toLocaleString()} ₫</span></div>
+                    </div>
+                    
+                    
+                </div>
+                
+                
         `;
         
         window.showModal(modalContent);
@@ -941,27 +918,25 @@ class EmployeesModule {
     showPenaltyModal() {
         const modalContent = `
             <div class="modal-header">
-                <h2><i class="fas fa-balance-scale"></i> CHẾ TÀI</h2>
+                <strong>NV:</strong> ${this.selectedEmployee.name}
+
                 <button class="modal-close" onclick="closeModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="employee-info">
-                    <strong>NV:</strong> ${this.selectedEmployee.name}
-                </div>
                 
                 <div class="form-group">
-                    <label>Loại:</label>
-                    <div class="radio-group">
-                        <label>
-                            <input type="radio" name="penaltyType" value="reward" checked>
-                            <span class="radio-label reward">Thưởng (+)</span>
-                        </label>
-                        <label>
-                            <input type="radio" name="penaltyType" value="penalty">
-                            <span class="radio-label penalty">Phạt (-)</span>
-                        </label>
-                    </div>
-                </div>
+    <label>Loại:</label>
+    <div class="button-radio-group">
+        <label class="radio-button-label">
+            <input type="radio" name="penaltyType" value="reward" checked>
+            <span class="button-radio reward">Thưởng (+)</span>
+        </label>
+        <label class="radio-button-label">
+            <input type="radio" name="penaltyType" value="penalty">
+            <span class="button-radio penalty">Phạt (-)</span>
+        </label>
+    </div>
+</div>
                 
                 <div class="form-group">
                     <label>Số tiền (VND):</label>
