@@ -1,105 +1,23 @@
 {
   "metadata": {
     "version": "2.0",
-    "createdAt": "2025-12-06T06:04:04.524Z",
-    "lastUpdated": "2025-12-06T06:27:37.158Z",
-    "hash": "-40e91e99",
-    "lastSync": "2025-12-06T06:26:52.796Z"
+    "createdAt": "2025-12-06T07:23:42.309Z",
+    "lastUpdated": "2025-12-06T07:23:44.356Z",
+    "hash": "-27d4c95c",
+    "lastSync": "2025-12-06T07:23:43.349Z"
   },
   "data": {
-    "reports": {
-      "06/12/2025": {
-        "date": "06/12/2025",
-        "openingBalance": 0,
-        "revenue": 555555,
-        "expenses": [],
-        "transfers": [],
-        "closingBalance": 55555,
-        "actualReceived": 500000,
-        "inventoryExports": [
-          {
-            "productId": 1764999625111,
-            "product": "1",
-            "quantity": 2,
-            "unit": "kg",
-            "time": "12:52"
-          }
-        ],
-        "savedAt": "2025-12-06T06:27:35.146Z",
-        "updatedAt": "2025-12-06T06:27:35.146Z"
-      }
-    },
+    "reports": {},
     "employees": {
-      "list": [
-        {
-          "id": 1765001192871,
-          "name": "1",
-          "phone": "11",
-          "baseSalary": 111,
-          "penalties": [],
-          "workDays": {
-            "12/2025": {
-              "1": "normal",
-              "2": "normal",
-              "3": "normal",
-              "4": "normal",
-              "5": "normal",
-              "6": "normal",
-              "7": "normal",
-              "8": "normal",
-              "9": "normal",
-              "10": "normal",
-              "11": "normal",
-              "12": "normal",
-              "13": "normal",
-              "14": "normal",
-              "15": "normal",
-              "16": "normal",
-              "17": "normal",
-              "18": "normal",
-              "19": "normal",
-              "20": "normal",
-              "21": "normal",
-              "22": "normal",
-              "23": "normal",
-              "24": "normal",
-              "25": "normal",
-              "26": "normal",
-              "27": "normal",
-              "28": "normal",
-              "29": "normal",
-              "30": "normal",
-              "31": "normal"
-            }
-          },
-          "createdAt": "2025-12-06T06:06:32.871Z"
-        }
-      ],
+      "list": [],
       "salaries": {},
-      "penalties": [],
-      "updatedAt": "2025-12-06T06:06:34.937Z"
+      "penalties": []
     },
     "inventory": {
-      "products": [
-        {
-          "id": 1764999625111,
-          "name": "1",
-          "unit": "kg",
-          "quantity": 111,
-          "totalValue": 111
-        },
-        {
-          "id": 1765001300077,
-          "name": "Cà phê đe",
-          "unit": "kg",
-          "quantity": 100,
-          "totalValue": 12000000
-        }
-      ],
+      "products": [],
       "purchases": [],
       "services": [],
-      "exports": [],
-      "updatedAt": "2025-12-06T06:08:20.077Z"
+      "exports": []
     }
   }
 }
