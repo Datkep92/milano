@@ -1,0 +1,67 @@
+{
+  "date": "08/12/2025",
+  "openingBalance": 333033,
+  "revenue": 555055555555,
+  "expenses": [
+    {
+      "id": 1765009428826,
+      "name": "NV",
+      "amount": 500000,
+      "date": "08/12/2025",
+      "addedAt": "2025-12-06T08:23:48.826Z"
+    },
+    {
+      "id": 1765009436276,
+      "name": "DIEN",
+      "amount": 50000,
+      "date": "08/12/2025",
+      "addedAt": "2025-12-06T08:23:56.276Z"
+    }
+  ],
+  "transfers": [
+    {
+      "id": 1765009446322,
+      "content": "ƯERE",
+      "amount": 0,
+      "date": "08/12/2025",
+      "addedAt": "2025-12-06T08:24:06.322Z"
+    },
+    {
+      "id": 1765009449285,
+      "content": "Không có nội dung",
+      "amount": 45555,
+      "date": "08/12/2025",
+      "addedAt": "2025-12-06T08:24:09.285Z"
+    },
+    {
+      "id": 1765009451963,
+      "content": "Không có nội dung",
+      "amount": 34444,
+      "date": "08/12/2025",
+      "addedAt": "2025-12-06T08:24:11.963Z"
+    }
+  ],
+  "closingBalance": 5550555,
+  "actualReceived": 555049708034,
+  "inventoryExports": [
+    {
+      "id": 1765009460173,
+      "productId": 1765006638864,
+      "product": "CÃ  phÃª Äen",
+      "quantity": 2,
+      "unit": "kg",
+      "time": "15:24",
+      "date": "2025-12-08"
+    },
+    {
+      "id": 1765009461417,
+      "productId": 1765006639222,
+      "product": "111",
+      "quantity": 2,
+      "unit": "kg",
+      "time": "15:24",
+      "date": "2025-12-08"
+    }
+  ],
+  "savedAt": "2025-12-06T08:24:31.377Z"
+}
