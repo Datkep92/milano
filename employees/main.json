@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2025-12-06T11:22:42.485Z",
+  "lastUpdated": "2025-12-06T11:22:55.824Z",
   "employees": [
     {
       "id": 1,
@@ -11,13 +11,15 @@
       "monthlyData": [
         {
           "month": "2025-12",
-          "workdays": {},
+          "workdays": {
+            "10": "off"
+          },
           "penalties": [],
           "calculated": {
-            "totalOff": 0,
+            "totalOff": 1,
             "totalOvertime": 0,
-            "normalDays": 30,
-            "actualSalary": 3000000
+            "normalDays": 29,
+            "actualSalary": 2900000
           }
         }
       ],
