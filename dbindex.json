@@ -1,86 +1,167 @@
 {
   "version": "2.0",
-  "lastUpdated": "2025-12-06T10:49:10.931Z",
+  "lastUpdated": "2025-12-06T17:55:57.639Z",
   "files": {
     "reports/2025-12-01.json": {
       "sha": "cc23ab31ae11376250c6f8a84d7f40b1477ffbf1",
-      "lastModified": "2025-12-06T10:49:09.501Z"
+      "lastModified": "2025-12-06T17:55:56.595Z"
     },
     "reports/2025-12-06_v10.json": {
       "sha": "3835a424a826cdd71f4777acbc8225185d07b5cb",
-      "lastModified": "2025-12-06T10:49:09.501Z"
+      "lastModified": "2025-12-06T17:55:56.595Z"
     },
     "reports/2025-12-06_v11.json": {
       "sha": "85a5c9c479b1457a7e2492f20d087cb449309080",
-      "lastModified": "2025-12-06T10:49:09.501Z"
+      "lastModified": "2025-12-06T17:55:56.595Z"
+    },
+    "reports/2025-12-06_v12.json": {
+      "sha": "98ed2d30038ffdb1a5894bb8942a6c22cee3abc6",
+      "lastModified": "2025-12-06T17:55:56.595Z"
+    },
+    "reports/2025-12-07.json": {
+      "sha": "533d4dd7bb7758c67ef80d7843b739837da8eace",
+      "lastModified": "2025-12-06T17:55:56.595Z"
+    },
+    "inventory/2025-12-06.json": {
+      "sha": "bb8f88bac0488997c1076153b7a606ca7a22e865",
+      "lastModified": "2025-12-06T17:55:56.965Z"
     },
     "inventory/2025-12-06_v3.json": {
       "sha": "a788a2c2e7826b4e740d4b1bb8ea9e418baba6e7",
-      "lastModified": "2025-12-06T10:49:10.303Z"
+      "lastModified": "2025-12-06T17:55:56.965Z"
     },
     "inventory/2025-12-06_v4.json": {
       "sha": "8b23b9e4cf2a1e4c5729d58559dc3e4a111c0139",
-      "lastModified": "2025-12-06T10:49:10.303Z"
+      "lastModified": "2025-12-06T17:55:56.965Z"
     },
     "inventory/2025-12-06_v5.json": {
       "sha": "b3d3f4524c1dbb037904aa187011c8ef6c5c6ac3",
-      "lastModified": "2025-12-06T10:49:10.303Z"
+      "lastModified": "2025-12-06T17:55:56.965Z"
+    },
+    "inventory/2025-12-06_v6.json": {
+      "sha": "ca1f175322e42a8a3ab4b52c494217e1d1157f61",
+      "lastModified": "2025-12-06T17:55:56.965Z"
+    },
+    "inventory/2025-12-07.json": {
+      "sha": "cd51ca6ddac4c4e1868b50fb3a14c20865734fc3",
+      "lastModified": "2025-12-06T17:55:56.965Z"
+    },
+    "inventory/products.json": {
+      "sha": "13690d1fee95bcfd0a0fb82aa08013cd51bfd239",
+      "lastModified": "2025-12-06T17:55:56.965Z"
     },
     "inventory/products_v6.json": {
       "sha": "1415a54e55dc070c086eb8c5a80572e3cb880e19",
-      "lastModified": "2025-12-06T10:49:10.304Z"
+      "lastModified": "2025-12-06T17:55:56.965Z"
     },
     "inventory/products_v7.json": {
       "sha": "2487926e8c167b5302f83898d7883468897d2975",
-      "lastModified": "2025-12-06T10:49:10.304Z"
+      "lastModified": "2025-12-06T17:55:56.965Z"
+    },
+    "inventory/products_v8.json": {
+      "sha": "7412a8df9cd654a4b2652fb48d91f97d8b02740b",
+      "lastModified": "2025-12-06T17:55:56.965Z"
+    },
+    "employees/2025-12-05.json": {
+      "sha": "65c2830135952859ce028739773951947fc490d5",
+      "lastModified": "2025-12-06T17:55:57.639Z"
+    },
+    "employees/2025-12-24.json": {
+      "sha": "d6cb303f220eb02a80f9d4f62b0e8fdb6ab9a326",
+      "lastModified": "2025-12-06T17:55:57.639Z"
+    },
+    "employees/main.json": {
+      "sha": "e15706dee490e994c23dc4c96140a7962eca7e71",
+      "lastModified": "2025-12-06T17:55:57.639Z"
     }
   },
   "modules": {
     "reports": {
-      "latest": "2025-12-06_v11.json",
+      "latest": "2025-12-07.json",
       "files": {
         "2025-12-01.json": {
           "sha": "cc23ab31ae11376250c6f8a84d7f40b1477ffbf1",
-          "lastModified": "2025-12-06T10:49:09.501Z"
+          "lastModified": "2025-12-06T17:55:56.595Z"
         },
         "2025-12-06_v10.json": {
           "sha": "3835a424a826cdd71f4777acbc8225185d07b5cb",
-          "lastModified": "2025-12-06T10:49:09.501Z"
+          "lastModified": "2025-12-06T17:55:56.595Z"
         },
         "2025-12-06_v11.json": {
           "sha": "85a5c9c479b1457a7e2492f20d087cb449309080",
-          "lastModified": "2025-12-06T10:49:09.501Z"
+          "lastModified": "2025-12-06T17:55:56.595Z"
+        },
+        "2025-12-06_v12.json": {
+          "sha": "98ed2d30038ffdb1a5894bb8942a6c22cee3abc6",
+          "lastModified": "2025-12-06T17:55:56.595Z"
+        },
+        "2025-12-07.json": {
+          "sha": "533d4dd7bb7758c67ef80d7843b739837da8eace",
+          "lastModified": "2025-12-06T17:55:56.595Z"
         }
       }
     },
     "inventory": {
-      "latest": "products_v7.json",
+      "latest": "products.json",
       "files": {
+        "2025-12-06.json": {
+          "sha": "bb8f88bac0488997c1076153b7a606ca7a22e865",
+          "lastModified": "2025-12-06T17:55:56.965Z"
+        },
         "2025-12-06_v3.json": {
           "sha": "a788a2c2e7826b4e740d4b1bb8ea9e418baba6e7",
-          "lastModified": "2025-12-06T10:49:10.303Z"
+          "lastModified": "2025-12-06T17:55:56.965Z"
         },
         "2025-12-06_v4.json": {
           "sha": "8b23b9e4cf2a1e4c5729d58559dc3e4a111c0139",
-          "lastModified": "2025-12-06T10:49:10.303Z"
+          "lastModified": "2025-12-06T17:55:56.965Z"
         },
         "2025-12-06_v5.json": {
           "sha": "b3d3f4524c1dbb037904aa187011c8ef6c5c6ac3",
-          "lastModified": "2025-12-06T10:49:10.303Z"
+          "lastModified": "2025-12-06T17:55:56.965Z"
+        },
+        "2025-12-06_v6.json": {
+          "sha": "ca1f175322e42a8a3ab4b52c494217e1d1157f61",
+          "lastModified": "2025-12-06T17:55:56.965Z"
+        },
+        "2025-12-07.json": {
+          "sha": "cd51ca6ddac4c4e1868b50fb3a14c20865734fc3",
+          "lastModified": "2025-12-06T17:55:56.965Z"
+        },
+        "products.json": {
+          "sha": "13690d1fee95bcfd0a0fb82aa08013cd51bfd239",
+          "lastModified": "2025-12-06T17:55:56.965Z"
         },
         "products_v6.json": {
           "sha": "1415a54e55dc070c086eb8c5a80572e3cb880e19",
-          "lastModified": "2025-12-06T10:49:10.304Z"
+          "lastModified": "2025-12-06T17:55:56.965Z"
         },
         "products_v7.json": {
           "sha": "2487926e8c167b5302f83898d7883468897d2975",
-          "lastModified": "2025-12-06T10:49:10.304Z"
+          "lastModified": "2025-12-06T17:55:56.965Z"
+        },
+        "products_v8.json": {
+          "sha": "7412a8df9cd654a4b2652fb48d91f97d8b02740b",
+          "lastModified": "2025-12-06T17:55:56.965Z"
         }
       }
     },
     "employees": {
-      "latest": null,
-      "files": {}
+      "latest": "main.json",
+      "files": {
+        "2025-12-05.json": {
+          "sha": "65c2830135952859ce028739773951947fc490d5",
+          "lastModified": "2025-12-06T17:55:57.639Z"
+        },
+        "2025-12-24.json": {
+          "sha": "d6cb303f220eb02a80f9d4f62b0e8fdb6ab9a326",
+          "lastModified": "2025-12-06T17:55:57.639Z"
+        },
+        "main.json": {
+          "sha": "e15706dee490e994c23dc4c96140a7962eca7e71",
+          "lastModified": "2025-12-06T17:55:57.639Z"
+        }
+      }
     }
   }
 }
