@@ -2,8 +2,8 @@
   "metadata": {
     "version": "2.0",
     "createdAt": "2025-12-06T06:04:04.524Z",
-    "lastUpdated": "2025-12-06T06:06:32.872Z",
-    "hash": "5aaa544b",
+    "lastUpdated": "2025-12-06T06:06:34.938Z",
+    "hash": "e47bd0a",
     "lastSync": "2025-12-06T06:06:04.759Z"
   },
   "data": {
@@ -16,13 +16,47 @@
           "phone": "11",
           "baseSalary": 111,
           "penalties": [],
-          "workDays": {},
+          "workDays": {
+            "12/2025": {
+              "1": "normal",
+              "2": "normal",
+              "3": "normal",
+              "4": "normal",
+              "5": "normal",
+              "6": "normal",
+              "7": "normal",
+              "8": "normal",
+              "9": "normal",
+              "10": "normal",
+              "11": "normal",
+              "12": "normal",
+              "13": "normal",
+              "14": "normal",
+              "15": "normal",
+              "16": "normal",
+              "17": "normal",
+              "18": "normal",
+              "19": "normal",
+              "20": "normal",
+              "21": "normal",
+              "22": "normal",
+              "23": "normal",
+              "24": "normal",
+              "25": "normal",
+              "26": "normal",
+              "27": "normal",
+              "28": "normal",
+              "29": "normal",
+              "30": "normal",
+              "31": "normal"
+            }
+          },
           "createdAt": "2025-12-06T06:06:32.871Z"
         }
       ],
       "salaries": {},
       "penalties": [],
-      "updatedAt": "2025-12-06T06:06:32.871Z"
+      "updatedAt": "2025-12-06T06:06:34.937Z"
     },
     "inventory": {
       "products": [],
