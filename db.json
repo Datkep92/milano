@@ -2,12 +2,33 @@
   "metadata": {
     "version": "2.0",
     "createdAt": "2025-12-06T05:21:07.892Z",
-    "lastUpdated": "2025-12-06T05:40:25.111Z",
-    "hash": "-6df3ba5f",
-    "lastSync": "2025-12-06T05:39:47.107Z"
+    "lastUpdated": "2025-12-06T05:52:10.171Z",
+    "hash": "cba6d93",
+    "lastSync": "2025-12-06T05:51:31.642Z"
   },
   "data": {
-    "reports": {},
+    "reports": {
+      "06/12/2025": {
+        "date": "06/12/2025",
+        "openingBalance": 0,
+        "revenue": 1111111,
+        "expenses": [],
+        "transfers": [],
+        "closingBalance": 111011111,
+        "actualReceived": -109900000,
+        "inventoryExports": [
+          {
+            "productId": 1764999625111,
+            "product": "1",
+            "quantity": 2,
+            "unit": "kg",
+            "time": "12:52"
+          }
+        ],
+        "savedAt": "2025-12-06T05:52:10.170Z",
+        "updatedAt": "2025-12-06T05:52:10.170Z"
+      }
+    },
     "employees": {
       "list": [],
       "salaries": {},
