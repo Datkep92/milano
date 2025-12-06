@@ -1,0 +1,14 @@
+{
+  "type": "purchase",
+  "data": {
+    "id": 1765025404617,
+    "date": "06/12/2025",
+    "type": "material",
+    "name": "Sữa Đặc",
+    "quantity": 10,
+    "unit": "gói",
+    "total": 350000,
+    "unitPrice": 35000,
+    "addedAt": "2025-12-06T12:50:04.617Z"
+  }
+}
