@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2025-12-06T09:41:15.870Z",
+  "lastUpdated": "2025-12-06T09:42:06.414Z",
   "files": {
     "reports/06-12-2025.json": {
       "sha": "75ad2440c902d65eb236d2ee0638bffbffefb2f6",
@@ -127,6 +127,10 @@
     "inventory/2025-12-06_v3.json": {
       "sha": "a788a2c2e7826b4e740d4b1bb8ea9e418baba6e7",
       "lastModified": "2025-12-06T09:41:15.869Z"
+    },
+    "inventory/2025-12-06_v4.json": {
+      "sha": "8b23b9e4cf2a1e4c5729d58559dc3e4a111c0139",
+      "lastModified": "2025-12-06T09:42:06.412Z"
     }
   },
   "modules": {
@@ -200,7 +204,7 @@
       }
     },
     "inventory": {
-      "latest": "2025-12-06_v3.json",
+      "latest": "2025-12-06_v4.json",
       "files": {
         "2025-12-05.json": {
           "sha": "99465b8035821b4159c478996ba7c0b13ed4a45d",
@@ -245,6 +249,10 @@
         "2025-12-06_v3.json": {
           "sha": "a788a2c2e7826b4e740d4b1bb8ea9e418baba6e7",
           "lastModified": "2025-12-06T09:41:15.869Z"
+        },
+        "2025-12-06_v4.json": {
+          "sha": "8b23b9e4cf2a1e4c5729d58559dc3e4a111c0139",
+          "lastModified": "2025-12-06T09:42:06.412Z"
         }
       }
     },
