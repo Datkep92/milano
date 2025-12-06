@@ -1,0 +1,70 @@
+{
+  "date": "07/12/2025",
+  "openingBalance": 0,
+  "actualReceived": 10000000,
+  "revenue": 10500000,
+  "expenses": [],
+  "transfers": [],
+  "closingBalance": 500000,
+  "inventoryExports": [
+    {
+      "id": 1765043598620,
+      "productId": 1765043412852.1868,
+      "product": "111",
+      "quantity": 1,
+      "unit": "gói",
+      "time": "00:53",
+      "date": "2025-12-07",
+      "unitPrice": 10.000900090009,
+      "totalValue": 10.000900090009,
+      "productCode": "",
+      "processed": true,
+      "processedAt": "2025-12-06T17:53:25.910Z"
+    },
+    {
+      "id": 1765043600892,
+      "productId": 1765043412852.696,
+      "product": "cà phê hạt",
+      "quantity": 1,
+      "unit": "kg",
+      "time": "00:53",
+      "date": "2025-12-07",
+      "unitPrice": 12000,
+      "totalValue": 12000,
+      "productCode": "",
+      "processed": true,
+      "processedAt": "2025-12-06T17:53:25.910Z"
+    },
+    {
+      "id": 1765043601575,
+      "productId": 1765043412852.1116,
+      "product": "CÀ PHÊ",
+      "quantity": 1,
+      "unit": "kg",
+      "time": "00:53",
+      "date": "2025-12-07",
+      "unitPrice": 12000,
+      "totalValue": 12000,
+      "productCode": "",
+      "processed": true,
+      "processedAt": "2025-12-06T17:53:25.910Z"
+    },
+    {
+      "id": 1765043602350,
+      "productId": 1765043412852.3345,
+      "product": "Sữa Đặc",
+      "quantity": 1,
+      "unit": "gói",
+      "time": "00:53",
+      "date": "2025-12-07",
+      "unitPrice": 35000,
+      "totalValue": 35000,
+      "productCode": "",
+      "processed": true,
+      "processedAt": "2025-12-06T17:53:25.910Z"
+    }
+  ],
+  "savedAt": "2025-12-06T17:53:25.911Z",
+  "version": 1,
+  "inventoryUpdated": true
+}
