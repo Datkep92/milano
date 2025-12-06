@@ -1,44 +1,34 @@
 {
   "version": "2.0",
-  "lastUpdated": "2025-12-06T07:09:39.284Z",
+  "lastUpdated": "2025-12-06T07:19:29.424Z",
   "files": {
     "reports/06-12-2025.json": {
       "sha": "75ad2440c902d65eb236d2ee0638bffbffefb2f6",
-      "lastModified": "2025-12-06T07:08:42.661Z"
+      "lastModified": "2025-12-06T07:19:28.688Z"
     },
     "reports/2025-12-06.json": {
       "sha": "a2b5c0e575d53a65dc95f794aa6e6f7d7e58fe11",
-      "lastModified": "2025-12-06T07:08:42.661Z"
+      "lastModified": "2025-12-06T07:19:28.688Z"
     },
     "reports/2025-12-06_v2.json": {
       "sha": "47582f9f610580e006a67b57d46fb8969c65961b",
-      "lastModified": "2025-12-06T07:08:42.662Z"
+      "lastModified": "2025-12-06T07:19:28.689Z"
     },
     "inventory/2025-12-05.json": {
       "sha": "99465b8035821b4159c478996ba7c0b13ed4a45d",
-      "lastModified": "2025-12-06T07:08:43.792Z"
-    },
-    "employees/2025-12-05.json": {
-      "sha": "e86c793058812c1d5eeacb1d66e5ad1e852abe37",
-      "lastModified": "2025-12-06T07:08:44.900Z"
+      "lastModified": "2025-12-06T07:19:29.064Z"
     },
     "inventory/2025-12-06.json": {
       "sha": "35e50a798b529d1cba775be59d0eff1aba01d026",
-      "lastModified": "2025-12-06T07:09:10.473Z"
+      "lastModified": "2025-12-06T07:19:29.064Z"
+    },
+    "employees/2025-12-05.json": {
+      "sha": "e86c793058812c1d5eeacb1d66e5ad1e852abe37",
+      "lastModified": "2025-12-06T07:19:29.424Z"
     },
     "employees/2025-12-11.json": {
       "sha": "0df745c4954325473822545ac158f39a32aff9af",
-      "lastModified": "2025-12-06T07:09:39.284Z"
-    },
-    "db.json": {
-      "hash": "cff7cae58b2ef13da2f4d18eb272697de67b0eb3",
-      "updated": "2025-12-06T07:16:20.286Z",
-      "size": 2619
-    },
-    "dbindex.json": {
-      "hash": "68f41a81480d328ab74a0979c12ccb4be9c6a202",
-      "updated": "2025-12-06T07:17:52.056Z",
-      "size": 2809
+      "lastModified": "2025-12-06T07:19:29.424Z"
     }
   },
   "modules": {
@@ -47,15 +37,15 @@
       "files": {
         "06-12-2025.json": {
           "sha": "75ad2440c902d65eb236d2ee0638bffbffefb2f6",
-          "lastModified": "2025-12-06T07:08:42.661Z"
+          "lastModified": "2025-12-06T07:19:28.688Z"
         },
         "2025-12-06.json": {
           "sha": "a2b5c0e575d53a65dc95f794aa6e6f7d7e58fe11",
-          "lastModified": "2025-12-06T07:08:42.661Z"
+          "lastModified": "2025-12-06T07:19:28.688Z"
         },
         "2025-12-06_v2.json": {
           "sha": "47582f9f610580e006a67b57d46fb8969c65961b",
-          "lastModified": "2025-12-06T07:08:42.662Z"
+          "lastModified": "2025-12-06T07:19:28.689Z"
         }
       }
     },
@@ -64,11 +54,11 @@
       "files": {
         "2025-12-05.json": {
           "sha": "99465b8035821b4159c478996ba7c0b13ed4a45d",
-          "lastModified": "2025-12-06T07:08:43.792Z"
+          "lastModified": "2025-12-06T07:19:29.064Z"
         },
         "2025-12-06.json": {
           "sha": "35e50a798b529d1cba775be59d0eff1aba01d026",
-          "lastModified": "2025-12-06T07:09:10.473Z"
+          "lastModified": "2025-12-06T07:19:29.064Z"
         }
       }
     },
@@ -77,14 +67,13 @@
       "files": {
         "2025-12-05.json": {
           "sha": "e86c793058812c1d5eeacb1d66e5ad1e852abe37",
-          "lastModified": "2025-12-06T07:08:44.900Z"
+          "lastModified": "2025-12-06T07:19:29.424Z"
         },
         "2025-12-11.json": {
           "sha": "0df745c4954325473822545ac158f39a32aff9af",
-          "lastModified": "2025-12-06T07:09:39.284Z"
+          "lastModified": "2025-12-06T07:19:29.424Z"
         }
       }
     }
-  },
-  "lastSync": "2025-12-06T07:18:00.384Z"
+  }
 }
