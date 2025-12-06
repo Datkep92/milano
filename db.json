@@ -1,13 +1,34 @@
 {
   "metadata": {
     "version": "2.0",
-    "createdAt": "2025-12-06T06:04:04.524Z",
-    "lastUpdated": "2025-12-06T06:06:34.938Z",
-    "hash": "e47bd0a",
-    "lastSync": "2025-12-06T06:06:04.759Z"
+    "createdAt": "2025-12-06T05:56:31.800Z",
+    "lastUpdated": "2025-12-06T06:07:17.661Z",
+    "hash": "7d5d1869",
+    "lastSync": "2025-12-06T06:07:02.838Z"
   },
   "data": {
-    "reports": {},
+    "reports": {
+      "06/12/2025": {
+        "date": "06/12/2025",
+        "openingBalance": 0,
+        "revenue": 1111111,
+        "expenses": [],
+        "transfers": [],
+        "closingBalance": 111011111,
+        "actualReceived": -109900000,
+        "inventoryExports": [
+          {
+            "productId": 1764999625111,
+            "product": "1",
+            "quantity": 2,
+            "unit": "kg",
+            "time": "12:52"
+          }
+        ],
+        "savedAt": "2025-12-06T05:52:10.170Z",
+        "updatedAt": "2025-12-06T05:52:10.170Z"
+      }
+    },
     "employees": {
       "list": [
         {
@@ -35,7 +56,7 @@
               "15": "normal",
               "16": "normal",
               "17": "normal",
-              "18": "normal",
+              "18": "overtime",
               "19": "normal",
               "20": "normal",
               "21": "normal",
@@ -56,10 +77,18 @@
       ],
       "salaries": {},
       "penalties": [],
-      "updatedAt": "2025-12-06T06:06:34.937Z"
+      "updatedAt": "2025-12-06T06:07:17.660Z"
     },
     "inventory": {
-      "products": [],
+      "products": [
+        {
+          "id": 1764999625111,
+          "name": "1",
+          "unit": "kg",
+          "quantity": 111,
+          "totalValue": 111
+        }
+      ],
       "purchases": [],
       "services": [],
       "exports": []
