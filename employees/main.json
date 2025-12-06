@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2025-12-06T17:14:54.732Z",
+  "lastUpdated": "2025-12-06T17:15:14.216Z",
   "employees": [
     {
       "id": 1,
@@ -24,13 +24,21 @@
               "date": "2025-12-06",
               "id": 1765041292725,
               "addedAt": "2025-12-06T17:14:52.725Z"
+            },
+            {
+              "type": "reward",
+              "amount": 50000,
+              "reason": "...",
+              "date": "2025-12-06",
+              "id": 1765041312206,
+              "addedAt": "2025-12-06T17:15:12.206Z"
             }
           ],
           "calculated": {
             "totalOff": 2,
             "totalOvertime": 1,
             "normalDays": 27,
-            "actualSalary": 2850000
+            "actualSalary": 2900000
           }
         }
       ],
