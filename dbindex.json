@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2025-12-06T07:01:29.709Z",
+  "lastUpdated": "2025-12-06T07:07:48.157Z",
   "files": {
     "reports/06-12-2025.json": {
       "sha": "75ad2440c902d65eb236d2ee0638bffbffefb2f6",
@@ -17,11 +17,15 @@
     "employees/2025-12-05.json": {
       "sha": "e86c793058812c1d5eeacb1d66e5ad1e852abe37",
       "lastModified": "2025-12-06T07:01:29.709Z"
+    },
+    "reports/2025-12-06_v2.json": {
+      "sha": "47582f9f610580e006a67b57d46fb8969c65961b",
+      "lastModified": "2025-12-06T07:07:48.156Z"
     }
   },
   "modules": {
     "reports": {
-      "latest": "2025-12-06.json",
+      "latest": "2025-12-06_v2.json",
       "files": {
         "06-12-2025.json": {
           "sha": "75ad2440c902d65eb236d2ee0638bffbffefb2f6",
@@ -30,6 +34,10 @@
         "2025-12-06.json": {
           "sha": "a2b5c0e575d53a65dc95f794aa6e6f7d7e58fe11",
           "lastModified": "2025-12-06T07:01:28.384Z"
+        },
+        "2025-12-06_v2.json": {
+          "sha": "47582f9f610580e006a67b57d46fb8969c65961b",
+          "lastModified": "2025-12-06T07:07:48.156Z"
         }
       }
     },
