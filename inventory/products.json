@@ -1,0 +1,120 @@
+{
+  "products": [
+    {
+      "id": 1765043412852.1868,
+      "name": "111",
+      "unit": "gói",
+      "quantity": 1110,
+      "totalValue": 11111,
+      "unitPrice": 10.000900090009,
+      "type": "material",
+      "addedAt": "2025-12-06T09:41:14.527Z",
+      "history": [
+        {
+          "type": "purchase",
+          "date": "06/12/2025",
+          "quantity": 1111,
+          "amount": 11111,
+          "unitPrice": 10.000900090009,
+          "timestamp": "2025-12-06T09:41:14.527Z"
+        },
+        {
+          "type": "export",
+          "date": "2025-12-07",
+          "quantity": 1,
+          "note": "Xuất kho ngày 07/12/2025",
+          "timestamp": "2025-12-06T17:53:25.910Z",
+          "reportDate": "07/12/2025"
+        }
+      ],
+      "lastUpdated": "2025-12-06T17:53:25.910Z"
+    },
+    {
+      "id": 1765043412852.1116,
+      "name": "CÀ PHÊ",
+      "unit": "kg",
+      "quantity": 99,
+      "totalValue": 1200000,
+      "unitPrice": 12000,
+      "type": "material",
+      "addedAt": "2025-12-06T09:42:04.507Z",
+      "history": [
+        {
+          "type": "purchase",
+          "date": "06/12/2025",
+          "quantity": 100,
+          "amount": 1200000,
+          "unitPrice": 12000,
+          "timestamp": "2025-12-06T09:42:04.507Z"
+        },
+        {
+          "type": "export",
+          "date": "2025-12-07",
+          "quantity": 1,
+          "note": "Xuất kho ngày 07/12/2025",
+          "timestamp": "2025-12-06T17:53:25.910Z",
+          "reportDate": "07/12/2025"
+        }
+      ],
+      "lastUpdated": "2025-12-06T17:53:25.910Z"
+    },
+    {
+      "id": 1765043412852.696,
+      "name": "cà phê hạt",
+      "unit": "kg",
+      "quantity": 99,
+      "totalValue": 1200000,
+      "unitPrice": 12000,
+      "type": "material",
+      "addedAt": "2025-12-06T10:56:15.192Z",
+      "history": [
+        {
+          "type": "purchase",
+          "date": "06/12/2025",
+          "quantity": 100,
+          "amount": 1200000,
+          "unitPrice": 12000,
+          "timestamp": "2025-12-06T10:56:15.192Z"
+        },
+        {
+          "type": "export",
+          "date": "2025-12-07",
+          "quantity": 1,
+          "note": "Xuất kho ngày 07/12/2025",
+          "timestamp": "2025-12-06T17:53:25.910Z",
+          "reportDate": "07/12/2025"
+        }
+      ],
+      "lastUpdated": "2025-12-06T17:53:25.910Z"
+    },
+    {
+      "id": 1765043412852.3345,
+      "name": "Sữa Đặc",
+      "unit": "gói",
+      "quantity": 9,
+      "totalValue": 350000,
+      "unitPrice": 35000,
+      "type": "material",
+      "addedAt": "2025-12-06T12:50:04.617Z",
+      "history": [
+        {
+          "type": "purchase",
+          "date": "06/12/2025",
+          "quantity": 10,
+          "amount": 350000,
+          "unitPrice": 35000,
+          "timestamp": "2025-12-06T12:50:04.617Z"
+        },
+        {
+          "type": "export",
+          "date": "2025-12-07",
+          "quantity": 1,
+          "note": "Xuất kho ngày 07/12/2025",
+          "timestamp": "2025-12-06T17:53:25.910Z",
+          "reportDate": "07/12/2025"
+        }
+      ],
+      "lastUpdated": "2025-12-06T17:53:25.910Z"
+    }
+  ]
+}
