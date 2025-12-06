@@ -1,0 +1,65 @@
+{
+  "date": "06/12/2025",
+  "openingBalance": 0,
+  "revenue": 5555515,
+  "expenses": [
+    {
+      "id": 1765006214906,
+      "name": "1",
+      "amount": 1,
+      "date": "06/12/2025",
+      "addedAt": "2025-12-06T07:30:14.906Z"
+    },
+    {
+      "id": 1765006218092,
+      "name": "2",
+      "amount": 2,
+      "date": "06/12/2025",
+      "addedAt": "2025-12-06T07:30:18.092Z"
+    }
+  ],
+  "transfers": [
+    {
+      "id": 1765006223483,
+      "content": "2",
+      "amount": 2,
+      "date": "06/12/2025",
+      "addedAt": "2025-12-06T07:30:23.483Z"
+    },
+    {
+      "id": 1765006226648,
+      "content": "2",
+      "amount": 0,
+      "date": "06/12/2025",
+      "addedAt": "2025-12-06T07:30:26.648Z"
+    },
+    {
+      "id": 1765006228889,
+      "content": "KhÃ´ng cÃ³ ná»i dung",
+      "amount": 2,
+      "date": "06/12/2025",
+      "addedAt": "2025-12-06T07:30:28.889Z"
+    }
+  ],
+  "closingBalance": 55555,
+  "actualReceived": 5499953,
+  "inventoryExports": [
+    {
+      "id": 1765010337288,
+      "productId": 1765006638864,
+      "product": "CÃ  phÃª Äen",
+      "quantity": 1,
+      "unit": "kg",
+      "time": "15:38",
+      "date": "2025-12-06",
+      "unitPrice": 0,
+      "totalValue": 0,
+      "productCode": "",
+      "processed": true,
+      "processedAt": "2025-12-06T08:38:58.797Z"
+    }
+  ],
+  "savedAt": "2025-12-06T08:39:01.103Z",
+  "version": 7,
+  "inventoryUpdated": true
+}
