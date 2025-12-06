@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2025-12-06T09:06:19.402Z",
+  "lastUpdated": "2025-12-06T09:06:21.889Z",
   "files": {
     "reports/06-12-2025.json": {
       "sha": "75ad2440c902d65eb236d2ee0638bffbffefb2f6",
@@ -115,11 +115,15 @@
     "inventory/products_v7.json": {
       "sha": "2487926e8c167b5302f83898d7883468897d2975",
       "lastModified": "2025-12-06T09:06:19.399Z"
+    },
+    "reports/2025-12-06_v11.json": {
+      "sha": "85a5c9c479b1457a7e2492f20d087cb449309080",
+      "lastModified": "2025-12-06T09:06:21.888Z"
     }
   },
   "modules": {
     "reports": {
-      "latest": "2025-12-06_v10.json",
+      "latest": "2025-12-06_v11.json",
       "files": {
         "06-12-2025.json": {
           "sha": "75ad2440c902d65eb236d2ee0638bffbffefb2f6",
@@ -180,6 +184,10 @@
         "2025-12-06_v10.json": {
           "sha": "3835a424a826cdd71f4777acbc8225185d07b5cb",
           "lastModified": "2025-12-06T09:03:57.807Z"
+        },
+        "2025-12-06_v11.json": {
+          "sha": "85a5c9c479b1457a7e2492f20d087cb449309080",
+          "lastModified": "2025-12-06T09:06:21.888Z"
         }
       }
     },
