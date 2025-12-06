@@ -1,0 +1,56 @@
+{
+  "list": [
+    {
+      "id": 1764990133657,
+      "name": "Uyên",
+      "phone": "0852963741",
+      "baseSalary": 3000000,
+      "penalties": [
+        {
+          "type": "reward",
+          "amount": 500000,
+          "reason": "Ok",
+          "date": "06/12/2025",
+          "addedAt": "2025-12-06T03:05:35.180Z"
+        }
+      ],
+      "workDays": {
+        "12/2025": {
+          "1": "normal",
+          "2": "normal",
+          "3": "normal",
+          "4": "normal",
+          "5": "normal",
+          "6": "normal",
+          "7": "normal",
+          "8": "normal",
+          "9": "normal",
+          "10": "normal",
+          "11": "normal",
+          "12": "normal",
+          "13": "normal",
+          "14": "normal",
+          "15": "normal",
+          "16": "normal",
+          "17": "normal",
+          "18": "normal",
+          "19": "normal",
+          "20": "normal",
+          "21": "normal",
+          "22": "normal",
+          "23": "normal",
+          "24": "normal",
+          "25": "normal",
+          "26": "normal",
+          "27": "normal",
+          "28": "normal",
+          "29": "normal",
+          "30": "normal",
+          "31": "normal"
+        }
+      },
+      "createdAt": "2025-12-06T03:02:13.657Z"
+    }
+  ],
+  "updatedAt": "2025-12-06T03:24:27.050Z"
+}
