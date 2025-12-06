@@ -1,753 +1,1271 @@
-// employees.js - Hệ thống quản lý nhân viên nâng cao
-class EmployeeManager {
+// employees.js - Module nhân viên với lưu trữ tập trung 1 file
+class EmployeesModule {
     constructor() {
-        this.currentMonth = new Date().getMonth() + 1;
-        this.currentYear = new Date().getFullYear();
+        const now = new Date();
+        this.currentMonth = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+        this.currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         this.selectedEmployee = null;
-        this.attendanceData = {};
-        this.initialize();
+        this.isLoading = false;
+        
+        // Cache toàn bộ dữ liệu
+        this.cache = {
+            employees: null,
+            lastSync: null,
+            hasChanges: false
+        };
     }
-
-    async initialize() {
-        console.log('👥 Khởi tạo Employee Manager...');
-        await this.loadEmployees();
-        this.setupEventListeners();
-        this.updateMonthlySummary();
-        this.displayEmployees();
-    }
-
-    setupEventListeners() {
-        // Thêm nhân viên
-        document.getElementById('addEmployeeBtn')?.addEventListener('click', () => {
-            this.openAddEmployeeModal();
-        });
-
-        // Chọn tháng
-        document.getElementById('employeeMonthSelect')?.addEventListener('change', (e) => {
-            const [year, month] = e.target.value.split('-');
-            this.currentMonth = parseInt(month);
-            this.currentYear = parseInt(year);
-            this.updateMonthlySummary();
-            this.displayEmployees();
-        });
-
-        // Lưu nhân viên
-        document.getElementById('saveEmployeeBtn')?.addEventListener('click', () => {
-            this.saveEmployee();
-        });
-
-        // Xóa nhân viên
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.delete-employee-btn')) {
-                const employeeId = e.target.closest('.delete-employee-btn').dataset.id;
-                this.deleteEmployee(employeeId);
-            }
-        });
-
-        // Modal đóng
-        document.querySelectorAll('.close').forEach(closeBtn => {
-            closeBtn.addEventListener('click', () => {
-                this.closeModals();
-            });
-        });
-    }
-
+    
+    // ========== CORE DATA METHODS ==========
+    
     async loadEmployees() {
         try {
-            const employees = await dataManager.getAllEmployees();
-            this.employees = employees;
-            console.log(`Đã tải ${employees.length} nhân viên`);
+            // 1. Lấy từ cache trước
+            if (this.cache.employees) {
+                return this.cache.employees;
+            }
+            
+            // 2. Load từ GitHub
+            const data = await window.githubManager.getFileContent('employees/main.json');
+            
+            if (data && data.employees) {
+                this.cache.employees = data.employees;
+                this.cache.lastSync = new Date().toISOString();
+                
+                // 3. Đồng bộ với localStorage
+                this.syncWithLocalStorage(data.employees);
+                console.log(`✅ Loaded ${data.employees.length} employees from GitHub`);
+                return data.employees;
+            }
+            
+            // 4. Fallback: từ localStorage
+            const localEmployees = window.dataManager.getEmployees();
+            console.log(`📂 Loaded ${localEmployees.length} employees from local storage`);
+            return localEmployees;
+            
         } catch (error) {
-            console.error('Lỗi tải nhân viên:', error);
-            this.employees = [];
+            console.error('❌ Error loading employees:', error);
+            const localEmployees = window.dataManager.getEmployees();
+            console.log(`🔄 Using ${localEmployees.length} employees from local storage`);
+            return localEmployees;
         }
     }
-
-    // Mở modal thêm nhân viên
-    openAddEmployeeModal() {
-        const modal = document.getElementById('addEmployeeModal');
-        if (modal) {
-            modal.style.display = 'block';
-            // Reset form
-            document.getElementById('employeeName').value = '';
-            document.getElementById('employeePhone').value = '';
-            document.getElementById('employeeSalary').value = '';
-            document.getElementById('employeeId').value = '';
+    
+    syncWithLocalStorage(employees) {
+        try {
+            window.dataManager.data.employees.list = employees;
+            window.dataManager.saveToLocalStorage();
+            console.log(`💾 Synced ${employees.length} employees to local storage`);
+        } catch (error) {
+            console.error('Error syncing to localStorage:', error);
         }
     }
-
-    // Mở modal chỉnh sửa nhân viên
-    openEditEmployeeModal(employee) {
-        const modal = document.getElementById('addEmployeeModal');
-        if (modal) {
-            modal.style.display = 'block';
-            document.getElementById('employeeName').value = employee.name || '';
-            document.getElementById('employeePhone').value = employee.phone || '';
-            document.getElementById('employeeSalary').value = employee.baseSalary || '';
-            document.getElementById('employeeId').value = employee.id;
-        }
-    }
-
-    // Mở modal chi tiết nhân viên
-    openEmployeeDetailModal(employee) {
-        this.selectedEmployee = employee;
-        const modal = document.getElementById('employeeDetailModal');
-        if (modal) {
-            modal.style.display = 'block';
-            this.displayEmployeeDetails(employee);
-            this.generateCalendar();
-        }
-    }
-
-    // Mở modal thưởng/phạt
-    openRewardModal(employee) {
-        this.selectedEmployee = employee;
-        const modal = document.getElementById('rewardModal');
-        if (modal) {
-            modal.style.display = 'block';
-            document.getElementById('rewardAmount').value = '';
-            document.getElementById('rewardReason').value = '';
-            document.getElementById('rewardType').value = 'reward';
-            document.getElementById('rewardEmployeeId').value = employee.id;
-        }
-    }
-
-    // Hiển thị danh sách nhân viên
-    displayEmployees() {
-        const container = document.getElementById('employeesList');
-        if (!container) return;
-
-        if (this.employees.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-users"></i>
-                    <p>Chưa có nhân viên nào</p>
-                    <button onclick="employeeManager.openAddEmployeeModal()" class="primary-btn">
-                        <i class="fas fa-user-plus"></i> Thêm nhân viên đầu tiên
-                    </button>
-                </div>
-            `;
-            return;
-        }
-
-        let html = '<div class="employees-grid">';
+    
+    getEmployeeMonthlyData(employee, monthKey = null) {
+        const targetMonth = monthKey || this.currentMonthKey;
         
-        this.employees.forEach(employee => {
-            const monthlyData = this.getMonthlyData(employee.id, this.currentMonth, this.currentYear);
-            
-            html += `
-                <div class="employee-card" onclick="employeeManager.openEmployeeDetailModal(${JSON.stringify(employee).replace(/"/g, '&quot;')})">
-                    <div class="employee-card-header">
-                        <div class="employee-avatar">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div class="employee-info">
-                            <h4>${employee.name}</h4>
-                            <p class="employee-phone">${employee.phone || 'Chưa có SĐT'}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="employee-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">Ngày off</span>
-                            <span class="stat-value">${monthlyData.offDays || 0}</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">Tăng ca</span>
-                            <span class="stat-value">${monthlyData.overtimeDays || 0}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="employee-salary">
-                        <span class="salary-label">Lương thực</span>
-                        <span class="salary-value">${this.formatCurrency(monthlyData.actualSalary || 0)}</span>
-                    </div>
-                    
-                    <div class="employee-actions">
-                        <button class="small-btn secondary edit-employee-btn" onclick="event.stopPropagation(); employeeManager.openEditEmployeeModal(${JSON.stringify(employee).replace(/"/g, '&quot;')})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="small-btn danger delete-employee-btn" data-id="${employee.id}" onclick="event.stopPropagation();">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
+        // Đảm bảo monthlyData tồn tại
+        if (!employee.monthlyData || !Array.isArray(employee.monthlyData)) {
+            employee.monthlyData = [];
+        }
+        
+        // Tìm dữ liệu tháng hiện tại
+        let monthData = employee.monthlyData.find(m => m.month === targetMonth);
+        
+        // Nếu chưa có, tạo mới
+        if (!monthData) {
+            monthData = {
+                month: targetMonth,
+                workdays: {},
+                penalties: [],
+                calculated: {
+                    totalOff: 0,
+                    totalOvertime: 0,
+                    normalDays: 30, // Mặc định 30 ngày
+                    actualSalary: employee.baseSalary || 0
+                }
+            };
+            employee.monthlyData.push(monthData);
+        }
+        
+        return monthData;
+    }
+    
+    calculateMonthlyData(employee, monthKey) {
+        const monthData = this.getEmployeeMonthlyData(employee, monthKey);
+        const baseSalary = employee.baseSalary || 0;
+        const dailySalary = Math.round(baseSalary / 30);
+        
+        // Đếm workdays
+        let offDays = 0;
+        let overtimeDays = 0;
+        
+        Object.values(monthData.workdays).forEach(status => {
+            if (status === 'off') offDays++;
+            if (status === 'overtime') overtimeDays++;
         });
         
-        html += '</div>';
-        container.innerHTML = html;
-    }
-
-    // Hiển thị chi tiết nhân viên
-    displayEmployeeDetails(employee) {
-        const container = document.getElementById('employeeDetailContent');
-        if (!container) return;
-
-        const monthlyData = this.getMonthlyData(employee.id, this.currentMonth, this.currentYear);
+        const normalDays = 30 - offDays - overtimeDays;
         
-        container.innerHTML = `
-            <div class="employee-detail-header">
-                <div class="employee-detail-avatar">
-                    <i class="fas fa-user-circle"></i>
-                </div>
-                <div class="employee-detail-info">
-                    <h3>${employee.name}</h3>
-                    <p><i class="fas fa-phone"></i> ${employee.phone || 'Chưa có SĐT'}</p>
-                    <p><i class="fas fa-money-bill"></i> Lương cơ bản: ${this.formatCurrency(employee.baseSalary || 0)}</p>
-                </div>
-            </div>
-            
-            <div class="employee-monthly-summary">
-                <div class="summary-card">
-                    <div class="summary-icon">
-                        <i class="fas fa-calendar-times"></i>
-                    </div>
-                    <div class="summary-content">
-                        <div class="summary-label">Ngày off</div>
-                        <div class="summary-value">${monthlyData.offDays || 0}</div>
-                    </div>
-                </div>
-                
-                <div class="summary-card">
-                    <div class="summary-icon">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    <div class="summary-content">
-                        <div class="summary-label">Tăng ca</div>
-                        <div class="summary-value">${monthlyData.overtimeDays || 0}</div>
-                    </div>
-                </div>
-                
-                <div class="summary-card">
-                    <div class="summary-icon">
-                        <i class="fas fa-gift"></i>
-                    </div>
-                    <div class="summary-content">
-                        <div class="summary-label">Thưởng</div>
-                        <div class="summary-value positive">${this.formatCurrency(monthlyData.totalRewards || 0)}</div>
-                    </div>
-                </div>
-                
-                <div class="summary-card">
-                    <div class="summary-icon">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <div class="summary-content">
-                        <div class="summary-label">Phạt</div>
-                        <div class="summary-value negative">${this.formatCurrency(monthlyData.totalPenalties || 0)}</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="employee-detail-actions">
-                <button class="btn primary" onclick="employeeManager.openRewardModal(${JSON.stringify(employee).replace(/"/g, '&quot;')})">
-                    <i class="fas fa-award"></i> Thưởng/Phạt
-                </button>
-                <button class="btn secondary" onclick="employeeManager.openEditEmployeeModal(${JSON.stringify(employee).replace(/"/g, '&quot;')})">
-                    <i class="fas fa-edit"></i> Sửa thông tin
-                </button>
-            </div>
-            
-            <div class="employee-calendar-section">
-                <h4><i class="fas fa-calendar-alt"></i> Lịch tháng ${this.currentMonth}/${this.currentYear}</h4>
-                <div id="employeeCalendar" class="employee-calendar">
-                    <!-- Calendar will be generated here -->
-                </div>
-            </div>
-            
-            <div class="employee-salary-breakdown">
-                <h4><i class="fas fa-calculator"></i> Chi tiết lương</h4>
-                <div class="breakdown-item">
-                    <span>Lương cơ bản</span>
-                    <span>${this.formatCurrency(employee.baseSalary || 0)}</span>
-                </div>
-                <div class="breakdown-item">
-                    <span>Khấu trừ ngày off (${monthlyData.offDays || 0} ngày)</span>
-                    <span class="negative">-${this.formatCurrency(monthlyData.offDeduction || 0)}</span>
-                </div>
-                <div class="breakdown-item">
-                    <span>Tăng ca (${monthlyData.overtimeDays || 0} ngày)</span>
-                    <span class="positive">+${this.formatCurrency(monthlyData.overtimeBonus || 0)}</span>
-                </div>
-                ${monthlyData.totalRewards > 0 ? `
-                    <div class="breakdown-item">
-                        <span>Thưởng</span>
-                        <span class="positive">+${this.formatCurrency(monthlyData.totalRewards || 0)}</span>
-                    </div>
-                ` : ''}
-                ${monthlyData.totalPenalties > 0 ? `
-                    <div class="breakdown-item">
-                        <span>Phạt</span>
-                        <span class="negative">-${this.formatCurrency(monthlyData.totalPenalties || 0)}</span>
-                    </div>
-                ` : ''}
-                <div class="breakdown-total">
-                    <span>Tổng lương thực nhận</span>
-                    <span class="total-amount">${this.formatCurrency(monthlyData.actualSalary || 0)}</span>
-                </div>
-            </div>
-        `;
-    }
-
-    // Tạo lịch 30 ngày
-    generateCalendar() {
-        const calendarEl = document.getElementById('employeeCalendar');
-        if (!calendarEl || !this.selectedEmployee) return;
-
-        const daysInMonth = new Date(this.currentYear, this.currentMonth, 0).getDate();
-        const firstDay = new Date(this.currentYear, this.currentMonth - 1, 1).getDay();
+        // Tính lương cơ bản: bình thường + tăng ca x2 - off
+        let actualSalary = (normalDays * dailySalary) + (overtimeDays * dailySalary * 2);
         
-        let html = '<div class="calendar-grid">';
-        
-        // Ngày trong tuần
-        const weekDays = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-        weekDays.forEach(day => {
-            html += `<div class="calendar-day-header">${day}</div>`;
-        });
-        
-        // Khoảng trống trước ngày đầu tiên
-        for (let i = 0; i < firstDay; i++) {
-            html += '<div class="calendar-day empty"></div>';
-        }
-        
-        // Các ngày trong tháng
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dateKey = `${this.currentYear}-${this.currentMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-            const attendance = this.getAttendance(this.selectedEmployee.id, dateKey);
-            const className = attendance ? `calendar-day ${attendance}` : 'calendar-day';
-            
-            html += `
-                <div class="${className}" data-date="${dateKey}" onclick="employeeManager.openDayDialog('${dateKey}')">
-                    <div class="day-number">${day}</div>
-                    <div class="day-status">${this.getStatusIcon(attendance)}</div>
-                </div>
-            `;
-        }
-        
-        html += '</div>';
-        calendarEl.innerHTML = html;
-    }
-
-    // Mở dialog chọn trạng thái ngày
-    openDayDialog(date) {
-        const currentStatus = this.getAttendance(this.selectedEmployee.id, date);
-        
-        const dialog = document.createElement('div');
-        dialog.className = 'day-dialog';
-        dialog.innerHTML = `
-            <div class="dialog-content">
-                <h4>Chọn trạng thái cho ngày ${date}</h4>
-                <div class="status-options">
-                    <button class="status-btn ${currentStatus === 'normal' ? 'active' : ''}" data-status="normal">
-                        <i class="fas fa-check"></i> Bình thường
-                    </button>
-                    <button class="status-btn ${currentStatus === 'off' ? 'active' : ''}" data-status="off">
-                        <i class="fas fa-bed"></i> Off
-                    </button>
-                    <button class="status-btn ${currentStatus === 'overtime' ? 'active' : ''}" data-status="overtime">
-                        <i class="fas fa-clock"></i> Tăng ca
-                    </button>
-                </div>
-                <div class="dialog-actions">
-                    <button class="btn secondary" onclick="this.closest('.day-dialog').remove()">Hủy</button>
-                    <button class="btn primary" onclick="employeeManager.saveAttendance('${date}')">Lưu</button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(dialog);
-        
-        // Lắng nghe lựa chọn
-        dialog.querySelectorAll('.status-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                dialog.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                this.selectedStatus = btn.dataset.status;
+        // Cộng/trừ penalties
+        if (monthData.penalties && Array.isArray(monthData.penalties)) {
+            monthData.penalties.forEach(p => {
+                if (p.type === 'reward') {
+                    actualSalary += p.amount || 0;
+                } else if (p.type === 'penalty') {
+                    actualSalary -= p.amount || 0;
+                }
             });
-        });
-        
-        this.selectedStatus = currentStatus || 'normal';
-    }
-
-    // Lưu trạng thái ngày
-    async saveAttendance(date) {
-        if (!this.selectedEmployee || !this.selectedStatus) return;
-        
-        const attendanceKey = `attendance_${this.selectedEmployee.id}_${date}`;
-        localStorage.setItem(attendanceKey, this.selectedStatus);
-        
-        // Đóng dialog
-        document.querySelector('.day-dialog')?.remove();
-        
-        // Cập nhật calendar
-        this.generateCalendar();
-        
-        // Cập nhật thông tin lương
-        this.displayEmployeeDetails(this.selectedEmployee);
-        
-        // Lưu lên GitHub
-        await this.saveAttendanceToGitHub(date);
-        
-        console.log(`Đã lưu trạng thái ${this.selectedStatus} cho ngày ${date}`);
-    }
-
-    // Lấy trạng thái điểm danh
-    getAttendance(employeeId, date) {
-        const key = `attendance_${employeeId}_${date}`;
-        return localStorage.getItem(key);
-    }
-
-    // employees.js - Cập nhật phần tính lương
-
-getMonthlyData(employeeId, month, year) {
-    const daysInMonth = new Date(year, month, 0).getDate();
-    let offDays = 0;
-    let overtimeDays = 0;
-    
-    for (let day = 1; day <= daysInMonth; day++) {
-        const dateKey = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-        const status = this.getAttendance(employeeId, dateKey);
-        
-        if (status === 'off') offDays++;
-        if (status === 'overtime') overtimeDays++;
-    }
-    
-    const employee = this.employees.find(e => e.id === employeeId);
-    const baseSalary = employee?.baseSalary || 0;
-    
-    // CÔNG THỨC MỚI:
-    // Lương 1 ngày = Lương cơ bản / 30
-    const dailySalary = baseSalary / 30;
-    
-    // Thưởng/phạt
-    const rewardsKey = `rewards_${employeeId}_${year}-${month}`;
-    const penaltiesKey = `penalties_${employeeId}_${year}-${month}`;
-    const totalRewards = parseFloat(localStorage.getItem(rewardsKey) || 0);
-    const totalPenalties = parseFloat(localStorage.getItem(penaltiesKey) || 0);
-    
-    // Tính khấu trừ và thưởng theo công thức mới
-    const offDeduction = offDays * dailySalary;          // Off: -1 ngày lương
-    const overtimeBonus = overtimeDays * dailySalary;    // Tăng ca: +1 ngày lương
-    
-    // Lương thực nhận
-    const actualSalary = baseSalary - offDeduction + overtimeBonus + totalRewards - totalPenalties;
-    
-    return {
-        offDays,
-        overtimeDays,
-        offDeduction,
-        overtimeBonus,
-        totalRewards,
-        totalPenalties,
-        dailySalary,      // Thêm để hiển thị
-        actualSalary
-    };
-}
-
-    // Icon trạng thái
-    getStatusIcon(status) {
-        switch(status) {
-            case 'off': return '<i class="fas fa-bed"></i>';
-            case 'overtime': return '<i class="fas fa-clock"></i>';
-            default: return '<i class="fas fa-check"></i>';
-        }
-    }
-
-    // Cập nhật tổng quan tháng
-    updateMonthlySummary() {
-        let totalEmployees = this.employees.length;
-        let totalOffDays = 0;
-        let totalOvertimeDays = 0;
-        let totalSalary = 0;
-        
-        this.employees.forEach(employee => {
-            const monthlyData = this.getMonthlyData(employee.id, this.currentMonth, this.currentYear);
-            totalOffDays += monthlyData.offDays;
-            totalOvertimeDays += monthlyData.overtimeDays;
-            totalSalary += monthlyData.actualSalary;
-        });
-        
-        const summaryEl = document.getElementById('monthlySummary');
-        if (summaryEl) {
-            summaryEl.innerHTML = `
-                <div class="summary-stats">
-                    <div class="stat-card">
-                        <h3>Tổng nhân viên</h3>
-                        <p id="totalEmployees">${totalEmployees}</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Tổng ngày off</h3>
-                        <p id="totalOffDays">${totalOffDays}</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Tổng tăng ca</h3>
-                        <p id="totalOvertime">${totalOvertimeDays}</p>
-                    </div>
-                    <div class="stat-card highlight">
-                        <h3>Tổng lương tháng</h3>
-                        <p id="totalSalary">${this.formatCurrency(totalSalary)}</p>
-                    </div>
-                </div>
-            `;
-        }
-    }
-
-    // Lưu nhân viên
-    async saveEmployee() {
-        const name = document.getElementById('employeeName').value.trim();
-        const phone = document.getElementById('employeePhone').value.trim();
-        const salary = parseFloat(document.getElementById('employeeSalary').value) || 0;
-        const employeeId = document.getElementById('employeeId').value;
-        
-        if (!name) {
-            alert('Vui lòng nhập tên nhân viên');
-            return;
         }
         
-        const employeeData = {
-            name,
-            phone,
-            baseSalary: salary,
-            createdAt: new Date().toISOString()
+        // Đảm bảo lương không âm
+        actualSalary = Math.max(0, actualSalary);
+        
+        // Cập nhật calculated
+        monthData.calculated = {
+            totalOff: offDays,
+            totalOvertime: overtimeDays,
+            normalDays: normalDays,
+            actualSalary: actualSalary
         };
         
+        return monthData.calculated;
+    }
+    
+    async saveAllEmployees() {
         try {
-            let employee;
-            if (employeeId) {
-                // Cập nhật
-                employeeData.id = parseInt(employeeId);
-                employee = await dataManager.updateEmployee(employeeData);
-            } else {
-                // Thêm mới
-                employee = await dataManager.saveEmployee(employeeData);
+            if (!this.cache.employees) {
+                console.warn('⚠️ No employees data to save');
+                return false;
             }
             
-            // Cập nhật danh sách
-            await this.loadEmployees();
-            this.displayEmployees();
-            this.updateMonthlySummary();
-            
-            // Lưu lên GitHub
-            await this.saveEmployeeToGitHub(employee);
-            
-            // Đóng modal
-            this.closeModals();
-            
-            alert(employeeId ? 'Đã cập nhật nhân viên' : 'Đã thêm nhân viên mới');
-            
-        } catch (error) {
-            console.error('Lỗi lưu nhân viên:', error);
-            alert('Lỗi: ' + error.message);
-        }
-    }
-
-    // Xóa nhân viên
-    async deleteEmployee(employeeId) {
-        if (!confirm('Bạn có chắc chắn muốn xóa nhân viên này?')) {
-            return;
-        }
-        
-        try {
-            await dataManager.deleteEmployee(employeeId);
-            await this.loadEmployees();
-            this.displayEmployees();
-            this.updateMonthlySummary();
-            
-            alert('Đã xóa nhân viên');
-            
-        } catch (error) {
-            console.error('Lỗi xóa nhân viên:', error);
-            alert('Lỗi: ' + error.message);
-        }
-    }
-
-    // Lưu thưởng/phạt
-    async saveReward() {
-        const amount = parseFloat(document.getElementById('rewardAmount').value) || 0;
-        const reason = document.getElementById('rewardReason').value.trim();
-        const type = document.getElementById('rewardType').value;
-        const employeeId = document.getElementById('rewardEmployeeId').value;
-        
-        if (!amount || !reason) {
-            alert('Vui lòng nhập đầy đủ thông tin');
-            return;
-        }
-        
-        const rewardData = {
-            employeeId: parseInt(employeeId),
-            amount: type === 'penalty' ? -Math.abs(amount) : Math.abs(amount),
-            reason,
-            type,
-            date: new Date().toISOString(),
-            month: `${this.currentYear}-${this.currentMonth.toString().padStart(2, '0')}`
-        };
-        
-        try {
-            // Lưu vào localStorage
-            const key = type === 'reward' ? 
-                `rewards_${employeeId}_${this.currentYear}-${this.currentMonth}` :
-                `penalties_${employeeId}_${this.currentYear}-${this.currentMonth}`;
-            
-            const currentAmount = parseFloat(localStorage.getItem(key) || 0);
-            localStorage.setItem(key, currentAmount + rewardData.amount);
-            
-            // Lưu lên GitHub
-            await this.saveRewardToGitHub(rewardData);
-            
-            // Cập nhật UI
-            if (this.selectedEmployee) {
-                this.displayEmployeeDetails(this.selectedEmployee);
-            }
-            
-            // Đóng modal
-            this.closeModals();
-            
-            alert(`Đã ${type === 'reward' ? 'thưởng' : 'phạt'} ${this.formatCurrency(Math.abs(amount))}`);
-            
-        } catch (error) {
-            console.error('Lỗi lưu thưởng/phạt:', error);
-            alert('Lỗi: ' + error.message);
-        }
-    }
-
-    // Lưu lên GitHub
-    async saveEmployeeToGitHub(employee) {
-        if (!githubManager.initialized) return;
-        
-        try {
-            const fileName = `employees/employee-${employee.id}-${new Date().toISOString().split('T')[0]}.json`;
-            const content = JSON.stringify({
-                type: 'employee',
-                action: employee.id ? 'update' : 'create',
-                data: employee,
-                timestamp: new Date().toISOString()
-            }, null, 2);
-            
-            await githubManager.saveFile(fileName, content, null, `${employee.id ? 'Cập nhật' : 'Thêm'} nhân viên: ${employee.name}`);
-            console.log('✅ Đã lưu nhân viên lên GitHub');
-            
-        } catch (error) {
-            console.error('Lỗi lưu nhân viên lên GitHub:', error);
-        }
-    }
-
-    async saveAttendanceToGitHub(date) {
-        if (!githubManager.initialized || !this.selectedEmployee) return;
-        
-        try {
-            const attendanceData = {
-                employeeId: this.selectedEmployee.id,
-                employeeName: this.selectedEmployee.name,
-                date: date,
-                status: this.selectedStatus,
-                timestamp: new Date().toISOString()
+            const data = {
+                version: '2.0',
+                lastUpdated: new Date().toISOString(),
+                employees: this.cache.employees
             };
             
-            const fileName = `attendance/${date}/employee-${this.selectedEmployee.id}.json`;
-            const content = JSON.stringify(attendanceData, null, 2);
+            // 1. Save lên GitHub
+            const success = await window.githubManager.createOrUpdateFile(
+                'employees/main.json',
+                data,
+                `Cập nhật dữ liệu nhân viên - ${this.cache.employees.length} nhân viên`
+            );
             
-            await githubManager.saveFile(fileName, content, null, `Điểm danh: ${this.selectedEmployee.name} - ${date}`);
-            console.log('✅ Đã lưu điểm danh lên GitHub');
+            if (success) {
+                // 2. Update cache timestamp
+                this.cache.lastSync = new Date().toISOString();
+                this.cache.hasChanges = false;
+                
+                // 3. Update localStorage
+                this.syncWithLocalStorage(this.cache.employees);
+                
+                // 4. Thông báo data đã update
+                window.dataManager.notifyUIUpdate();
+                
+                console.log('✅ Saved all employees to GitHub');
+                return true;
+            }
+            
+            console.error('❌ Failed to save to GitHub');
+            return false;
             
         } catch (error) {
-            console.error('Lỗi lưu điểm danh lên GitHub:', error);
+            console.error('❌ Error saving employees:', error);
+            
+            // Fallback: vẫn lưu localStorage
+            this.syncWithLocalStorage(this.cache.employees);
+            this.cache.hasChanges = true;
+            
+            window.showToast('Đã lưu cục bộ, chưa đồng bộ GitHub', 'warning');
+            return false;
         }
     }
-
-    async saveRewardToGitHub(rewardData) {
-        if (!githubManager.initialized) return;
+    
+    markDataChanged() {
+        this.cache.hasChanges = true;
+        
+        // Tự động save sau 2 giây nếu có thay đổi
+        if (this.saveTimeout) {
+            clearTimeout(this.saveTimeout);
+        }
+        this.saveTimeout = setTimeout(() => {
+            if (this.cache.hasChanges) {
+                this.saveAllEmployees();
+            }
+        }, 2000);
+    }
+    
+    // ========== PUBLIC API METHODS ==========
+    
+    async getEmployees() {
+        return await this.loadEmployees();
+    }
+    
+    async getWorkStats(employee) {
+        if (!employee) return { off: 0, overtime: 0, workdays: {} };
+        
+        const monthData = this.getEmployeeMonthlyData(employee);
+        await this.calculateMonthlyData(employee, this.currentMonthKey);
+        
+        return {
+            off: monthData.calculated.totalOff,
+            overtime: monthData.calculated.totalOvertime,
+            workdays: monthData.workdays
+        };
+    }
+    
+    calculateEmployeeSalary(employee) {
+        if (!employee) return { actual: 0, base: 0, off: 0, overtime: 0 };
+        
+        const monthData = this.getEmployeeMonthlyData(employee);
+        this.calculateMonthlyData(employee, this.currentMonthKey);
+        
+        return {
+            actual: monthData.calculated.actualSalary,
+            base: employee.baseSalary || 0,
+            off: monthData.calculated.totalOff,
+            overtime: monthData.calculated.totalOvertime,
+            normalDays: monthData.calculated.normalDays
+        };
+    }
+    
+    async updateWorkDay(employeeId, day, status) {
+        try {
+            const employees = await this.loadEmployees();
+            const employee = employees.find(e => e.id == employeeId);
+            
+            if (!employee) {
+                window.showToast('Không tìm thấy nhân viên', 'error');
+                return false;
+            }
+            
+            const monthData = this.getEmployeeMonthlyData(employee);
+            
+            // Format day (01, 02, ...)
+            const dayStr = String(day).padStart(2, '0');
+            
+            // Cập nhật workday
+            monthData.workdays[dayStr] = status;
+            
+            // Tự động tính toán lại
+            this.calculateMonthlyData(employee, this.currentMonthKey);
+            
+            // Mark data changed
+            this.markDataChanged();
+            
+            // Format ngày để hiển thị
+            const [month, year] = this.currentMonth.split('/');
+            const dateDisplay = `${day}/${month}/${year}`;
+            const statusText = status === 'normal' ? 'Bình thường' : 
+                             status === 'overtime' ? 'Tăng ca' : 'OFF';
+            
+            window.showToast(`Đã cập nhật ${dateDisplay}: ${statusText}`, 'success');
+            return true;
+            
+        } catch (error) {
+            console.error('Error updating work day:', error);
+            window.showToast('Lỗi khi cập nhật', 'error');
+            return false;
+        }
+    }
+    
+    async addPenalty(employeeId, penaltyData) {
+        try {
+            const employees = await this.loadEmployees();
+            const employee = employees.find(e => e.id == employeeId);
+            
+            if (!employee) {
+                window.showToast('Không tìm thấy nhân viên', 'error');
+                return false;
+            }
+            
+            const monthData = this.getEmployeeMonthlyData(employee);
+            
+            // Thêm penalty với ID
+            penaltyData.id = Date.now();
+            penaltyData.addedAt = new Date().toISOString();
+            
+            if (!monthData.penalties) {
+                monthData.penalties = [];
+            }
+            
+            monthData.penalties.push(penaltyData);
+            
+            // Tự động tính toán lại
+            this.calculateMonthlyData(employee, this.currentMonthKey);
+            
+            // Mark data changed
+            this.markDataChanged();
+            
+            const typeText = penaltyData.type === 'reward' ? 'thưởng' : 'phạt';
+            window.showToast(`Đã thêm ${typeText} ${penaltyData.amount.toLocaleString()}₫`, 'success');
+            return true;
+            
+        } catch (error) {
+            console.error('Error adding penalty:', error);
+            window.showToast('Lỗi khi thêm chế tài', 'error');
+            return false;
+        }
+    }
+    
+    async addEmployee(employeeData) {
+        try {
+            const employees = await this.loadEmployees();
+            
+            // Tạo ID mới (tìm ID lớn nhất + 1)
+            const maxId = employees.length > 0 ? Math.max(...employees.map(e => e.id || 0)) : 0;
+            const newId = maxId + 1;
+            
+            const newEmployee = {
+                id: newId,
+                name: employeeData.name || '',
+                phone: employeeData.phone || '',
+                baseSalary: employeeData.baseSalary || 0,
+                position: employeeData.position || 'Nhân viên',
+                monthlyData: [],
+                createdAt: new Date().toISOString()
+            };
+            
+            employees.push(newEmployee);
+            this.cache.employees = employees;
+            
+            // Mark data changed
+            this.markDataChanged();
+            
+            window.showToast('Đã thêm nhân viên mới', 'success');
+            return newEmployee;
+            
+        } catch (error) {
+            console.error('Error adding employee:', error);
+            window.showToast('Lỗi khi thêm nhân viên', 'error');
+            return null;
+        }
+    }
+    
+    async updateEmployee(employeeId, updates) {
+        try {
+            const employees = await this.loadEmployees();
+            const index = employees.findIndex(e => e.id == employeeId);
+            
+            if (index === -1) {
+                window.showToast('Không tìm thấy nhân viên', 'error');
+                return false;
+            }
+            
+            // Cập nhật thông tin cơ bản
+            employees[index] = {
+                ...employees[index],
+                ...updates,
+                updatedAt: new Date().toISOString()
+            };
+            
+            this.cache.employees = employees;
+            
+            // Mark data changed
+            this.markDataChanged();
+            
+            window.showToast('Đã cập nhật thông tin nhân viên', 'success');
+            return true;
+            
+        } catch (error) {
+            console.error('Error updating employee:', error);
+            window.showToast('Lỗi khi cập nhật nhân viên', 'error');
+            return false;
+        }
+    }
+    
+    async deleteEmployee(employeeId) {
+        try {
+            const employees = await this.loadEmployees();
+            const index = employees.findIndex(e => e.id == employeeId);
+            
+            if (index === -1) {
+                window.showToast('Không tìm thấy nhân viên', 'error');
+                return false;
+            }
+            
+            const employeeName = employees[index].name;
+            employees.splice(index, 1);
+            this.cache.employees = employees;
+            
+            // Mark data changed
+            this.markDataChanged();
+            
+            window.showToast(`Đã xóa nhân viên "${employeeName}"`, 'success');
+            return true;
+            
+        } catch (error) {
+            console.error('Error deleting employee:', error);
+            window.showToast('Lỗi khi xóa nhân viên', 'error');
+            return false;
+        }
+    }
+    
+    // ========== UI RENDER METHODS ==========
+    
+    async render() {
+        if (this.isLoading) return;
+        
+        this.isLoading = true;
+        const mainContent = document.getElementById('mainContent');
         
         try {
-            const fileName = `rewards/${rewardData.month}/employee-${rewardData.employeeId}-${Date.now()}.json`;
-            const content = JSON.stringify(rewardData, null, 2);
+            // Tải dữ liệu nhân viên
+            const employees = await this.loadEmployees();
+            const totalSalary = await this.calculateTotalSalary(employees);
+            const stats = await this.calculateStats(employees);
             
-            await githubManager.saveFile(fileName, content, null, 
-                `${rewardData.type === 'reward' ? 'Thưởng' : 'Phạt'} nhân viên ID: ${rewardData.employeeId}`);
-            console.log('✅ Đã lưu thưởng/phạt lên GitHub');
+            mainContent.innerHTML = `
+                <div class="employees-container">
+                    <div class="employees-header">
+                        <h1><i class="fas fa-users"></i> NHÂN VIÊN</h1>
+                        <button class="btn-primary" onclick="window.employeesModule.showAddEmployeeModal()">
+                            <i class="fas fa-plus"></i> THÊM NHÂN VIÊN
+                        </button>
+                    </div>
+                    
+                    <div class="month-selector">
+                        <label>Tháng lương:</label>
+                        <select id="salaryMonth" onchange="window.employeesModule.changeMonth()">
+                            ${this.generateMonthOptions()}
+                        </select>
+                    </div>
+                    
+                    <div class="summary-cards" onclick="window.employeesModule.showSalaryDetails()" style="cursor: pointer;">
+                        <div class="summary-card">
+                            <i class="fas fa-users"></i>
+                            <div>
+                                <div class="summary-label">Tổng NV</div>
+                                <div class="summary-value">${employees.length}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="summary-card">
+                            <i class="fas fa-calendar-times"></i>
+                            <div>
+                                <div class="summary-label">Ngày OFF</div>
+                                <div class="summary-value">${stats.totalOff}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="summary-card">
+                            <i class="fas fa-clock"></i>
+                            <div>
+                                <div class="summary-label">Tăng ca</div>
+                                <div class="summary-value">${stats.totalOvertime}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="summary-card highlight">
+                            <i class="fas fa-money-bill-wave"></i>
+                            <div>
+                                <div class="summary-label">Tổng lương</div>
+                                <div class="summary-value">${totalSalary.toLocaleString()} ₫</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="employees-list">
+                        <h3>DANH SÁCH NHÂN VIÊN</h3>
+                        
+                        ${employees.map((employee, index) => {
+                            const salary = this.calculateEmployeeSalary(employee);
+                            const workStats = this.getWorkStatsSync(employee);
+                            
+                            return `
+                                <div class="employee-card" onclick="window.employeesModule.showEmployeeDetail(${index})">
+                                    <div class="employee-avatar">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <div class="employee-info">
+                                        <div class="employee-name">${employee.name}</div>
+                                        <div class="employee-phone">
+                                            <i class="fas fa-phone"></i> ${employee.phone || 'Chưa có SĐT'}
+                                        </div>
+                                        <div class="employee-stats">
+                                            <span class="stat-off">OFF: ${workStats.off} ngày</span>
+                                            <span class="stat-overtime">Tăng ca: ${workStats.overtime} ngày</span>
+                                        </div>
+                                        <div class="employee-salary">
+                                            Thực lãnh: <strong>${salary.actual.toLocaleString()} ₫</strong>
+                                        </div>
+                                    </div>
+                                    <div class="employee-arrow">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                        
+                        ${employees.length === 0 ? `
+                            <div class="empty-state">
+                                <i class="fas fa-user-slash"></i>
+                                <p>Chưa có nhân viên nào</p>
+                                <button class="btn-primary" onclick="window.employeesModule.showAddEmployeeModal()">
+                                    <i class="fas fa-plus"></i> THÊM NHÂN VIÊN ĐẦU TIÊN
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="action-card" onclick="window.employeesModule.toggleWorkCalendar()">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>📅 LỊCH LÀM VIỆC THÁNG ${this.currentMonth}</span>
+                        <i class="fas fa-chevron-down" id="calendarToggle"></i>
+                    </div>
+                    
+                    <div id="calendarSection" class="collapsible-section" style="display: none;">
+                        <!-- Calendar sẽ được render riêng -->
+                    </div>
+                </div>
+            `;
             
         } catch (error) {
-            console.error('Lỗi lưu thưởng/phạt lên GitHub:', error);
+            console.error('Error rendering employees:', error);
+            mainContent.innerHTML = `
+                <div class="error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Lỗi khi tải dữ liệu nhân viên: ${error.message}</p>
+                    <button onclick="window.employeesModule.render()">Thử lại</button>
+                </div>
+            `;
+        } finally {
+            this.isLoading = false;
         }
     }
-
-    // Đóng tất cả modal
-    closeModals() {
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.style.display = 'none';
+    
+    getWorkStatsSync(employee) {
+        // Synchronous version for rendering
+        if (!employee) return { off: 0, overtime: 0 };
+        const monthData = this.getEmployeeMonthlyData(employee);
+        return {
+            off: monthData.calculated.totalOff || 0,
+            overtime: monthData.calculated.totalOvertime || 0
+        };
+    }
+    
+    generateMonthOptions() {
+        const options = [];
+        const now = new Date();
+        
+        for (let i = 0; i < 12; i++) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i);
+            const value = `${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+            const label = `Tháng ${value}`;
+            const selected = value === this.currentMonth ? 'selected' : '';
+            
+            options.push(`<option value="${value}" ${selected}>${label}</option>`);
+        }
+        
+        return options.join('');
+    }
+    
+    async changeMonth() {
+        const select = document.getElementById('salaryMonth');
+        this.currentMonth = select.value;
+        const [month, year] = this.currentMonth.split('/');
+        this.currentMonthKey = `${year}-${month.padStart(2, '0')}`;
+        await this.render();
+    }
+    
+    async calculateTotalSalary(employees) {
+        let total = 0;
+        for (const employee of employees) {
+            const salary = this.calculateEmployeeSalary(employee);
+            total += salary.actual;
+        }
+        return total;
+    }
+    
+    async calculateStats(employees) {
+        let totalOff = 0;
+        let totalOvertime = 0;
+        
+        for (const employee of employees) {
+            const workStats = this.getWorkStatsSync(employee);
+            totalOff += workStats.off;
+            totalOvertime += workStats.overtime;
+        }
+        
+        return { totalOff, totalOvertime };
+    }
+    
+    // ========== MODAL METHODS ==========
+    
+    showAddEmployeeModal() {
+        const modalContent = `
+            <div class="modal-header">
+                <h2><i class="fas fa-user-plus"></i> THÊM NHÂN VIÊN</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Tên nhân viên:</label>
+                    <input type="text" id="employeeName" placeholder="Nguyễn Văn A" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Số điện thoại:</label>
+                    <input type="tel" id="employeePhone" placeholder="0912 345 678">
+                </div>
+                
+                <div class="form-group">
+                    <label>Lương cơ bản/tháng:</label>
+                    <div class="input-group">
+                        <input type="text" id="employeeSalary" placeholder="8.000.000" 
+                               oninput="window.employeesModule.formatCurrency(this)">
+                        <span class="currency">₫</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Chức vụ:</label>
+                    <input type="text" id="employeePosition" placeholder="Nhân viên">
+                </div>
+                
+                <button class="btn-primary" onclick="window.employeesModule.addEmployeeFromModal()">
+                    <i class="fas fa-save"></i> 💾 LƯU NHÂN VIÊN
+                </button>
+                
+                <button class="btn-secondary" onclick="closeModal()">
+                    HỦY
+                </button>
+            </div>
+        `;
+        
+        window.showModal(modalContent);
+    }
+    
+    formatCurrency(input) {
+        let value = input.value.replace(/\D/g, '');
+        if (value) {
+            value = parseInt(value).toLocaleString('vi-VN');
+        }
+        input.value = value;
+    }
+    
+    getCurrencyValue(inputId) {
+        const input = document.getElementById(inputId);
+        if (!input) return 0;
+        
+        const value = input.value.replace(/\D/g, '');
+        return parseInt(value) || 0;
+    }
+    
+    async addEmployeeFromModal() {
+        try {
+            const name = document.getElementById('employeeName').value.trim();
+            const phone = document.getElementById('employeePhone').value.trim();
+            const salary = this.getCurrencyValue('employeeSalary');
+            const position = document.getElementById('employeePosition').value.trim() || 'Nhân viên';
+            
+            // Validation
+            if (!name) {
+                window.showToast('Vui lòng nhập tên nhân viên', 'warning');
+                document.getElementById('employeeName').focus();
+                return;
+            }
+            
+            if (salary <= 0) {
+                window.showToast('Vui lòng nhập lương cơ bản', 'warning');
+                document.getElementById('employeeSalary').focus();
+                return;
+            }
+            
+            // Kiểm tra trùng tên
+            const employees = await this.loadEmployees();
+            const isDuplicate = employees.some(emp => 
+                emp.name.toLowerCase() === name.toLowerCase()
+            );
+            
+            if (isDuplicate) {
+                window.showToast('Nhân viên đã tồn tại', 'warning');
+                return;
+            }
+            
+            const newEmployee = await this.addEmployee({
+                name,
+                phone,
+                baseSalary: salary,
+                position
+            });
+            
+            if (newEmployee) {
+                closeModal();
+                await this.render();
+            }
+            
+        } catch (error) {
+            console.error('Error adding employee:', error);
+            window.showToast('Lỗi khi thêm nhân viên', 'error');
+        }
+    }
+    
+    async showEmployeeDetail(index) {
+        const employees = await this.loadEmployees();
+        if (index >= employees.length) return;
+        
+        this.selectedEmployee = employees[index];
+        
+        const salary = this.calculateEmployeeSalary(this.selectedEmployee);
+        const workStats = await this.getWorkStats(this.selectedEmployee);
+        const [month, year] = this.currentMonth.split('/');
+        
+        // Tạo lịch cho tháng hiện tại
+        const daysInMonth = new Date(year, month, 0).getDate();
+        let calendarHTML = '<div class="week-days">';
+        let dayCount = 1;
+        
+        for (let week = 0; week < 6; week++) {
+            if (dayCount > daysInMonth) break;
+            
+            calendarHTML += '<div class="week">';
+            for (let dow = 1; dow <= 7; dow++) {
+                if (dayCount > daysInMonth) {
+                    calendarHTML += '<div class="day empty"></div>';
+                } else {
+                    const dayStr = String(dayCount).padStart(2, '0');
+                    const status = workStats.workdays[dayStr] || 'normal';
+                    calendarHTML += `
+                        <div class="day ${status}" onclick="window.employeesModule.selectWorkDay(${dayCount})">
+                            ${dayCount}
+                        </div>
+                    `;
+                    dayCount++;
+                }
+            }
+            calendarHTML += '</div>';
+        }
+        calendarHTML += '</div>';
+        
+        // Lấy penalties của tháng
+        const monthData = this.getEmployeeMonthlyData(this.selectedEmployee);
+        const penalties = monthData.penalties || [];
+        
+        const modalContent = `
+            <div class="modal-header">
+                <h2><i class="fas fa-user"></i> ${this.selectedEmployee.name.toUpperCase()}</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="employee-detail-header">
+                    <div class="employee-phone">
+                        <i class="fas fa-phone"></i> ${this.selectedEmployee.phone || 'Chưa có SĐT'}
+                    </div>
+                    <button class="btn-icon danger" onclick="window.employeesModule.deleteCurrentEmployee()">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                
+                <div class="salary-card">
+                    <h3>LƯƠNG THÁNG ${this.currentMonth}</h3>
+                    <div class="salary-details">
+                        <div><span>Lương cơ bản:</span> <span>${salary.base.toLocaleString()} ₫</span></div>
+                        <div><span>Lương ngày:</span> <span>${Math.round(salary.base / 30).toLocaleString()} ₫/ngày</span></div>
+                        <div><span>Ngày bình thường:</span> <span>${salary.normalDays} ngày</span></div>
+                        <div><span>Ngày OFF:</span> <span>${salary.off} ngày</span></div>
+                        <div><span>Ngày tăng ca:</span> <span>${salary.overtime} ngày</span></div>
+                        <div><span>Thưởng/Phạt:</span> <span>${this.getPenaltiesTotal(penalties).toLocaleString()} ₫</span></div>
+                    </div>
+                    
+                    <div class="actual-salary">
+                        <strong>THỰC LÃNH:</strong>
+                        <span>${salary.actual.toLocaleString()} ₫</span>
+                    </div>
+                </div>
+                
+                <div class="calendar-section">
+                    <h3>LỊCH LÀM VIỆC THÁNG ${month}</h3>
+                    ${calendarHTML}
+                    
+                    <div class="calendar-legend">
+                        <div class="legend-item">
+                            <span class="legend-color normal"></span>
+                            <span>Bình thường</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color off"></span>
+                            <span>OFF (-1 ngày lương)</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color overtime"></span>
+                            <span>Tăng ca (+1 ngày lương)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                ${penalties.length > 0 ? `
+                    <div class="penalties-section">
+                        <h4>CHẾ TÀI THÁNG ${month}</h4>
+                        <div class="penalties-list">
+                            ${penalties.map(p => `
+                                <div class="penalty-item ${p.type}">
+                                    <i class="fas fa-${p.type === 'reward' ? 'gift' : 'exclamation-triangle'}"></i>
+                                    <div>
+                                        <strong>${p.type === 'reward' ? 'Thưởng' : 'Phạt'}: ${p.amount.toLocaleString()}₫</strong>
+                                        <small>${p.reason || 'Không có lý do'}</small>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div class="action-buttons">
+                    <button class="btn-primary" onclick="window.employeesModule.showPenaltyModal()">
+                        <i class="fas fa-balance-scale"></i> CHẾ TÀI THƯỞNG/PHẠT
+                    </button>
+                    <button class="btn-secondary" onclick="window.employeesModule.showEditModal()">
+                        <i class="fas fa-edit"></i> SỬA THÔNG TIN
+                    </button>
+                </div>
+                
+                <button class="btn-outline" onclick="closeModal()">
+                    ĐÓNG
+                </button>
+            </div>
+        `;
+        
+        window.showModal(modalContent);
+    }
+    
+    getPenaltiesTotal(penalties) {
+        return penalties.reduce((total, p) => {
+            if (p.type === 'reward') {
+                return total + (p.amount || 0);
+            } else {
+                return total - (p.amount || 0);
+            }
+        }, 0);
+    }
+    
+    async deleteCurrentEmployee() {
+        if (!this.selectedEmployee) return;
+        
+        if (!confirm(`Xóa nhân viên "${this.selectedEmployee.name}"?\n\nHành động này không thể hoàn tác!`)) {
+            return;
+        }
+        
+        const success = await this.deleteEmployee(this.selectedEmployee.id);
+        if (success) {
+            closeModal();
+            await this.render();
+        }
+    }
+    
+    selectWorkDay(day) {
+        if (!this.selectedEmployee) return;
+        
+        const currentStatus = this.getCurrentWorkDayStatus(day);
+        
+        const modalContent = `
+            <div class="modal-header">
+                <h2><i class="fas fa-calendar-day"></i> CHỌN LOẠI NGÀY</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-date">
+                    Ngày ${day} - Tháng ${this.currentMonth}
+                </div>
+                
+                <div class="workday-options">
+                    <label class="option-item">
+                        <input type="radio" name="workdayType" value="normal" ${currentStatus === 'normal' ? 'checked' : ''}>
+                        <div class="option-content">
+                            <div class="option-title">BÌNH THƯỜNG</div>
+                            <div class="option-subtitle">Lương ngày: +${Math.round((this.selectedEmployee.baseSalary || 0) / 30).toLocaleString()} ₫</div>
+                        </div>
+                    </label>
+                    
+                    <label class="option-item">
+                        <input type="radio" name="workdayType" value="overtime" ${currentStatus === 'overtime' ? 'checked' : ''}>
+                        <div class="option-content">
+                            <div class="option-title">TĂNG CA (+1 ngày lương)</div>
+                            <div class="option-subtitle">Lương ngày: +${(Math.round((this.selectedEmployee.baseSalary || 0) / 30) * 2).toLocaleString()} ₫</div>
+                        </div>
+                    </label>
+                    
+                    <label class="option-item">
+                        <input type="radio" name="workdayType" value="off" ${currentStatus === 'off' ? 'checked' : ''}>
+                        <div class="option-content">
+                            <div class="option-title">OFF (-1 ngày lương)</div>
+                            <div class="option-subtitle">Lương ngày: -${Math.round((this.selectedEmployee.baseSalary || 0) / 30).toLocaleString()} ₫</div>
+                        </div>
+                    </label>
+                </div>
+                
+                <button class="btn-primary" onclick="window.employeesModule.updateSelectedWorkDay(${day})">
+                    <i class="fas fa-save"></i> CẬP NHẬT
+                </button>
+                
+                <button class="btn-secondary" onclick="closeModal()">
+                    HỦY
+                </button>
+            </div>
+        `;
+        
+        window.showModal(modalContent);
+    }
+    
+    getCurrentWorkDayStatus(day) {
+        if (!this.selectedEmployee) return 'normal';
+        const monthData = this.getEmployeeMonthlyData(this.selectedEmployee);
+        const dayStr = String(day).padStart(2, '0');
+        return monthData.workdays[dayStr] || 'normal';
+    }
+    
+    async updateSelectedWorkDay(day) {
+        const selectedType = document.querySelector('input[name="workdayType"]:checked').value;
+        
+        const success = await this.updateWorkDay(
+            this.selectedEmployee.id, 
+            day, 
+            selectedType
+        );
+        
+        if (success) {
+            closeModal();
+            // Refresh modal
+            const employees = await this.loadEmployees();
+            const index = employees.findIndex(e => e.id === this.selectedEmployee.id);
+            if (index >= 0) {
+                this.selectedEmployee = employees[index];
+                this.showEmployeeDetail(index);
+            }
+        }
+    }
+    
+    showPenaltyModal() {
+        const modalContent = `
+            <div class="modal-header">
+                <h2><i class="fas fa-balance-scale"></i> CHẾ TÀI</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="employee-info">
+                    <strong>NV:</strong> ${this.selectedEmployee.name}
+                </div>
+                
+                <div class="form-group">
+                    <label>Loại:</label>
+                    <div class="radio-group">
+                        <label>
+                            <input type="radio" name="penaltyType" value="reward" checked>
+                            <span class="radio-label reward">Thưởng (+)</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="penaltyType" value="penalty">
+                            <span class="radio-label penalty">Phạt (-)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Số tiền (VND):</label>
+                    <div class="input-group">
+                        <input type="text" id="penaltyAmount" placeholder="500.000" 
+                               oninput="window.employeesModule.formatCurrency(this)">
+                        <span class="currency">₫</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Lý do:</label>
+                    <textarea id="penaltyReason" placeholder="Nhập lý do thưởng/phạt..." rows="3"></textarea>
+                </div>
+                
+                <button class="btn-primary" onclick="window.employeesModule.addPenaltyFromModal()">
+                    <i class="fas fa-save"></i> LƯU
+                </button>
+                
+                <button class="btn-secondary" onclick="closeModal()">
+                    HỦY
+                </button>
+            </div>
+        `;
+        
+        window.showModal(modalContent);
+    }
+    
+    async addPenaltyFromModal() {
+        try {
+            const type = document.querySelector('input[name="penaltyType"]:checked').value;
+            const amount = this.getCurrencyValue('penaltyAmount');
+            const reason = document.getElementById('penaltyReason').value.trim();
+            
+            if (amount <= 0) {
+                window.showToast('Vui lòng nhập số tiền', 'warning');
+                return;
+            }
+            
+            if (!reason) {
+                window.showToast('Vui lòng nhập lý do', 'warning');
+                return;
+            }
+            
+            const penaltyData = {
+                type,
+                amount,
+                reason,
+                date: new Date().toISOString().split('T')[0]
+            };
+            
+            const success = await this.addPenalty(this.selectedEmployee.id, penaltyData);
+            
+            if (success) {
+                closeModal();
+                // Refresh modal
+                const employees = await this.loadEmployees();
+                const index = employees.findIndex(e => e.id === this.selectedEmployee.id);
+                this.showEmployeeDetail(index);
+            }
+            
+        } catch (error) {
+            console.error('Error adding penalty:', error);
+            window.showToast('Lỗi khi thêm chế tài', 'error');
+        }
+    }
+    
+    showEditModal() {
+        const modalContent = `
+            <div class="modal-header">
+                <h2><i class="fas fa-edit"></i> SỬA THÔNG TIN</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Tên nhân viên:</label>
+                    <input type="text" id="editEmployeeName" value="${this.selectedEmployee.name}">
+                </div>
+                
+                <div class="form-group">
+                    <label>Số điện thoại:</label>
+                    <input type="tel" id="editEmployeePhone" value="${this.selectedEmployee.phone || ''}">
+                </div>
+                
+                <div class="form-group">
+                    <label>Lương cơ bản/tháng:</label>
+                    <div class="input-group">
+                        <input type="text" id="editEmployeeSalary" value="${this.selectedEmployee.baseSalary}" 
+                               oninput="window.employeesModule.formatCurrency(this)">
+                        <span class="currency">₫</span>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" onclick="window.employeesModule.updateEmployeeFromModal()">
+                    <i class="fas fa-save"></i> CẬP NHẬT
+                </button>
+                
+                <button class="btn-secondary" onclick="closeModal()">
+                    HỦY
+                </button>
+            </div>
+        `;
+        
+        window.showModal(modalContent);
+    }
+    
+    async updateEmployeeFromModal() {
+        try {
+            const name = document.getElementById('editEmployeeName').value.trim();
+            const phone = document.getElementById('editEmployeePhone').value.trim();
+            const salary = this.getCurrencyValue('editEmployeeSalary');
+            
+            if (!name) {
+                window.showToast('Vui lòng nhập tên nhân viên', 'warning');
+                return;
+            }
+            
+            if (salary <= 0) {
+                window.showToast('Vui lòng nhập lương cơ bản', 'warning');
+                return;
+            }
+            
+            const success = await this.updateEmployee(this.selectedEmployee.id, {
+                name,
+                phone,
+                baseSalary: salary
+            });
+            
+            if (success) {
+                closeModal();
+                await this.render();
+            }
+            
+        } catch (error) {
+            console.error('Error updating employee:', error);
+            window.showToast('Lỗi khi cập nhật', 'error');
+        }
+    }
+    
+    async showSalaryDetails() {
+        const employees = await this.loadEmployees();
+        
+        let detailsHTML = '';
+        let total = 0;
+        
+        for (const employee of employees) {
+            const salary = this.calculateEmployeeSalary(employee);
+            total += salary.actual;
+            
+            detailsHTML += `
+                <div class="salary-detail-item">
+                    <div class="detail-name">${employee.name}</div>
+                    <div class="detail-salary">${salary.actual.toLocaleString()} ₫</div>
+                    <div class="detail-breakdown">
+                        <small>
+                            Cơ bản: ${salary.base.toLocaleString()} ₫ | 
+                            OFF: ${salary.off} ngày | 
+                            Tăng ca: ${salary.overtime} ngày
+                        </small>
+                    </div>
+                </div>
+            `;
+        }
+        
+        const modalContent = `
+            <div class="modal-header">
+                <h2><i class="fas fa-money-bill-wave"></i> CHI TIẾT LƯƠNG THÁNG ${this.currentMonth}</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="salary-summary">
+                    <div class="summary-total">
+                        <span>Tổng lương toàn bộ nhân viên:</span>
+                        <strong>${total.toLocaleString()} ₫</strong>
+                    </div>
+                </div>
+                
+                <div class="salary-details-list">
+                    ${detailsHTML}
+                </div>
+                
+                <button class="btn-secondary" onclick="closeModal()">
+                    ĐÓNG
+                </button>
+            </div>
+        `;
+        
+        window.showModal(modalContent);
+    }
+    
+    toggleWorkCalendar() {
+        const section = document.getElementById('calendarSection');
+        const toggleIcon = document.getElementById('calendarToggle');
+        
+        if (section.style.display === 'none') {
+            section.style.display = 'block';
+            toggleIcon.className = 'fas fa-chevron-up';
+            this.renderWorkCalendar();
+        } else {
+            section.style.display = 'none';
+            toggleIcon.className = 'fas fa-chevron-down';
+        }
+    }
+    
+    async renderWorkCalendar() {
+        const section = document.getElementById('calendarSection');
+        if (!section) return;
+        
+        const employees = await this.loadEmployees();
+        const [month, year] = this.currentMonth.split('/');
+        const monthKey = `${year}-${month.padStart(2, '0')}`;
+        const daysInMonth = new Date(year, month, 0).getDate();
+        
+        // Tạo header với các ngày
+        let calendarHTML = '<div class="calendar-header">';
+        calendarHTML += '<div class="calendar-cell employee-name">Nhân viên</div>';
+        
+        for (let day = 1; day <= daysInMonth; day++) {
+            calendarHTML += `<div class="calendar-cell day-header">${day}</div>`;
+        }
+        calendarHTML += '</div>';
+        
+        // Tạo hàng cho mỗi nhân viên
+        employees.forEach(employee => {
+            calendarHTML += '<div class="calendar-row">';
+            calendarHTML += `<div class="calendar-cell employee-name">${employee.name}</div>`;
+            
+            const monthData = this.getEmployeeMonthlyData(employee);
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayStr = String(day).padStart(2, '0');
+                const status = monthData.workdays[dayStr] || 'normal';
+                
+                calendarHTML += `
+                    <div class="calendar-cell day-cell ${status}" 
+                         onclick="window.employeesModule.quickUpdateWorkDay('${employee.id}', ${day}, '${status}')">
+                        <div class="day-status">${this.getStatusSymbol(status)}</div>
+                    </div>
+                `;
+            }
+            
+            calendarHTML += '</div>';
         });
+        
+        section.innerHTML = `
+            <div class="work-calendar">
+                <h4>LỊCH LÀM VIỆC THÁNG ${month}/${year}</h4>
+                
+                <div class="calendar-container">
+                    ${calendarHTML}
+                </div>
+                
+                <div class="calendar-legend">
+                    <div class="legend-item">
+                        <span class="legend-color normal"></span>
+                        <span>Bình thường</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color off"></span>
+                        <span>OFF</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color overtime"></span>
+                        <span>Tăng ca</span>
+                    </div>
+                    <div class="legend-item">
+                        <small>Click vào ô để thay đổi trạng thái</small>
+                    </div>
+                </div>
+            </div>
+        `;
     }
-
-    // Định dạng tiền
-    formatCurrency(amount) {
-        return new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND'
-        }).format(amount);
+    
+    getStatusSymbol(status) {
+        switch(status) {
+            case 'normal': return '•';
+            case 'overtime': return '+';
+            case 'off': return 'O';
+            default: return '•';
+        }
+    }
+    
+    async quickUpdateWorkDay(employeeId, day, currentStatus) {
+        const employees = await this.loadEmployees();
+        const employee = employees.find(e => e.id == employeeId);
+        if (!employee) return;
+        
+        this.selectedEmployee = employee;
+        this.selectWorkDay(day);
+    }
+    
+    // ========== INITIALIZATION ==========
+    
+    async init() {
+        // Tải dữ liệu khi vào trang
+        await this.loadEmployees();
+        console.log('✅ Employees module initialized');
     }
 }
 
-// Thêm method mới vào DataManager
-DataManager.prototype.updateEmployee = async function(employeeData) {
-    return new Promise((resolve, reject) => {
-        if (!this.db) {
-            reject(new Error('Database chưa được khởi tạo'));
-            return;
-        }
-        
-        const transaction = this.db.transaction(['employees'], 'readwrite');
-        const store = transaction.objectStore('employees');
-        
-        const request = store.put(employeeData);
-        
-        request.onsuccess = () => {
-            resolve(employeeData);
-        };
-        
-        request.onerror = (event) => {
-            reject(new Error('Lỗi cập nhật nhân viên: ' + event.target.error));
-        };
-    });
-};
+// Khởi tạo module
+window.employeesModule = new EmployeesModule();
 
-DataManager.prototype.deleteEmployee = async function(employeeId) {
-    return new Promise((resolve, reject) => {
-        if (!this.db) {
-            reject(new Error('Database chưa được khởi tạo'));
-            return;
-        }
-        
-        const transaction = this.db.transaction(['employees'], 'readwrite');
-        const store = transaction.objectStore('employees');
-        
-        const request = store.delete(parseInt(employeeId));
-        
-        request.onsuccess = () => {
-            resolve(true);
-        };
-        
-        request.onerror = (event) => {
-            reject(new Error('Lỗi xóa nhân viên: ' + event.target.error));
-        };
-    });
-};
-
-// Khởi tạo Employee Manager toàn cục
-let employeeManager = null;
-
-// Khởi tạo khi tab được mở
-function initEmployeeManager() {
-    if (!employeeManager) {
-        employeeManager = new EmployeeManager();
-    }
-    return employeeManager;
-}
-
-// Tự động khởi tạo khi DOM sẵn sàng
+// Tự động init khi trang load
 document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('employeesTab')) {
-        setTimeout(() => {
-            employeeManager = new EmployeeManager();
-        }, 500);
-    }
+    setTimeout(() => window.employeesModule.init(), 1000);
 });
