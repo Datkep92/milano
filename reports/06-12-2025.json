@@ -1,0 +1,19 @@
+{
+  "date": "06/12/2025",
+  "openingBalance": 0,
+  "revenue": 111110111,
+  "expenses": [],
+  "transfers": [],
+  "closingBalance": 111011,
+  "actualReceived": 110999100,
+  "inventoryExports": [
+    {
+      "productId": 1764999625111,
+      "product": "1",
+      "quantity": 1,
+      "unit": "kg",
+      "time": "12:44"
+    }
+  ],
+  "savedAt": "2025-12-06T05:44:48.403Z"
+}
