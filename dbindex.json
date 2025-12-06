@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2025-12-06T08:24:32.746Z",
+  "lastUpdated": "2025-12-06T08:38:34.692Z",
   "files": {
     "reports/06-12-2025.json": {
       "sha": "75ad2440c902d65eb236d2ee0638bffbffefb2f6",
@@ -59,11 +59,15 @@
     "reports/2025-12-08.json": {
       "sha": "f4e22454c80e9c9b31f3a2bf36313df1063e6917",
       "lastModified": "2025-12-06T08:24:32.744Z"
+    },
+    "reports/2025-12-06_v6.json": {
+      "sha": "08830166bd326521456f0cb5f6c25ce4243cbfca",
+      "lastModified": "2025-12-06T08:38:34.691Z"
     }
   },
   "modules": {
     "reports": {
-      "latest": "2025-12-08.json",
+      "latest": "2025-12-06_v6.json",
       "files": {
         "06-12-2025.json": {
           "sha": "75ad2440c902d65eb236d2ee0638bffbffefb2f6",
@@ -96,6 +100,10 @@
         "2025-12-08.json": {
           "sha": "f4e22454c80e9c9b31f3a2bf36313df1063e6917",
           "lastModified": "2025-12-06T08:24:32.744Z"
+        },
+        "2025-12-06_v6.json": {
+          "sha": "08830166bd326521456f0cb5f6c25ce4243cbfca",
+          "lastModified": "2025-12-06T08:38:34.691Z"
         }
       }
     },
