@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2025-12-06T11:35:32.975Z",
+  "lastUpdated": "2025-12-06T17:14:54.732Z",
   "employees": [
     {
       "id": 1,
@@ -16,12 +16,21 @@
             "12": "overtime",
             "13": "off"
           },
-          "penalties": [],
+          "penalties": [
+            {
+              "type": "penalty",
+              "amount": 50000,
+              "reason": "...",
+              "date": "2025-12-06",
+              "id": 1765041292725,
+              "addedAt": "2025-12-06T17:14:52.725Z"
+            }
+          ],
           "calculated": {
             "totalOff": 2,
             "totalOvertime": 1,
             "normalDays": 27,
-            "actualSalary": 2900000
+            "actualSalary": 2850000
           }
         }
       ],
