@@ -1,0 +1,21 @@
+{
+  "type": "inventory",
+  "data": {
+    "date": "07/12/2025",
+    "purchases": [
+      {
+        "id": 1765062394174,
+        "date": "07/12/2025",
+        "type": "material",
+        "name": "Cà phê sữa",
+        "quantity": 100,
+        "unit": "kg",
+        "total": 12000000,
+        "unitPrice": 120000,
+        "addedAt": "2025-12-06T23:06:34.174Z"
+      }
+    ],
+    "services": [],
+    "lastUpdated": "2025-12-06T23:06:34.176Z"
+  }
+}
