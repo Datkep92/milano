@@ -50,8 +50,12 @@
       "processedAt": "2025-12-06T10:56:38.767Z"
     }
   ],
-  "savedAt": "2025-12-06T10:56:38.767Z",
+  "savedAt": "2025-12-07T02:02:42.308Z",
   "version": 12,
   "inventoryUpdated": true,
-  "filename": "2025-12-06_v12.json"
+  "filename": "2025-12-06_v12.json",
+  "_sha": "98ed2d30038ffdb1a5894bb8942a6c22cee3abc6",
+  "_syncedAt": "2025-12-07T02:01:49.476Z",
+  "uploadedBy": "DataManager",
+  "uploadedAt": "2025-12-07T02:02:43.432Z"
 }
