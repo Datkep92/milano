@@ -1,7 +1,8 @@
 {
   "workDays": {
     "1": {
-      "11": "off"
+      "11": "off",
+      "27": "overtime"
     }
   },
   "penalties": {}
