@@ -7,6 +7,14 @@
       "baseSalary": 4500000,
       "position": "PHA CHẾ",
       "createdAt": "2025-12-07T13:01:09.927Z"
+    },
+    {
+      "id": 2,
+      "name": "UYÊN",
+      "phone": "0987654322",
+      "baseSalary": 2460000,
+      "position": "Nhân viên",
+      "createdAt": "2025-12-07T13:01:24.042Z"
     }
   ]
 }
