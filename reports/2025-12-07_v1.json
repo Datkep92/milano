@@ -1,0 +1,79 @@
+{
+  "date": "07/12/2025",
+  "openingBalance": 0,
+  "actualReceived": 1200000,
+  "revenue": 1711000,
+  "expenses": [
+    {
+      "id": 1765112184940,
+      "name": "cam",
+      "amount": 30000,
+      "date": "07/12/2025",
+      "addedAt": "2025-12-07T12:56:24.940Z"
+    },
+    {
+      "id": 1765112190675,
+      "name": "đá",
+      "amount": 35000,
+      "date": "07/12/2025",
+      "addedAt": "2025-12-07T12:56:30.675Z"
+    }
+  ],
+  "transfers": [
+    {
+      "id": 1765112200881,
+      "content": "sacom",
+      "amount": 0,
+      "date": "07/12/2025",
+      "addedAt": "2025-12-07T12:56:40.881Z"
+    },
+    {
+      "id": 1765112205509,
+      "content": "Không có nội dung",
+      "amount": 18000,
+      "date": "07/12/2025",
+      "addedAt": "2025-12-07T12:56:45.509Z"
+    },
+    {
+      "id": 1765112209598,
+      "content": "Không có nội dung",
+      "amount": 28000,
+      "date": "07/12/2025",
+      "addedAt": "2025-12-07T12:56:49.598Z"
+    }
+  ],
+  "closingBalance": 400000,
+  "inventoryExports": [
+    {
+      "id": 1765112978421,
+      "productId": 1765112265202,
+      "product": "cà phê sữa",
+      "quantity": 1,
+      "unit": "kg",
+      "time": "20:09",
+      "date": "2025-12-07",
+      "unitPrice": 0,
+      "totalValue": 0,
+      "productCode": "",
+      "processed": true,
+      "processedAt": "2025-12-07T13:09:39.698Z"
+    },
+    {
+      "id": 1765112978905,
+      "productId": 1765112249100,
+      "product": "Cà phê đen",
+      "quantity": 1,
+      "unit": "kg",
+      "time": "20:09",
+      "date": "2025-12-07",
+      "unitPrice": 0,
+      "totalValue": 0,
+      "productCode": "",
+      "processed": true,
+      "processedAt": "2025-12-07T13:09:39.698Z"
+    }
+  ],
+  "savedAt": "2025-12-07T13:09:39.702Z",
+  "version": 1,
+  "inventoryUpdated": true
+}
