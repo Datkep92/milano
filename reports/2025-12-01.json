@@ -7,8 +7,12 @@
   "closingBalance": 111011,
   "actualReceived": 999100,
   "inventoryExports": [],
-  "savedAt": "2025-12-06T10:26:50.788Z",
+  "savedAt": "2025-12-07T02:02:42.308Z",
   "version": 1,
   "inventoryUpdated": false,
-  "filename": "2025-12-01.json"
+  "filename": "2025-12-01.json",
+  "_sha": "a7f2ef5ba76a228ef5b0f8106612870df707ea25",
+  "_syncedAt": "2025-12-07T02:01:46.394Z",
+  "uploadedBy": "DataManager",
+  "uploadedAt": "2025-12-07T02:02:42.309Z"
 }
