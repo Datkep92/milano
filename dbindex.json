@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2025-12-07T18:41:56.311Z",
+  "lastUpdated": "2025-12-07T18:42:04.135Z",
   "files": {
     "reports/2025-12-01.json": {
       "sha": "a7f2ef5ba76a228ef5b0f8106612870df707ea25",
@@ -142,7 +142,7 @@
   },
   "hashes": {
     "employees": {
-      "employees.json": "ffd33143df84581efebb4a5dc6b23c5e2492c718",
+      "employees.json": "2ed01d367f02f638abc56f203c71c9b2c592868b",
       "2025-12.json": "3ac3be9d88d23a8cc0d1967d690943824f0b673b"
     },
     "reports": {
