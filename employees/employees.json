@@ -33,13 +33,15 @@
       "monthlyData": [
         {
           "month": "2025-12",
-          "workdays": {},
+          "workdays": {
+            "17": "overtime"
+          },
           "penalties": [],
           "calculated": {
             "totalOff": 0,
-            "totalOvertime": 0,
-            "normalDays": 30,
-            "actualSalary": 2460000
+            "totalOvertime": 1,
+            "normalDays": 29,
+            "actualSalary": 2542000
           }
         }
       ]
