@@ -7,7 +7,12 @@
   "transfers": [],
   "closingBalance": 1230123,
   "inventoryExports": [],
-  "savedAt": "2025-12-07T01:17:22.025Z",
+  "savedAt": "2025-12-07T02:02:42.308Z",
   "version": 1,
-  "inventoryUpdated": false
+  "inventoryUpdated": false,
+  "filename": "2025-12-07.json",
+  "_sha": "ad9e1d457a8b9ea57ab6e70efd6abb131bb7449a",
+  "_syncedAt": "2025-12-07T02:01:49.978Z",
+  "uploadedBy": "DataManager",
+  "uploadedAt": "2025-12-07T02:02:44.976Z"
 }
