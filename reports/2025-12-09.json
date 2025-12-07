@@ -1,65 +1,42 @@
 {
   "date": "09/12/2025",
   "openingBalance": 0,
-  "actualReceived": 800000,
-  "revenue": 1288000,
+  "actualReceived": 4000000,
+  "revenue": 4597000,
   "expenses": [
     {
-      "id": 1765106612872,
+      "id": 1765107133412,
       "name": "đá",
-      "amount": 30000,
-      "date": "09/12/2025",
-      "addedAt": "2025-12-07T11:23:32.872Z"
-    },
-    {
-      "id": 1765106619718,
-      "name": "cam",
       "amount": 20000,
       "date": "09/12/2025",
-      "addedAt": "2025-12-07T11:23:39.718Z"
+      "addedAt": "2025-12-07T11:32:13.412Z"
+    },
+    {
+      "id": 1765107154890,
+      "name": "cam",
+      "amount": 17000,
+      "date": "09/12/2025",
+      "addedAt": "2025-12-07T11:32:34.890Z"
     }
   ],
   "transfers": [
     {
-      "id": 1765106629800,
-      "content": "sacom",
-      "amount": 0,
+      "id": 1765107143309,
+      "content": "ck",
+      "amount": 30000,
       "date": "09/12/2025",
-      "addedAt": "2025-12-07T11:23:49.800Z"
+      "addedAt": "2025-12-07T11:32:23.309Z"
     },
     {
-      "id": 1765106633610,
-      "content": "Không có nội dung",
-      "amount": 20000,
+      "id": 1765107164720,
+      "content": "20",
+      "amount": 30000,
       "date": "09/12/2025",
-      "addedAt": "2025-12-07T11:23:53.610Z"
-    },
-    {
-      "id": 1765106638491,
-      "content": "Không có nội dung",
-      "amount": 18000,
-      "date": "09/12/2025",
-      "addedAt": "2025-12-07T11:23:58.491Z"
+      "addedAt": "2025-12-07T11:32:44.720Z"
     }
   ],
-  "closingBalance": 400000,
-  "inventoryExports": [
-    {
-      "id": 1765106661209,
-      "productId": 1765091291706,
-      "product": "Cà phê đen",
-      "quantity": 3,
-      "unit": "kg",
-      "time": "18:24",
-      "date": "2025-12-09",
-      "unitPrice": 0,
-      "totalValue": 0,
-      "productCode": "",
-      "processed": true,
-      "processedAt": "2025-12-07T11:24:27.914Z"
-    }
-  ],
-  "savedAt": "2025-12-07T11:24:27.917Z",
-  "version": 1,
-  "inventoryUpdated": true
+  "closingBalance": 500000,
+  "inventoryExports": [],
+  "savedAt": "2025-12-07T11:33:03.692Z",
+  "inventoryUpdated": false
 }
