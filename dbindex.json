@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2025-12-07T13:09:42.428Z",
+  "lastUpdated": "2025-12-07T13:09:49.176Z",
   "files": {
     "reports/2025-12-01.json": {
       "sha": "a7f2ef5ba76a228ef5b0f8106612870df707ea25",
@@ -148,7 +148,8 @@
     "reports": {
       "2025-12-07.json": "087cbeec3e0a53f8524fb27677c57630d840a9f1",
       "2025-12-08.json": "75f7e9924f056fef1474cfcad5462a26e797bb5f",
-      "2025-12-09.json": "a4b1946c76a44aa5210e852a948418391917b983"
+      "2025-12-09.json": "a4b1946c76a44aa5210e852a948418391917b983",
+      "2025-12-07_v1.json": "f5cf85cea0e1b270e72af8db1e27f3f38a507ebb"
     },
     "inventory": {
       "products.json": "6480d68b45d47648f0665e4ca23105758832188e",
