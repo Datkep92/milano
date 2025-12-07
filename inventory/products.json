@@ -1,0 +1,22 @@
+{
+  "products": [
+    {
+      "id": 1765043940172,
+      "name": "Sữa Đặc",
+      "unit": "gói",
+      "quantity": 20,
+      "totalValue": 700000,
+      "addedAt": "2025-12-06T17:59:00.172Z"
+    },
+    {
+      "id": 1765043976259,
+      "name": "CÀ PHÊ ĐEN",
+      "unit": "kg",
+      "quantity": 100,
+      "totalValue": 12000000,
+      "type": "material",
+      "addedAt": "2025-12-06T17:59:36.260Z",
+      "lastUpdated": "2025-12-06T17:59:36.260Z"
+    }
+  ]
+}
