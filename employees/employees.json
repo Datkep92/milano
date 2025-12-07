@@ -1,0 +1,12 @@
+{
+  "employees": [
+    {
+      "id": 1,
+      "name": "NGHĨA",
+      "phone": "0987654321",
+      "baseSalary": 4500000,
+      "position": "PHA CHẾ",
+      "createdAt": "2025-12-07T13:01:09.927Z"
+    }
+  ]
+}
