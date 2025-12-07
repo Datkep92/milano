@@ -9,6 +9,16 @@
       "type": "material",
       "addedAt": "2025-12-07T07:08:11.706Z",
       "lastUpdated": "2025-12-07T11:16:22.215Z"
+    },
+    {
+      "id": 1765106961465,
+      "name": "Cà phê sữa",
+      "unit": "kg",
+      "quantity": 40,
+      "totalValue": 600000,
+      "type": "material",
+      "addedAt": "2025-12-07T11:29:21.465Z",
+      "lastUpdated": "2025-12-07T11:29:21.465Z"
     }
   ]
 }
