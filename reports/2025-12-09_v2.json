@@ -1,13 +1,13 @@
 {
   "date": "09/12/2025",
-  "openingBalance": 500000,
-  "actualReceived": 5000000,
-  "revenue": 4500000,
+  "openingBalance": 0,
+  "actualReceived": 0,
+  "revenue": 0,
   "expenses": [],
   "transfers": [],
   "closingBalance": 0,
   "inventoryExports": [],
-  "savedAt": "2025-12-07T18:38:11.458Z",
+  "savedAt": "2025-12-07T18:40:10.813Z",
   "version": 2,
   "inventoryUpdated": false
 }
