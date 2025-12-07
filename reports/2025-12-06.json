@@ -1,0 +1,57 @@
+{
+  "date": "06/12/2025",
+  "openingBalance": 0,
+  "revenue": 0,
+  "expenses": [],
+  "transfers": [],
+  "closingBalance": 0,
+  "actualReceived": 0,
+  "inventoryExports": [
+    {
+      "id": 1765018588728,
+      "productId": 1765018546816.7275,
+      "product": "111",
+      "quantity": 4,
+      "unit": "gói",
+      "time": "17:56",
+      "date": "2025-12-06",
+      "unitPrice": 10.000900090009,
+      "totalValue": 40.003600360036,
+      "productCode": "",
+      "processed": true,
+      "processedAt": "2025-12-06T10:56:38.767Z"
+    },
+    {
+      "id": 1765018590400,
+      "productId": 1765018546816.72,
+      "product": "CÀ PHÊ",
+      "quantity": 3,
+      "unit": "kg",
+      "time": "17:56",
+      "date": "2025-12-06",
+      "unitPrice": 12000,
+      "totalValue": 36000,
+      "productCode": "",
+      "processed": true,
+      "processedAt": "2025-12-06T10:56:38.767Z"
+    },
+    {
+      "id": 1765018592846,
+      "productId": 1765018575193,
+      "product": "cà phê hạt",
+      "quantity": 3,
+      "unit": "kg",
+      "time": "17:56",
+      "date": "2025-12-06",
+      "unitPrice": 12000,
+      "totalValue": 36000,
+      "productCode": "",
+      "processed": true,
+      "processedAt": "2025-12-06T10:56:38.767Z"
+    }
+  ],
+  "savedAt": "2025-12-06T10:56:38.767Z",
+  "version": 12,
+  "inventoryUpdated": true,
+  "filename": "2025-12-06_v12.json"
+}
