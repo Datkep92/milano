@@ -10,13 +10,15 @@
       "monthlyData": [
         {
           "month": "2025-12",
-          "workdays": {},
+          "workdays": {
+            "12": "off"
+          },
           "penalties": [],
           "calculated": {
-            "totalOff": 0,
+            "totalOff": 1,
             "totalOvertime": 0,
-            "normalDays": 30,
-            "actualSalary": 4500000
+            "normalDays": 29,
+            "actualSalary": 4350000
           }
         }
       ]
@@ -48,7 +50,19 @@
       "phone": "123",
       "baseSalary": 123,
       "position": "12312",
-      "monthlyData": [],
+      "monthlyData": [
+        {
+          "month": "2025-12",
+          "workdays": {},
+          "penalties": [],
+          "calculated": {
+            "totalOff": 0,
+            "totalOvertime": 0,
+            "normalDays": 30,
+            "actualSalary": 120
+          }
+        }
+      ],
       "createdAt": "2025-12-07T18:42:02.217Z"
     }
   ]
