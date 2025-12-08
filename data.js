@@ -1,4 +1,4 @@
-// data.js - Quản lý dữ liệu thông minh với ưu tiên Local First
+// data.js - Đã tối ưu và sửa lỗi
 class DataManager {
     constructor() {
         this.data = {
@@ -6,848 +6,790 @@ class DataManager {
             inventory: {
                 products: [],
                 purchases: {},
-                services: {},
-                exports: {}
+                services: {}
             },
             employees: {
                 list: [],
-                salaries: {},
-                penalties: {},
-                workDays: {}
+                workDays: {},
+                penalties: {}
             }
         };
         
-        // DB Index từ GitHub
-        this.dbIndex = {
-            version: '2.0',
-            lastUpdated: null,
-            files: {},
-            modules: {
-                reports: { latest: null, files: {} },
-                inventory: { latest: null, files: {} },
-                employees: { latest: null, files: {} }
-            }
-        };
-        
-        // Local DB Index
-        this.localDbIndex = null;
-        
-        // Trạng thái đồng bộ
         this.syncState = {
             isSyncing: false,
-            lastLocalUpdate: null,
-            lastGitHubUpdate: null,
-            isInitialized: false,
-            syncQueue: [],
-            isProcessingQueue: false,
-            autoSyncInterval: 5 * 60 * 1000, // 5 phút
-            autoSyncTimer: null,
-            hasPendingChanges: false
+            isBackgroundSyncing: false,
+            lastSync: null,
+            online: navigator.onLine,
+            hasPendingChanges: false,
+            pendingChanges: []
         };
         
         this.initialized = false;
+        this.isLoading = false;
+        
+        // Event listeners
+        window.addEventListener('online', () => this.handleOnline());
+        window.addEventListener('offline', () => this.handleOffline());
+        
+        console.log('🔄 DataManager created');
     }
     
-    // ========== KHỞI TẠO ==========
     async init() {
+        if (this.initialized) return true;
+        
+        console.log('🚀 DataManager Initializing...');
+        
         try {
-            console.log('🚀 DataManager - Fast initialization (Local First)');
+            this.isLoading = true;
             
-            // 1. Load DB index từ localStorage
-            await this.loadLocalDBIndex();
+            // 1. Load từ localStorage trước (cho UX nhanh)
+            this.loadLocalData();
             
-            // 2. Load dữ liệu cục bộ từ localStorage
-            this.loadFromLocalStorage();
+            // 2. Đợi Firebase Manager khởi tạo
+            if (window.githubManager) {
+                try {
+                    await window.githubManager.init();
+                    console.log('✅ Firebase connected');
+                } catch (firebaseError) {
+                    console.warn('⚠️ Firebase connection failed, using offline mode:', firebaseError.message);
+                }
+            } else {
+                console.warn('⚠️ Firebase Manager not available, using offline mode');
+            }
             
-            // 3. Load sync queue
-            this.loadSyncQueue();
-            
-            // 4. Đánh dấu đã khởi tạo - UI có thể render ngay
-            this.syncState.isInitialized = true;
-            this.syncState.lastLocalUpdate = new Date().toISOString();
-            
-            // 5. Kiểm tra GitHub trong nền (không chặn UI)
-            setTimeout(() => this.backgroundGitHubCheck(), 1000);
-            
-            // 6. Thiết lập auto-sync
-            this.setupAutoSync();
-            
-            console.log('✅ DataManager - Local data ready for UI');
-            console.log('📊 Local data stats:', {
-                reports: Object.keys(this.data.reports).length,
-                products: this.data.inventory.products.length,
-                employees: this.data.employees.list.length
-            });
+            // 3. Load dữ liệu từ Firebase trong background nếu online
+            if (navigator.onLine) {
+                this.loadFromFirebase().catch(error => {
+                    console.warn('⚠️ Background Firebase load failed:', error.message);
+                });
+            }
             
             this.initialized = true;
+            this.isLoading = false;
+            console.log('✅ DataManager initialized successfully');
             
-        } catch (error) {
-            console.error('❌ Data init error:', error);
-        }
-    }
-    
-    setupAutoSync() {
-        // Kiểm tra GitHub định kỳ
-        this.syncState.autoSyncTimer = setInterval(
-            () => this.backgroundGitHubCheck(),
-            this.syncState.autoSyncInterval
-        );
-        
-        // Lắng nghe sự kiện online/offline
-        window.addEventListener('online', () => this.backgroundGitHubCheck());
-        
-        // Lắng nghe khi app trở lại focus
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && navigator.onLine) {
-                this.backgroundGitHubCheck();
-            }
-        });
-    }
-    
-    // ========== LOCAL STORAGE ==========
-    async loadLocalDBIndex() {
-        try {
-            const saved = localStorage.getItem('milano_db_index');
-            if (saved) {
-                this.localDbIndex = JSON.parse(saved);
-                console.log('📂 Loaded local DB index');
-            } else {
-                this.localDbIndex = {
-                    version: '2.0',
-                    lastUpdated: null,
-                    files: {},
-                    modules: {
-                        reports: { latest: null, files: {} },
-                        inventory: { latest: null, files: {} },
-                        employees: { latest: null, files: {} }
-                    }
-                };
-                console.log('📂 Created new local DB index');
-            }
-        } catch (e) {
-            console.warn('⚠️ Could not load DB index:', e);
-            this.localDbIndex = {
-                version: '2.0',
-                lastUpdated: null,
-                files: {},
-                modules: {
-                    reports: { latest: null, files: {} },
-                    inventory: { latest: null, files: {} },
-                    employees: { latest: null, files: {} }
-                }
-            };
-        }
-    }
-    
-    saveLocalDBIndex() {
-        try {
-            localStorage.setItem('milano_db_index', JSON.stringify(this.localDbIndex));
-        } catch (e) {
-            console.warn('⚠️ Could not save DB index');
-        }
-    }
-    
-    loadFromLocalStorage() {
-        try {
-            // Load cache data từ localStorage
-            const savedReports = localStorage.getItem('milano_reports_cache');
-            const savedInventory = localStorage.getItem('milano_inventory_cache');
-            const savedEmployees = localStorage.getItem('milano_employees_cache');
+            // 4. Update sync status
+            this.updateSyncStatus(navigator.onLine ? 'online' : 'offline');
             
-            if (savedReports) {
-                const parsed = JSON.parse(savedReports);
-                this.data.reports = parsed;
-                console.log(`📊 Loaded ${Object.keys(parsed).length} reports from cache`);
-            }
-            
-            if (savedInventory) {
-                const parsed = JSON.parse(savedInventory);
-                this.data.inventory = {
-                    products: Array.isArray(parsed.products) ? parsed.products : [],
-                    purchases: parsed.purchases || {},
-                    services: parsed.services || {},
-                    exports: parsed.exports || {}
-                };
-                console.log(`📦 Loaded ${this.data.inventory.products.length} products from cache`);
-            }
-            
-            if (savedEmployees) {
-                const parsed = JSON.parse(savedEmployees);
-                this.data.employees = {
-                    list: Array.isArray(parsed.list) ? parsed.list : [],
-                    salaries: parsed.salaries || {},
-                    penalties: parsed.penalties || {},
-                    workDays: parsed.workDays || {}
-                };
-                console.log(`👥 Loaded ${this.data.employees.list.length} employees from cache`);
-            }
-            
-        } catch (e) {
-            console.warn('⚠️ Could not load from localStorage:', e);
-        }
-    }
-    
-    saveToLocalStorage() {
-        try {
-            localStorage.setItem('milano_reports_cache', JSON.stringify(this.data.reports));
-            localStorage.setItem('milano_inventory_cache', JSON.stringify(this.data.inventory));
-            localStorage.setItem('milano_employees_cache', JSON.stringify(this.data.employees));
-            
-            this.syncState.lastLocalUpdate = new Date().toISOString();
-            this.syncState.hasPendingChanges = true;
-            
-        } catch (e) {
-            console.warn('⚠️ Could not save to localStorage');
-        }
-    }
-    
-    // ========== SYNC QUEUE ==========
-    loadSyncQueue() {
-        try {
-            const queue = localStorage.getItem('milano_sync_queue');
-            if (queue) {
-                this.syncState.syncQueue = JSON.parse(queue);
-                console.log(`📋 Loaded ${this.syncState.syncQueue.length} pending sync tasks`);
-            }
-        } catch (e) {
-            console.warn('⚠️ Could not load sync queue');
-            this.syncState.syncQueue = [];
-        }
-    }
-    
-    saveSyncQueue() {
-        try {
-            localStorage.setItem('milano_sync_queue', JSON.stringify(this.syncState.syncQueue));
-        } catch (e) {
-            console.warn('⚠️ Could not save sync queue');
-        }
-    }
-    
-    queueSync(task) {
-        this.syncState.syncQueue.push({
-            ...task,
-            queuedAt: new Date().toISOString(),
-            retryCount: 0
-        });
-        this.saveSyncQueue();
-        
-        console.log(`📤 Queued sync task: ${task.module}/${task.date}`);
-        
-        // Tự động xử lý queue nếu đang online
-        if (navigator.onLine && !this.syncState.isProcessingQueue) {
-            setTimeout(() => this.processSyncQueue(), 1000);
-        }
-    }
-    
-    async processSyncQueue() {
-        if (this.syncState.isProcessingQueue || this.syncState.syncQueue.length === 0) {
-            return;
-        }
-        
-        this.syncState.isProcessingQueue = true;
-        console.log(`🔄 Processing sync queue (${this.syncState.syncQueue.length} tasks)`);
-        
-        try {
-            while (this.syncState.syncQueue.length > 0 && navigator.onLine) {
-                const task = this.syncState.syncQueue[0];
-                
-                try {
-                    console.log(`📤 Processing: ${task.module}/${task.date}`);
-                    
-                    const success = await this.uploadToGitHub(
-                        task.module,
-                        task.date,
-                        task.data,
-                        task.message
-                    );
-                    
-                    if (success) {
-                        // Xóa task đã xử lý
-                        this.syncState.syncQueue.shift();
-                        console.log(`✅ Sync completed: ${task.module}/${task.date}`);
-                    } else {
-                        // Thử lại sau
-                        task.retryCount++;
-                        if (task.retryCount >= 3) {
-                            console.warn(`❌ Max retries reached for: ${task.module}/${task.date}`);
-                            this.syncState.syncQueue.shift();
-                        } else {
-                            // Chuyển xuống cuối queue để thử lại sau
-                            this.syncState.syncQueue.push(this.syncState.syncQueue.shift());
-                        }
-                        break;
-                    }
-                    
-                } catch (error) {
-                    console.error(`❌ Sync task failed:`, error);
-                    task.retryCount++;
-                    
-                    if (task.retryCount >= 3) {
-                        console.warn(`❌ Removing failed task after 3 retries: ${task.module}/${task.date}`);
-                        this.syncState.syncQueue.shift();
-                    } else {
-                        // Chuyển xuống cuối queue
-                        this.syncState.syncQueue.push(this.syncState.syncQueue.shift());
-                    }
-                    break;
-                }
-            }
-            
-        } finally {
-            this.syncState.isProcessingQueue = false;
-            this.saveSyncQueue();
-            
-            if (this.syncState.syncQueue.length > 0) {
-                console.log(`⏳ ${this.syncState.syncQueue.length} tasks remaining in queue`);
-            }
-        }
-    }
-    
-    // ========== BACKGROUND GITHUB CHECK ==========
-    async backgroundGitHubCheck() {
-        if (this.syncState.isSyncing || !navigator.onLine) {
-            return;
-        }
-        
-        console.log('🔄 Background GitHub check...');
-        
-        try {
-            // 1. Lấy DB index từ GitHub
-            const remoteIndex = await window.githubManager.getDBIndex();
-            if (!remoteIndex) {
-                console.log('📭 No GitHub DB index found');
-                return;
-            }
-            
-            // 2. Kiểm tra nếu cần sync từ GitHub
-            const needsDownload = this.needsSyncFromGitHub(remoteIndex);
-            
-            if (needsDownload) {
-                console.log('📥 GitHub has newer data, syncing in background...');
-                await this.downloadFromGitHub(remoteIndex);
-            } else {
-                console.log('✅ GitHub data is up-to-date');
-            }
-            
-            // 3. Xử lý sync queue nếu có
-            if (this.syncState.syncQueue.length > 0) {
-                await this.processSyncQueue();
-            }
-            
-            // 4. Kiểm tra nếu có pending changes local
-            if (this.syncState.hasPendingChanges) {
-                await this.uploadPendingChanges();
-            }
-            
-        } catch (error) {
-            console.log('⚠️ Background sync failed:', error.message);
-        }
-    }
-    
-    needsSyncFromGitHub(remoteIndex) {
-        // Nếu chưa có local index -> cần sync
-        if (!this.localDbIndex || !this.localDbIndex.lastUpdated) {
             return true;
+            
+        } catch (error) {
+            console.error('❌ DataManager init error:', error);
+            this.isLoading = false;
+            
+            // Vẫn khởi tạo thành công ở chế độ offline
+            this.initialized = true;
+            this.updateSyncStatus('offline');
+            
+            return false;
+        }
+    }
+    
+    // ========== FIREBASE OPERATIONS ==========
+    
+    async loadFromFirebase() {
+        if (!navigator.onLine) {
+            console.log('📴 Skipping Firebase load - offline');
+            return;
         }
         
-        // Nếu GitHub có lastUpdated mới hơn -> cần sync
-        const localTime = new Date(this.localDbIndex.lastUpdated);
-        const remoteTime = new Date(remoteIndex.lastUpdated);
-        
-        return remoteTime > localTime;
-    }
-    
-    async downloadFromGitHub(remoteIndex) {
-        this.syncState.isSyncing = true;
-        this.updateSyncStatus(true, 'Đang cập nhật từ GitHub...');
+        const firebaseAvailable = window.githubManager && window.githubManager.isAvailable?.();
+        if (!firebaseAvailable) {
+            console.log('📴 Skipping Firebase load - not available');
+            return;
+        }
         
         try {
-            // Cập nhật dbIndex
-            this.dbIndex = remoteIndex;
+            console.log('🌐 Loading data from Firebase...');
+            this.updateSyncStatus('Đang tải dữ liệu...', 'syncing');
             
-            // Tải dữ liệu mới từ từng module
-            await this.syncModuleData('reports', true);
-            await this.syncModuleData('inventory', true);
-            await this.syncModuleData('employees', true);
+            // Load từng phần một để tránh timeout
+            await Promise.allSettled([
+                this.loadReportsFromFirebase(),
+                this.loadInventoryFromFirebase(),
+                this.loadEmployeesFromFirebase()
+            ]);
             
-            // Cập nhật local DB index
-            this.localDbIndex = JSON.parse(JSON.stringify(remoteIndex));
-            this.saveLocalDBIndex();
+            this.syncState.lastSync = new Date().toISOString();
+            this.syncState.hasPendingChanges = false;
             
-            // Lưu cache
-            this.saveToLocalStorage();
-            
-            // Thông báo cho UI cập nhật
-            this.notifyUIUpdate();
-            
-            console.log('✅ Background download completed');
+            this.updateSyncStatus('Đã tải xong', 'success');
+            console.log('✅ Firebase data loaded');
             
         } catch (error) {
-            console.error('❌ Background download error:', error);
-        } finally {
-            this.syncState.isSyncing = false;
-            this.updateSyncStatus(false);
+            console.error('❌ Error loading from Firebase:', error);
+            this.updateSyncStatus('Lỗi tải dữ liệu', 'error');
         }
     }
     
-    async uploadPendingChanges() {
-        // Logic để upload các thay đổi chưa được sync
-        // Có thể implement nếu cần track từng thay đổi
-        this.syncState.hasPendingChanges = false;
-    }
-    
-    // ========== SMART SYNC METHODS ==========
-    async syncModuleData(module, background = false) {
+    async loadReportsFromFirebase() {
         try {
-            const moduleFiles = this.dbIndex.modules[module]?.files || {};
-            const localFiles = this.localDbIndex?.modules?.[module]?.files || {};
+            const reports = await window.githubManager.getData('reports');
             
-            let downloaded = 0;
-            
-            for (const [filename, remoteFile] of Object.entries(moduleFiles)) {
-                const localFile = localFiles[filename];
+            if (reports) {
+                let loadedCount = 0;
                 
-                // Nếu file không có trong local hoặc SHA khác
-                if (!localFile || localFile.sha !== remoteFile.sha) {
-                    await this.downloadModuleFile(module, filename);
-                    downloaded++;
-                }
-            }
-            
-            if (downloaded > 0 && !background) {
-                console.log(`✅ ${module}: Downloaded ${downloaded} new/updated files`);
-            }
-            
-        } catch (error) {
-            console.error(`❌ Error syncing ${module} data:`, error);
-        }
-    }
-    
-    async downloadModuleFile(module, filename) {
-        try {
-            const filePath = `${module}/${filename}`;
-            const content = await window.githubManager.getFileContent(filePath);
-            
-            if (!content) return;
-            
-            // Xử lý dữ liệu theo module
-            switch(module) {
-                case 'reports':
-                    await this.processReportFile(filename, content);
-                    break;
-                case 'inventory':
-                    await this.processInventoryFile(filename, content);
-                    break;
-                case 'employees':
-                    await this.processEmployeesFile(filename, content);
-                    break;
-            }
-            
-        } catch (error) {
-            console.error(`❌ Error downloading ${module} file ${filename}:`, error);
-        }
-    }
-    
-    // ========== DATA PROCESSING ==========
-    async processReportFile(filename, content) {
-        try {
-            const match = filename.match(/^(\d{4}-\d{2}-\d{2})(?:_v(\d+))?\.json$/);
-            if (!match) return;
-            
-            const dateKey = match[1];
-            const version = match[2] ? parseInt(match[2]) : 1;
-            
-            const existingReport = this.data.reports[dateKey];
-            if (!existingReport || existingReport.version < version) {
-                this.data.reports[dateKey] = {
-                    ...content,
-                    version: version,
-                    filename: filename
-                };
-            }
-        } catch (error) {
-            console.error('❌ Error processing report file:', error);
-        }
-    }
-    
-    async processInventoryFile(filename, content) {
-        try {
-            const match = filename.match(/^(\d{4}-\d{2}-\d{2})\.json$/);
-            if (!match) return;
-            
-            const dateKey = match[1];
-            
-            if (content.type === 'purchase' && content.data) {
-                if (!this.data.inventory.purchases[dateKey]) {
-                    this.data.inventory.purchases[dateKey] = [];
-                }
-                this.data.inventory.purchases[dateKey].push(content.data);
-                this.updateInventoryProduct(content.data);
-                
-            } else if (content.type === 'service' && content.data) {
-                if (!this.data.inventory.services[dateKey]) {
-                    this.data.inventory.services[dateKey] = [];
-                }
-                this.data.inventory.services[dateKey].push(content.data);
-            }
-            
-        } catch (error) {
-            console.error('❌ Error processing inventory file:', error);
-        }
-    }
-    
-    async processEmployeesFile(filename, content) {
-        try {
-            const match = filename.match(/^(\d{4}-\d{2}-\d{2})\.json$/);
-            if (!match) return;
-            
-            const dateKey = match[1];
-            
-            if (content.type === 'workday' && content.employeeId && content.data) {
-                if (!this.data.employees.workDays[dateKey]) {
-                    this.data.employees.workDays[dateKey] = {};
-                }
-                this.data.employees.workDays[dateKey][content.employeeId] = content.data;
-                
-            } else if (content.type === 'penalty' && content.data) {
-                if (!this.data.employees.penalties[dateKey]) {
-                    this.data.employees.penalties[dateKey] = [];
-                }
-                this.data.employees.penalties[dateKey].push(content.data);
-            }
-            
-        } catch (error) {
-            console.error('❌ Error processing employees file:', error);
-        }
-    }
-    
-    updateInventoryProduct(purchaseData) {
-        try {
-            if (!purchaseData || !purchaseData.name) return;
-            
-            const products = this.data.inventory.products;
-            const existingIndex = products.findIndex(p => 
-                p && p.name && purchaseData.name &&
-                p.name.toLowerCase() === purchaseData.name.toLowerCase() && 
-                p.unit === purchaseData.unit
-            );
-            
-            if (existingIndex >= 0) {
-                products[existingIndex].quantity += (purchaseData.quantity || 0);
-                products[existingIndex].totalValue += (purchaseData.total || 0);
-            } else {
-                products.push({
-                    id: Date.now(),
-                    name: purchaseData.name,
-                    unit: purchaseData.unit || 'cái',
-                    quantity: purchaseData.quantity || 0,
-                    totalValue: purchaseData.total || 0,
-                    addedAt: new Date().toISOString()
+                Object.entries(reports).forEach(([dateKey, reportData]) => {
+                    // Skip metadata
+                    if (dateKey.startsWith('_')) return;
+                    
+                    if (reportData) {
+                        const formattedDate = this.formatDateFromFirebase(dateKey);
+                        this.data.reports[formattedDate] = {
+                            ...reportData,
+                            // Đánh dấu đã sync từ Firebase
+                            _synced: true
+                        };
+                        loadedCount++;
+                    }
                 });
+                
+                if (loadedCount > 0) {
+                    // Lưu vào localStorage
+                    localStorage.setItem('milano_reports', JSON.stringify(this.data.reports));
+                    console.log(`📥 Loaded ${loadedCount} reports from Firebase`);
+                    this.notifyUIUpdate('reports');
+                }
             }
-            
         } catch (error) {
-            console.error('❌ Error updating inventory product:', error);
+            console.error('❌ Error loading reports:', error);
         }
     }
     
-    // ========== PUBLIC API - ƯU TIÊN LOCAL ==========
-    async syncToGitHub(module, date, data, message = null) {
-        // 1. Cập nhật local data ngay lập tức
-        this.updateLocalData(module, date, data);
+    async loadInventoryFromFirebase() {
+    try {
+        console.log('📦 Loading inventory from Firebase...');
+        this.updateSyncStatus('Đang tải kho hàng...', 'syncing');
         
-        // 2. Lưu vào localStorage
-        this.saveToLocalStorage();
+        // Lấy dữ liệu từ Firebase - VỚI CẤU TRÚC MỚI
+        const inventoryData = await window.githubManager.getData('inventory');
         
-        // 3. Thông báo cho UI cập nhật
-        this.notifyUIUpdate();
+        console.log('📦 Raw Firebase inventory data:', inventoryData);
         
-        // 4. Đưa vào queue để sync lên GitHub trong nền
-        this.queueSync({
+        if (!inventoryData) {
+            console.warn('⚠️ No inventory data found in Firebase');
+            return false;
+        }
+        
+        // 1. LOAD PRODUCTS - FIX CẤU TRÚC NESTED
+        if (inventoryData.products) {
+            console.log('📦 Products data structure:', inventoryData.products);
+            
+            // Nếu có nested products object (inventory/products/products)
+            if (inventoryData.products.products && Array.isArray(inventoryData.products.products)) {
+                this.data.inventory.products = inventoryData.products.products;
+                console.log(`📥 Loaded ${this.data.inventory.products.length} products from nested structure`);
+            }
+            // Nếu products là array trực tiếp
+            else if (Array.isArray(inventoryData.products)) {
+                this.data.inventory.products = inventoryData.products;
+                console.log(`📥 Loaded ${this.data.inventory.products.length} products from direct array`);
+            }
+            // Nếu là object {id1: product1, id2: product2}
+            else if (typeof inventoryData.products === 'object') {
+                this.data.inventory.products = Object.values(inventoryData.products);
+                console.log(`📥 Loaded ${this.data.inventory.products.length} products from object`);
+            }
+            else {
+                this.data.inventory.products = [];
+                console.warn('⚠️ Unknown products format');
+            }
+        } else {
+            this.data.inventory.products = [];
+            console.warn('⚠️ No products found in Firebase');
+        }
+        
+        // 2. LOAD PURCHASES - THEO NGÀY
+        this.data.inventory.purchases = {};
+        if (inventoryData.purchases && typeof inventoryData.purchases === 'object') {
+            console.log('📥 Processing purchases by date...');
+            
+            Object.entries(inventoryData.purchases).forEach(([dateKey, dateData]) => {
+                if (dateKey.startsWith('_')) return;
+                
+                console.log(`📥 Purchases for ${dateKey}:`, dateData);
+                
+                let purchasesArray = [];
+                
+                // Trường hợp 1: dateData là object chứa purchases array
+                if (dateData && dateData.purchases && Array.isArray(dateData.purchases)) {
+                    purchasesArray = dateData.purchases;
+                }
+                // Trường hợp 2: dateData là array trực tiếp
+                else if (Array.isArray(dateData)) {
+                    purchasesArray = dateData;
+                }
+                // Trường hợp 3: dateData là object đơn
+                else if (dateData && typeof dateData === 'object') {
+                    purchasesArray = [dateData];
+                }
+                
+                if (purchasesArray.length > 0) {
+                    const formattedDate = this.formatDateFromFirebase(dateKey);
+                    this.data.inventory.purchases[formattedDate] = purchasesArray;
+                    console.log(`✅ Added ${purchasesArray.length} purchases for ${formattedDate}`);
+                }
+            });
+        }
+        
+        // 3. LOAD SERVICES - THEO NGÀY
+        this.data.inventory.services = {};
+        if (inventoryData.services && typeof inventoryData.services === 'object') {
+            Object.entries(inventoryData.services).forEach(([dateKey, dateData]) => {
+                if (dateKey.startsWith('_')) return;
+                
+                let servicesArray = [];
+                
+                if (dateData && dateData.services && Array.isArray(dateData.services)) {
+                    servicesArray = dateData.services;
+                } else if (Array.isArray(dateData)) {
+                    servicesArray = dateData;
+                } else if (dateData && typeof dateData === 'object') {
+                    servicesArray = [dateData];
+                }
+                
+                if (servicesArray.length > 0) {
+                    const formattedDate = this.formatDateFromFirebase(dateKey);
+                    this.data.inventory.services[formattedDate] = servicesArray;
+                }
+            });
+        }
+        
+        // 4. Lưu vào localStorage
+        localStorage.setItem('milano_inventory', JSON.stringify(this.data.inventory));
+        
+        console.log('📥 Inventory loaded successfully:', {
+            products: this.data.inventory.products.length,
+            purchaseDates: Object.keys(this.data.inventory.purchases).length,
+            serviceDates: Object.keys(this.data.inventory.services).length
+        });
+        
+        this.notifyUIUpdate('inventory');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error loading inventory:', error);
+        this.updateSyncStatus('Lỗi tải kho hàng', 'error');
+        return false;
+    }
+}
+    
+    async loadEmployeesFromFirebase() {
+    try {
+        const employees = await window.githubManager.getData('employees');
+        
+        console.log('👥 Raw Firebase employees data:', employees);
+        
+        if (!employees) {
+            console.log('📭 No employees found in Firebase');
+            return false;
+        }
+        
+        // CHUYỂN OBJECT THÀNH ARRAY ĐÚNG CÁCH
+        const employeesArray = [];
+        
+        Object.entries(employees).forEach(([key, employeeData]) => {
+            if (key === '_meta' || key.startsWith('_')) return;
+            
+            console.log(`👥 Processing employee key: ${key}`, employeeData);
+            
+            // Nếu employeeData là object chứa nested data
+            if (employeeData && typeof employeeData === 'object') {
+                // Trường hợp 1: Có trường employee trực tiếp
+                if (employeeData.employee && typeof employeeData.employee === 'object') {
+                    employeesArray.push({
+                        id: parseInt(key.replace('employee_', '')) || Date.now(),
+                        ...employeeData.employee
+                    });
+                }
+                // Trường hợp 2: Dữ liệu trực tiếp
+                else {
+                    employeesArray.push({
+                        id: parseInt(key.replace('employee_', '')) || Date.now(),
+                        ...employeeData
+                    });
+                }
+            }
+        });
+        
+        console.log(`✅ Converted to array: ${employeesArray.length} employees`);
+        
+        // Cập nhật vào DataManager
+        this.data.employees.list = employeesArray;
+        
+        // Lưu vào localStorage
+        localStorage.setItem('milano_employees', JSON.stringify(this.data.employees));
+        
+        this.notifyUIUpdate('employees');
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error loading employees:', error);
+        return false;
+    }
+}
+    
+    // ========== SAVE OPERATIONS ==========
+    
+    async saveLocal(module, filename, data, message = '') {
+        console.log(`💾 Saving ${module}/${filename}`, data);
+        
+        try {
+            // 1. Lưu ngay vào memory
+            this.saveDataToMemory(module, filename, data);
+            
+            // 2. Lưu vào localStorage NGAY LẬP TỨC
+            this.saveLocalData();
+            
+            // 3. Thông báo UI UPDATE NGAY
+            this.notifyUIUpdate(module);
+            
+            // 4. Hiển thị toast xác nhận
+            if (window.showToast) {
+                const toastMessage = message || `${module === 'reports' ? 'Báo cáo' : module === 'inventory' ? 'Kho' : 'Nhân viên'} đã được lưu`;
+                window.showToast(toastMessage, 'success');
+            }
+            
+            // 5. Thêm vào queue để sync lên Firebase
+            this.addToFirebaseQueue(module, filename, data, message);
+            
+            return true;
+            
+        } catch (error) {
+            console.error(`❌ Error in saveLocal:`, error);
+            
+            if (window.showToast) {
+                window.showToast('Lỗi khi lưu dữ liệu', 'error');
+            }
+            
+            return false;
+        }
+    }
+    
+    addToFirebaseQueue(module, filename, data, message = '') {
+        const queueItem = {
             module,
-            date,
+            filename,
             data,
-            message: message || `${module} ngày ${date}`
-        });
+            message,
+            timestamp: new Date().toISOString(),
+            attempts: 0,
+            status: 'pending'
+        };
         
-        console.log(`💾 Saved locally and queued for GitHub: ${module}/${date}`);
+        this.syncState.pendingChanges.push(queueItem);
+        this.syncState.hasPendingChanges = true;
         
-        return true; // Luôn trả về thành công (local)
+        this.savePendingChanges();
+        
+        console.log(`📝 Added to Firebase queue: ${module}/${filename} (Total: ${this.syncState.pendingChanges.length})`);
+        
+        // Update sync status
+        this.updateSyncStatus('Có thay đổi chưa đồng bộ', 'offline', this.syncState.pendingChanges.length);
+        
+        // Bắt đầu background sync nếu online
+        if (this.syncState.online && !this.syncState.isBackgroundSyncing) {
+            // Đợi 2 giây trước khi sync để tránh spam
+            setTimeout(() => this.startBackgroundSync(), 2000);
+        }
     }
     
-    async uploadToGitHub(module, date, data, message = null) {
+    async startBackgroundSync() {
+        if (this.syncState.isBackgroundSyncing || 
+            this.syncState.pendingChanges.length === 0 ||
+            !this.syncState.online) {
+            return;
+        }
+        
+        this.syncState.isBackgroundSyncing = true;
+        this.updateSyncStatus('Đang đồng bộ...', 'syncing', this.syncState.pendingChanges.length);
+        
         try {
-            let filename = `${date}.json`;
+            console.log(`🔄 Starting Firebase sync with ${this.syncState.pendingChanges.length} items`);
             
-            // Kiểm tra version
-            const existingFiles = this.dbIndex.modules[module].files || {};
-            let version = 1;
+            await this.processFirebaseQueue();
             
-            for (const [existingFilename] of Object.entries(existingFiles)) {
-                if (existingFilename.startsWith(`${date}_v`)) {
-                    const match = existingFilename.match(/_v(\d+)\.json$/);
-                    if (match) {
-                        const existingVersion = parseInt(match[1]);
-                        if (existingVersion >= version) {
-                            version = existingVersion + 1;
-                        }
-                    }
-                } else if (existingFilename === `${date}.json`) {
-                    version = 2;
+            this.syncState.lastSync = new Date().toISOString();
+            this.syncState.hasPendingChanges = this.syncState.pendingChanges.length > 0;
+            
+            if (this.syncState.pendingChanges.length === 0) {
+                this.updateSyncStatus('Đồng bộ thành công', 'success', 0);
+                
+                if (window.showToast) {
+                    window.showToast('Đã đồng bộ dữ liệu lên đám mây', 'success');
                 }
+            } else {
+                this.updateSyncStatus('Đồng bộ một phần', 'warning', this.syncState.pendingChanges.length);
             }
-            
-            if (version > 1) {
-                filename = `${date}_v${version}.json`;
-            }
-            
-            const filePath = `${module}/${filename}`;
-            
-            // Lưu lên GitHub
-            const result = await window.githubManager.createOrUpdateFile(
-                filePath,
-                data,
-                message || `${module} ngày ${date}${version > 1 ? ` (v${version})` : ''}`
-            );
-            
-            if (result && result.content && result.content.sha) {
-                // Cập nhật DB index
-                this.dbIndex.lastUpdated = new Date().toISOString();
-                this.dbIndex.files[filePath] = {
-                    sha: result.content.sha,
-                    lastModified: new Date().toISOString()
-                };
-                
-                if (!this.dbIndex.modules[module]) {
-                    this.dbIndex.modules[module] = { latest: null, files: {} };
-                }
-                
-                this.dbIndex.modules[module].latest = filename;
-                this.dbIndex.modules[module].files[filename] = {
-                    sha: result.content.sha,
-                    lastModified: new Date().toISOString()
-                };
-                
-                // Cập nhật local DB index
-                this.localDbIndex = JSON.parse(JSON.stringify(this.dbIndex));
-                this.saveLocalDBIndex();
-                
-                return true;
-            }
-            
-            return false;
             
         } catch (error) {
-            console.error(`❌ Upload to GitHub error:`, error);
-            throw error;
+            console.error('❌ Firebase sync error:', error);
+            this.updateSyncStatus('Lỗi đồng bộ', 'error', this.syncState.pendingChanges.length);
+        } finally {
+            this.syncState.isBackgroundSyncing = false;
         }
     }
     
-    updateLocalData(module, key, data) {
-        try {
-            // Logic cập nhật dữ liệu local theo module
-            // Được gọi ngay khi user thao tác
-            switch(module) {
-                case 'reports':
-                    this.data.reports[key] = data;
-                    break;
-                case 'inventory':
-                    if (data.type === 'purchase' && data.data) {
-                        const dateKey = key;
-                        if (!this.data.inventory.purchases[dateKey]) {
-                            this.data.inventory.purchases[dateKey] = [];
-                        }
-                        this.data.inventory.purchases[dateKey].push(data.data);
-                        this.updateInventoryProduct(data.data);
-                    }
-                    break;
-                case 'employees':
-                    if (data.type === 'workday' && data.employeeId && data.data) {
-                        if (!this.data.employees.workDays[key]) {
-                            this.data.employees.workDays[key] = {};
-                        }
-                        this.data.employees.workDays[key][data.employeeId] = data.data;
-                    }
-                    break;
-            }
-            
-            return true;
-            
-        } catch (error) {
-            console.error('Error updating local data:', error);
-            return false;
+    async processFirebaseQueue() {
+        const failedItems = [];
+        const firebaseAvailable = window.githubManager && window.githubManager.isAvailable?.();
+        
+        if (!firebaseAvailable) {
+            console.warn('📴 Firebase not available for sync');
+            return;
         }
-    }
-    
-    // ========== GETTER METHODS - LOCAL ONLY ==========
-    getReport(date) {
-        return this.data.reports[date] || null;
-    }
-    
-    getReports(startDate, endDate) {
-        try {
-            const allReports = [];
-            const reportsData = this.data.reports;
+        
+        for (let i = 0; i < this.syncState.pendingChanges.length; i++) {
+            const item = this.syncState.pendingChanges[i];
             
-            if (reportsData && typeof reportsData === 'object') {
-                Object.values(reportsData).forEach(report => {
-                    if (report && typeof report === 'object') {
-                        allReports.push(report);
-                    }
-                });
+            // Skip nếu đã thử quá 3 lần
+            if (item.attempts >= 3) {
+                console.warn(`⚠️ Max attempts reached for: ${item.module}/${item.filename}`);
+                failedItems.push(item);
+                continue;
             }
             
-            // Filter by date range if provided
-            if (startDate && endDate) {
-                const parseDisplayDate = (dateStr) => {
-                    try {
-                        const [day, month, year] = dateStr.split('/').map(Number);
-                        return new Date(year, month - 1, day);
-                    } catch (e) {
-                        return new Date(0);
-                    }
-                };
+            try {
+                await this.uploadToFirebase(item.module, item.filename, item.data, item.message);
                 
-                const start = parseDisplayDate(startDate);
-                const end = parseDisplayDate(endDate);
+                // Xóa khỏi queue nếu thành công
+                this.syncState.pendingChanges.splice(i, 1);
+                i--;
                 
-                if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-                    return allReports;
+                console.log(`✅ Firebase sync success: ${item.module}/${item.filename}`);
+                
+                // Update UI ngay lập tức
+                this.updateSyncStatus('Đang đồng bộ...', 'syncing', this.syncState.pendingChanges.length);
+                
+                // Nghỉ 300ms giữa các request để tránh rate limit
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+            } catch (error) {
+                console.error(`❌ Firebase sync failed for ${item.module}/${item.filename}:`, error.message);
+                item.attempts++;
+                item.lastError = error.message;
+                item.lastAttempt = new Date().toISOString();
+            }
+        }
+        
+        this.savePendingChanges();
+    }
+    
+    async uploadToFirebase(module, filename, data, message = '') {
+    try {
+        console.log(`☁️ Uploading to Firebase: ${module}/${filename}`, data);
+        
+        let firebasePath = '';
+        let dataToUpload = data;
+        
+        switch(module) {
+            case 'reports':
+                const dateMatch = filename.match(/(\d{4}-\d{2}-\d{2})/);
+                if (dateMatch) {
+                    firebasePath = `reports/${dateMatch[1]}`;
                 }
+                break;
                 
-                return allReports.filter(report => {
-                    if (!report || !report.date) return false;
-                    try {
-                        const reportDate = parseDisplayDate(report.date);
-                        return reportDate >= start && reportDate <= end;
-                    } catch (e) {
-                        return false;
+            case 'inventory':
+                if (filename === 'products.json') {
+                    // LƯU THEO CẤU TRÚC MỚI: inventory/products/products
+                    firebasePath = 'inventory/products';
+                    // Đảm bảo data có cấu trúc {products: array}
+                    if (data && Array.isArray(data.products)) {
+                        dataToUpload = { products: data.products };
+                    } else if (Array.isArray(data)) {
+                        dataToUpload = { products: data };
                     }
-                });
+                } else if (filename.includes('purchases')) {
+                    const dateMatch = filename.match(/purchases_(\d{4}-\d{2}-\d{2})/);
+                    if (dateMatch) {
+                        firebasePath = `inventory/purchases/${dateMatch[1]}`;
+                        // Lưu theo cấu trúc: {purchases: array}
+                        if (data && Array.isArray(data.purchases)) {
+                            dataToUpload = { purchases: data.purchases };
+                        } else if (Array.isArray(data)) {
+                            dataToUpload = { purchases: data };
+                        }
+                    }
+                } else if (filename.includes('services')) {
+                    const dateMatch = filename.match(/services_(\d{4}-\d{2}-\d{2})/);
+                    if (dateMatch) {
+                        firebasePath = `inventory/services/${dateMatch[1]}`;
+                        // Lưu theo cấu trúc: {services: array}
+                        if (data && Array.isArray(data.services)) {
+                            dataToUpload = { services: data.services };
+                        } else if (Array.isArray(data)) {
+                            dataToUpload = { services: data };
+                        }
+                    }
+                }
+                break;
+                
+            case 'employees':
+                const idMatch = filename.match(/([^\.]+)\.json/);
+                if (idMatch) {
+                    firebasePath = `employees/${idMatch[1]}`;
+                }
+                break;
+        }
+        
+        if (!firebasePath) {
+            throw new Error(`Invalid firebase path for ${module}/${filename}`);
+        }
+        
+        console.log(`📤 Uploading to ${firebasePath}:`, dataToUpload);
+        await window.githubManager.setData(firebasePath, dataToUpload);
+        
+        return true;
+        
+    } catch (error) {
+        console.error(`❌ Firebase upload error:`, error);
+        throw error;
+    }
+}
+    
+    // ========== UTILITIES ==========
+    
+    formatDateFromFirebase(dateKey) {
+        try {
+            const [year, month, day] = dateKey.split('-');
+            return `${day}/${month}/${year}`;
+        } catch (error) {
+            console.warn('⚠️ Error formatting date from Firebase:', dateKey);
+            return dateKey;
+        }
+    }
+    
+    saveDataToMemory(module, filename, data) {
+        switch(module) {
+            case 'reports':
+                const reportMatch = filename.match(/(\d{4}-\d{2}-\d{2})\.json$/);
+                if (reportMatch) {
+                    const dateKey = this.formatDateFromFirebase(reportMatch[1]);
+                    this.data.reports[dateKey] = {
+                        ...data,
+                        _savedAt: new Date().toISOString(),
+                        _localOnly: true
+                    };
+                }
+                break;
+                
+            case 'inventory':
+                if (filename === 'products.json') {
+                    this.data.inventory.products = data.products || data;
+                } else if (filename.includes('purchases')) {
+                    const dateMatch = filename.match(/(\d{4}-\d{2}-\d{2})\.json$/);
+                    if (dateMatch) {
+                        const dateKey = this.formatDateFromFirebase(dateMatch[1]);
+                        this.data.inventory.purchases[dateKey] = data.purchases || data;
+                    }
+                } else if (filename.includes('services')) {
+                    const dateMatch = filename.match(/(\d{4}-\d{2}-\d{2})\.json$/);
+                    if (dateMatch) {
+                        const dateKey = this.formatDateFromFirebase(dateMatch[1]);
+                        this.data.inventory.services[dateKey] = data.services || data;
+                    }
+                }
+                break;
+                
+            case 'employees':
+                if (filename === 'employees.json') {
+                    this.data.employees.list = data.employees || data;
+                } else {
+                    const idMatch = filename.match(/([^\.]+)\.json$/);
+                    if (idMatch) {
+                        const employeeId = idMatch[1];
+                        const existingIndex = this.data.employees.list.findIndex(e => e.id === employeeId);
+                        
+                        if (existingIndex >= 0) {
+                            this.data.employees.list[existingIndex] = {
+                                ...this.data.employees.list[existingIndex],
+                                ...data,
+                                _updatedAt: new Date().toISOString()
+                            };
+                        } else {
+                            this.data.employees.list.push({
+                                id: employeeId,
+                                ...data,
+                                _createdAt: new Date().toISOString()
+                            });
+                        }
+                    }
+                }
+                break;
+        }
+    }
+    
+    loadLocalData() {
+        try {
+            const reports = localStorage.getItem('milano_reports');
+            const inventory = localStorage.getItem('milano_inventory');
+            const employees = localStorage.getItem('milano_employees');
+            const pendingChanges = localStorage.getItem('milano_pending_changes');
+            
+            if (reports) this.data.reports = JSON.parse(reports);
+            if (inventory) this.data.inventory = JSON.parse(inventory);
+            if (employees) this.data.employees = JSON.parse(employees);
+            if (pendingChanges) this.syncState.pendingChanges = JSON.parse(pendingChanges);
+            
+            if (this.syncState.pendingChanges.length > 0) {
+                this.syncState.hasPendingChanges = true;
             }
             
-            return allReports;
+            console.log(`📂 Local data loaded: ${Object.keys(this.data.reports).length} reports, ${this.data.inventory.products.length} products, ${this.data.employees.list.length} employees`);
             
         } catch (error) {
-            console.error('Error getting reports:', error);
-            return [];
+            console.warn('⚠️ Error loading local data:', error);
+            // Reset to default if corrupted
+            localStorage.removeItem('milano_reports');
+            localStorage.removeItem('milano_inventory');
+            localStorage.removeItem('milano_employees');
+            localStorage.removeItem('milano_pending_changes');
         }
     }
     
-    getEmployees() {
-        if (!Array.isArray(this.data.employees.list)) {
-            this.data.employees.list = [];
+    saveLocalData() {
+        try {
+            localStorage.setItem('milano_reports', JSON.stringify(this.data.reports));
+            localStorage.setItem('milano_inventory', JSON.stringify(this.data.inventory));
+            localStorage.setItem('milano_employees', JSON.stringify(this.data.employees));
+        } catch (error) {
+            console.warn('⚠️ Error saving local data:', error);
         }
-        return this.data.employees.list;
     }
     
-    getInventoryProducts() {
-        let products = this.data.inventory?.products;
+    savePendingChanges() {
+        try {
+            localStorage.setItem('milano_pending_changes', JSON.stringify(this.syncState.pendingChanges));
+        } catch (error) {
+            console.warn('⚠️ Error saving pending changes:', error);
+        }
+    }
+    
+    // ========== SYNC STATUS ==========
+    
+    updateSyncStatus(text, status = 'ready', pendingCount = null) {
+        const count = pendingCount !== null ? pendingCount : this.syncState.pendingChanges.length;
+        window.updateSyncStatusUI?.(status, count);
         
-        if (!products || !Array.isArray(products)) {
-            products = [];
-            if (!this.data.inventory) {
-                this.data.inventory = {};
+        // Dispatch event cho các module khác
+        const event = new CustomEvent('syncStatusChanged', {
+            detail: { 
+                status, 
+                pendingChanges: count,
+                timestamp: new Date().toISOString(),
+                hasPendingChanges: this.syncState.hasPendingChanges,
+                isSyncing: this.syncState.isBackgroundSyncing
             }
-            this.data.inventory.products = products;
-        }
-        
-        return products;
-    }
-    
-    getEmployeeWorkDays(employeeId, monthYear) {
-        const workDays = this.data.employees.workDays;
-        let result = {};
-        
-        Object.entries(workDays).forEach(([date, dayData]) => {
-            if (date.startsWith(monthYear) && dayData[employeeId]) {
-                const day = date.split('-')[2];
-                result[day] = dayData[employeeId];
-            }
-        });
-        
-        return result;
-    }
-    
-    // ========== UI NOTIFICATION ==========
-    notifyUIUpdate() {
-        // Phát sự kiện để UI biết có dữ liệu mới
-        const event = new CustomEvent('dataUpdated', {
-            detail: { timestamp: new Date().toISOString() }
         });
         window.dispatchEvent(event);
     }
     
-    updateSyncStatus(syncing, text = 'Đồng bộ...') {
-        const statusEl = document.getElementById('syncStatus');
-        if (!statusEl) return;
+    // ========== EVENT HANDLERS ==========
+    
+    handleOnline() {
+        console.log('🌐 Online - Starting Firebase sync');
+        this.syncState.online = true;
+        this.updateSyncStatus('Đang kết nối...', 'syncing');
         
-        if (syncing) {
-            statusEl.innerHTML = `<i class="fas fa-sync-alt fa-spin"></i><span>${text}</span>`;
-            statusEl.classList.add('syncing');
-        } else {
-            statusEl.innerHTML = `<i class="fas fa-check-circle"></i><span>Đã đồng bộ</span>`;
-            statusEl.classList.remove('syncing');
-        }
+        // Đợi 3 giây rồi bắt đầu sync
+        setTimeout(() => {
+            this.loadFromFirebase().then(() => {
+                this.startBackgroundSync();
+            });
+        }, 3000);
     }
     
-    // ========== DEBUG & MAINTENANCE ==========
-    async debugData() {
-        console.log('🔍 DEBUG - DataManager State:');
-        console.log('📊 Local Data:', {
-            reports: Object.keys(this.data.reports).length,
-            products: this.data.inventory.products.length,
-            employees: this.data.employees.list.length
+    handleOffline() {
+        console.log('📴 Offline - Queueing changes');
+        this.syncState.online = false;
+        this.updateSyncStatus('Đang offline', 'offline', this.syncState.pendingChanges.length);
+    }
+    
+    // ========== HELPER METHODS ==========
+    
+    notifyUIUpdate(module) {
+        const event = new CustomEvent('dataUpdated', {
+            detail: { 
+                module, 
+                timestamp: new Date().toISOString(),
+                source: 'local' 
+            }
         });
-        console.log('📋 Sync State:', this.syncState);
-        console.log('📁 Local DB Index:', this.localDbIndex);
+        window.dispatchEvent(event);
     }
     
-    forceSyncNow() {
-        this.backgroundGitHubCheck();
+    // ========== PUBLIC API ==========
+    
+    async getReport(date) {
+        const report = this.data.reports[date] || null;
+        return report;
     }
     
-    clearAllData() {
-        localStorage.removeItem('milano_db_index');
-        localStorage.removeItem('milano_reports_cache');
-        localStorage.removeItem('milano_inventory_cache');
-        localStorage.removeItem('milano_employees_cache');
-        localStorage.removeItem('milano_sync_queue');
+    getReports() {
+        return Object.values(this.data.reports || {});
+    }
+    
+    getInventoryProducts() {
+        return Array.isArray(this.data.inventory.products)
+            ? this.data.inventory.products
+            : [];
+    }
+    
+    getEmployees() {
+        return Array.isArray(this.data.employees.list)
+            ? this.data.employees.list
+            : [];
+    }
+    
+    async forceSync() {
+        console.log('🔄 Manual force sync requested');
         
-        this.data = {
-            reports: {},
-            inventory: {
-                products: [],
-                purchases: {},
-                services: {},
-                exports: {}
-            },
-            employees: {
-                list: [],
-                salaries: {},
-                penalties: {},
-                workDays: {}
+        if (!this.syncState.online) {
+            if (window.showToast) {
+                window.showToast('Không có kết nối internet', 'warning');
+            }
+            return;
+        }
+        
+        await this.loadFromFirebase();
+        await this.startBackgroundSync();
+    }
+    
+    getSyncStats() {
+        return {
+            lastSync: this.syncState.lastSync,
+            pendingChanges: this.syncState.pendingChanges.length,
+            isSyncing: this.syncState.isBackgroundSyncing,
+            online: this.syncState.online,
+            hasPendingChanges: this.syncState.hasPendingChanges,
+            localStats: {
+                reports: Object.keys(this.data.reports).length,
+                products: this.data.inventory.products.length,
+                employees: this.data.employees.list.length,
+                pendingPurchases: Object.keys(this.data.inventory.purchases).length,
+                pendingServices: Object.keys(this.data.inventory.services).length
             }
         };
-        
-        this.localDbIndex = {
-            version: '2.0',
-            lastUpdated: null,
-            files: {},
-            modules: {
-                reports: { latest: null, files: {} },
-                inventory: { latest: null, files: {} },
-                employees: { latest: null, files: {} }
-            }
-        };
-        
-        this.syncState.syncQueue = [];
-        this.saveSyncQueue();
-        
-        console.log('🧹 All local data cleared');
     }
     
+    clearPendingChanges() {
+        const count = this.syncState.pendingChanges.length;
+        this.syncState.pendingChanges = [];
+        this.syncState.hasPendingChanges = false;
+        this.savePendingChanges();
+        
+        console.log(`🧹 Cleared ${count} pending changes`);
+        this.updateSyncStatus('Đã xóa hàng đợi', 'success', 0);
+        
+        return count;
+    }
+    
+    isReady() {
+        return this.initialized && !this.isLoading;
+    }
 }
 
-// Khởi tạo singleton
+// Khởi tạo DataManager
 window.dataManager = new DataManager();

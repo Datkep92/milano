@@ -1,224 +1,88 @@
-// employees.js - Module nhân viên với lưu trữ tập trung 1 file
+// employees.js - Module nhân viên với local-first và background sync
 class EmployeesModule {
     constructor() {
-        const now = new Date();
-        this.currentMonth = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-        this.currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        this.selectedEmployee = null;
-        this.isLoading = false;
-        
-        // Cache toàn bộ dữ liệu
-        this.cache = {
-            employees: null,
-            lastSync: null,
-            hasChanges: false
-        };
-    }
+    const now = new Date();
+    this.currentMonth = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    this.currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    this.selectedEmployee = null;
+    this.isLoading = false;
     
-    // ========== CORE DATA METHODS ==========
+    // Cache để tăng performance
+    this.cache = {
+        employees: null,
+        lastRender: null,
+        monthlyCalculations: {}
+    };
     
-    async loadEmployees() {
-        try {
-            // 1. Lấy từ cache trước
-            if (this.cache.employees) {
-                return this.cache.employees;
+    // Flag để tránh render liên tục
+    this.isRendering = false;
+    
+    // Thêm event listener cho data updates
+    window.addEventListener('dataUpdated', (event) => {
+        if (event.detail.module === 'employees') {
+            console.log('🔄 Employees data updated, refreshing cache...');
+            this.cache.employees = null; // Xóa cache để tải lại
+            if (!this.isRendering) {
+                setTimeout(() => this.render(), 500); // Render lại sau 0.5s
             }
+        }
+    });
+}
+    
+    // ========== LOCAL-FIRST DATA METHODS ==========
+    
+    async loadEmployees(forceRefresh = false) {
+    // ƯU TIÊN: Trả về từ cache trước
+    if (this.cache.employees && !forceRefresh) {
+        return this.cache.employees;
+    }
+    
+    try {
+        // Lấy từ DataManager (đã tích hợp Firebase)
+        const employees = window.dataManager.getEmployees();
+        
+        if (employees && employees.length > 0) {
+            this.cache.employees = employees;
+            return employees;
+        }
+        
+        // Nếu không có trong local, tải từ Firebase
+        if (navigator.onLine) {
+            await window.dataManager.loadFromFirebase();
+            const freshEmployees = window.dataManager.getEmployees();
             
-            // 2. Load từ GitHub
-            const data = await window.githubManager.getFileContent('employees/main.json');
-            
-            if (data && data.employees) {
-                this.cache.employees = data.employees;
-                this.cache.lastSync = new Date().toISOString();
-                
-                // 3. Đồng bộ với localStorage
-                this.syncWithLocalStorage(data.employees);
-                console.log(`✅ Loaded ${data.employees.length} employees from GitHub`);
-                return data.employees;
+            if (freshEmployees && freshEmployees.length > 0) {
+                this.cache.employees = freshEmployees;
+                return freshEmployees;
             }
-            
-            // 4. Fallback: từ localStorage
-            const localEmployees = window.dataManager.getEmployees();
-            console.log(`📂 Loaded ${localEmployees.length} employees from local storage`);
-            return localEmployees;
-            
-        } catch (error) {
-            console.error('❌ Error loading employees:', error);
-            const localEmployees = window.dataManager.getEmployees();
-            console.log(`🔄 Using ${localEmployees.length} employees from local storage`);
-            return localEmployees;
         }
+        
+        return [];
+        
+    } catch (error) {
+        console.error('Error loading employees:', error);
+        return [];
     }
+}
+   
     
-    syncWithLocalStorage(employees) {
-        try {
-            window.dataManager.data.employees.list = employees;
-            window.dataManager.saveToLocalStorage();
-            console.log(`💾 Synced ${employees.length} employees to local storage`);
-        } catch (error) {
-            console.error('Error syncing to localStorage:', error);
-        }
-    }
-    
-    getEmployeeMonthlyData(employee, monthKey = null) {
-        const targetMonth = monthKey || this.currentMonthKey;
-        
-        // Đảm bảo monthlyData tồn tại
-        if (!employee.monthlyData || !Array.isArray(employee.monthlyData)) {
-            employee.monthlyData = [];
-        }
-        
-        // Tìm dữ liệu tháng hiện tại
-        let monthData = employee.monthlyData.find(m => m.month === targetMonth);
-        
-        // Nếu chưa có, tạo mới
-        if (!monthData) {
-            monthData = {
-                month: targetMonth,
-                workdays: {},
-                penalties: [],
-                calculated: {
-                    totalOff: 0,
-                    totalOvertime: 0,
-                    normalDays: 30, // Mặc định 30 ngày
-                    actualSalary: employee.baseSalary || 0
-                }
-            };
-            employee.monthlyData.push(monthData);
-        }
-        
-        return monthData;
-    }
-    
-    calculateMonthlyData(employee, monthKey) {
-        const monthData = this.getEmployeeMonthlyData(employee, monthKey);
-        const baseSalary = employee.baseSalary || 0;
-        const dailySalary = Math.round(baseSalary / 30);
-        
-        // Đếm workdays
-        let offDays = 0;
-        let overtimeDays = 0;
-        
-        Object.values(monthData.workdays).forEach(status => {
-            if (status === 'off') offDays++;
-            if (status === 'overtime') overtimeDays++;
-        });
-        
-        const normalDays = 30 - offDays - overtimeDays;
-        
-        // Tính lương cơ bản: bình thường + tăng ca x2 - off
-        let actualSalary = (normalDays * dailySalary) + (overtimeDays * dailySalary * 2);
-        
-        // Cộng/trừ penalties
-        if (monthData.penalties && Array.isArray(monthData.penalties)) {
-            monthData.penalties.forEach(p => {
-                if (p.type === 'reward') {
-                    actualSalary += p.amount || 0;
-                } else if (p.type === 'penalty') {
-                    actualSalary -= p.amount || 0;
-                }
-            });
-        }
-        
-        // Đảm bảo lương không âm
-        actualSalary = Math.max(0, actualSalary);
-        
-        // Cập nhật calculated
-        monthData.calculated = {
-            totalOff: offDays,
-            totalOvertime: overtimeDays,
-            normalDays: normalDays,
-            actualSalary: actualSalary
-        };
-        
-        return monthData.calculated;
-    }
-    
-    async saveAllEmployees() {
-        try {
-            if (!this.cache.employees) {
-                console.warn('⚠️ No employees data to save');
-                return false;
-            }
-            
-            const data = {
-                version: '2.0',
-                lastUpdated: new Date().toISOString(),
-                employees: this.cache.employees
-            };
-            
-            // 1. Save lên GitHub
-            const success = await window.githubManager.createOrUpdateFile(
-                'employees/main.json',
-                data,
-                `Cập nhật dữ liệu nhân viên - ${this.cache.employees.length} nhân viên`
-            );
-            
-            if (success) {
-                // 2. Update cache timestamp
-                this.cache.lastSync = new Date().toISOString();
-                this.cache.hasChanges = false;
-                
-                // 3. Update localStorage
-                this.syncWithLocalStorage(this.cache.employees);
-                
-                // 4. Thông báo data đã update
-                window.dataManager.notifyUIUpdate();
-                
-                console.log('✅ Saved all employees to GitHub');
-                return true;
-            }
-            
-            console.error('❌ Failed to save to GitHub');
-            return false;
-            
-        } catch (error) {
-            console.error('❌ Error saving employees:', error);
-            
-            // Fallback: vẫn lưu localStorage
-            this.syncWithLocalStorage(this.cache.employees);
-            this.cache.hasChanges = true;
-            
-            window.showToast('Đã lưu cục bộ, chưa đồng bộ GitHub', 'warning');
-            return false;
-        }
-    }
-    
-    markDataChanged() {
-        this.cache.hasChanges = true;
-        
-        // Tự động save sau 2 giây nếu có thay đổi
-        if (this.saveTimeout) {
-            clearTimeout(this.saveTimeout);
-        }
-        this.saveTimeout = setTimeout(() => {
-            if (this.cache.hasChanges) {
-                this.saveAllEmployees();
-            }
-        }, 2000);
-    }
-    
-    // ========== PUBLIC API METHODS ==========
+    // ========== PUBLIC API ==========
     
     async getEmployees() {
-        return await this.loadEmployees();
+        return this.loadEmployees();
     }
     
-    async getWorkStats(employee) {
-        if (!employee) return { off: 0, overtime: 0, workdays: {} };
-        
+    getWorkStatsSync(employee) {
+        if (!employee) return { off: 0, overtime: 0 };
         const monthData = this.getEmployeeMonthlyData(employee);
-        await this.calculateMonthlyData(employee, this.currentMonthKey);
-        
         return {
-            off: monthData.calculated.totalOff,
-            overtime: monthData.calculated.totalOvertime,
-            workdays: monthData.workdays
+            off: monthData.calculated.totalOff || 0,
+            overtime: monthData.calculated.totalOvertime || 0
         };
     }
     
     calculateEmployeeSalary(employee) {
-        if (!employee) return { actual: 0, base: 0, off: 0, overtime: 0 };
+        if (!employee) return { actual: 0, base: 0, off: 0, overtime: 0, normalDays: 0 };
         
         const monthData = this.getEmployeeMonthlyData(employee);
         this.calculateMonthlyData(employee, this.currentMonthKey);
@@ -232,310 +96,472 @@ class EmployeesModule {
         };
     }
     
+    // ========== UPDATE METHODS ==========
     async updateWorkDay(employeeId, day, status) {
-        try {
-            const employees = await this.loadEmployees();
-            const employee = employees.find(e => e.id == employeeId);
-            
-            if (!employee) {
-                window.showToast('Không tìm thấy nhân viên', 'error');
-                return false;
-            }
-            
-            const monthData = this.getEmployeeMonthlyData(employee);
-            
-            // Format day (01, 02, ...)
-            const dayStr = String(day).padStart(2, '0');
-            
-            // Cập nhật workday
-            monthData.workdays[dayStr] = status;
-            
-            // Tự động tính toán lại
-            this.calculateMonthlyData(employee, this.currentMonthKey);
-            
-            // Mark data changed
-            this.markDataChanged();
-            
-            // Format ngày để hiển thị
-            const [month, year] = this.currentMonth.split('/');
-            const dateDisplay = `${day}/${month}/${year}`;
-            const statusText = status === 'normal' ? 'Bình thường' : 
-                             status === 'overtime' ? 'Tăng ca' : 'OFF';
-            
-            window.showToast(`Đã cập nhật ${dateDisplay}: ${statusText}`, 'success');
-            return true;
-            
-        } catch (error) {
-            console.error('Error updating work day:', error);
-            window.showToast('Lỗi khi cập nhật', 'error');
+    try {
+        const employees = await this.loadEmployees();
+        const employee = employees.find(e => e.id == employeeId);
+        
+        if (!employee) {
+            window.showToast('Không tìm thấy nhân viên', 'error');
             return false;
         }
+        
+        const monthData = this.getEmployeeMonthlyData(employee);
+        const dayStr = String(day).padStart(2, '0');
+        
+        if (!monthData.workdays) monthData.workdays = {};
+        monthData.workdays[dayStr] = status;
+        
+        this.calculateMonthlyData(employee, this.currentMonthKey);
+        
+        // Lưu vào Firebase qua DataManager
+        const success = await window.dataManager.saveLocal(
+            'employees',
+            `employee_${employeeId}.json`,
+            employee,
+            `Cập nhật ngày làm ${day} = ${status} - ${employee.name}`
+        );
+        
+        if (success) {
+            this.cache.employees = employees;
+            this.clearMonthlyCache();
+            
+            const statusText = status === 'normal' ? 'Bình thường' : 
+                             status === 'overtime' ? 'Tăng ca' : 'OFF';
+            window.showToast(`Đã cập nhật: ${statusText}`, 'success');
+            return true;
+        }
+        
+        return false;
+        
+    } catch (error) {
+        console.error('Error updating work day:', error);
+        window.showToast('Lỗi khi cập nhật', 'error');
+        return false;
     }
-    
+}
     async addPenalty(employeeId, penaltyData) {
-        try {
-            const employees = await this.loadEmployees();
-            const employee = employees.find(e => e.id == employeeId);
-            
-            if (!employee) {
-                window.showToast('Không tìm thấy nhân viên', 'error');
-                return false;
-            }
-            
-            const monthData = this.getEmployeeMonthlyData(employee);
-            
-            // Thêm penalty với ID
-            penaltyData.id = Date.now();
-            penaltyData.addedAt = new Date().toISOString();
-            
-            if (!monthData.penalties) {
-                monthData.penalties = [];
-            }
-            
-            monthData.penalties.push(penaltyData);
-            
-            // Tự động tính toán lại
-            this.calculateMonthlyData(employee, this.currentMonthKey);
-            
-            // Mark data changed
-            this.markDataChanged();
+    try {
+        const employees = await this.loadEmployees();
+        const employee = employees.find(e => e.id == employeeId);
+        
+        if (!employee) {
+            window.showToast('Không tìm thấy nhân viên', 'error');
+            return false;
+        }
+        
+        const monthData = this.getEmployeeMonthlyData(employee);
+        
+        penaltyData.id = Date.now();
+        penaltyData.addedAt = new Date().toISOString();
+        
+        if (!monthData.penalties) monthData.penalties = [];
+        monthData.penalties.push(penaltyData);
+        
+        this.calculateMonthlyData(employee, this.currentMonthKey);
+        
+        // Lưu vào Firebase qua DataManager
+        const success = await window.dataManager.saveLocal(
+            'employees',
+            `employee_${employeeId}.json`,
+            employee,
+            `Thêm ${penaltyData.type === 'reward' ? 'thưởng' : 'phạt'} ${penaltyData.amount}₫ - ${employee.name}`
+        );
+        
+        if (success) {
+            this.cache.employees = employees;
+            this.clearMonthlyCache();
             
             const typeText = penaltyData.type === 'reward' ? 'thưởng' : 'phạt';
             window.showToast(`Đã thêm ${typeText} ${penaltyData.amount.toLocaleString()}₫`, 'success');
             return true;
-            
-        } catch (error) {
-            console.error('Error adding penalty:', error);
-            window.showToast('Lỗi khi thêm chế tài', 'error');
-            return false;
         }
+        
+        return false;
+        
+    } catch (error) {
+        console.error('Error adding penalty:', error);
+        window.showToast('Lỗi khi thêm chế tài', 'error');
+        return false;
     }
-    
+}
     async addEmployee(employeeData) {
-        try {
-            const employees = await this.loadEmployees();
-            
-            // Tạo ID mới (tìm ID lớn nhất + 1)
-            const maxId = employees.length > 0 ? Math.max(...employees.map(e => e.id || 0)) : 0;
-            const newId = maxId + 1;
-            
-            const newEmployee = {
-                id: newId,
-                name: employeeData.name || '',
-                phone: employeeData.phone || '',
-                baseSalary: employeeData.baseSalary || 0,
-                position: employeeData.position || 'Nhân viên',
-                monthlyData: [],
-                createdAt: new Date().toISOString()
-            };
-            
+    try {
+        const employees = await this.loadEmployees();
+        
+        // Kiểm tra trùng tên
+        const isDuplicate = employees.some(emp => 
+            emp.name.toLowerCase() === employeeData.name.toLowerCase()
+        );
+        
+        if (isDuplicate) {
+            window.showToast('Nhân viên đã tồn tại', 'warning');
+            return null;
+        }
+        
+        // Tạo ID mới = ID lớn nhất + 1
+        const existingIds = employees.map(e => e.id).filter(id => id && !isNaN(id));
+        const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+        const newId = maxId + 1;
+        
+        console.log(`🆔 Creating new employee with ID: ${newId} (max ID: ${maxId})`);
+        
+        const newEmployee = {
+            id: newId,
+            name: employeeData.name || '',
+            phone: employeeData.phone || '',
+            baseSalary: employeeData.baseSalary || 0,
+            position: employeeData.position || 'Nhân viên',
+            monthlyData: [],
+            createdAt: new Date().toISOString()
+        };
+        
+        // Lưu vào Firebase
+        const success = await window.dataManager.saveLocal(
+            'employees',
+            `employee_${newId}.json`,
+            newEmployee,
+            `Thêm nhân viên mới: ${newEmployee.name}`
+        );
+        
+        if (success) {
+            // Cập nhật local data
             employees.push(newEmployee);
             this.cache.employees = employees;
             
-            // Mark data changed
-            this.markDataChanged();
-            
-            window.showToast('Đã thêm nhân viên mới', 'success');
+            window.showToast(`✅ Đã thêm nhân viên "${newEmployee.name}"`, 'success');
             return newEmployee;
-            
-        } catch (error) {
-            console.error('Error adding employee:', error);
-            window.showToast('Lỗi khi thêm nhân viên', 'error');
-            return null;
         }
+        
+        return null;
+        
+    } catch (error) {
+        console.error('❌ Error adding employee:', error);
+        window.showToast('Lỗi khi thêm nhân viên', 'error');
+        return null;
     }
-    
+}
     async updateEmployee(employeeId, updates) {
-        try {
-            const employees = await this.loadEmployees();
-            const index = employees.findIndex(e => e.id == employeeId);
-            
-            if (index === -1) {
-                window.showToast('Không tìm thấy nhân viên', 'error');
-                return false;
-            }
-            
-            // Cập nhật thông tin cơ bản
-            employees[index] = {
-                ...employees[index],
-                ...updates,
-                updatedAt: new Date().toISOString()
-            };
-            
+    try {
+        const employees = await this.loadEmployees();
+        const index = employees.findIndex(e => e.id == employeeId);
+        
+        if (index === -1) {
+            window.showToast('Không tìm thấy nhân viên', 'error');
+            return false;
+        }
+        
+        employees[index] = {
+            ...employees[index],
+            ...updates,
+            updatedAt: new Date().toISOString()
+        };
+        
+        // Lưu vào Firebase qua DataManager
+        const success = await window.dataManager.saveLocal(
+            'employees',
+            `employee_${employeeId}.json`,
+            employees[index],
+            `Cập nhật nhân viên: ${employees[index].name}`
+        );
+        
+        if (success) {
             this.cache.employees = employees;
-            
-            // Mark data changed
-            this.markDataChanged();
-            
             window.showToast('Đã cập nhật thông tin nhân viên', 'success');
             return true;
-            
-        } catch (error) {
-            console.error('Error updating employee:', error);
-            window.showToast('Lỗi khi cập nhật nhân viên', 'error');
+        }
+        
+        return false;
+        
+    } catch (error) {
+        console.error('Error updating employee:', error);
+        window.showToast('Lỗi khi cập nhật nhân viên', 'error');
+        return false;
+    }
+}
+formatDateFromFirebase(dateKey) {
+    try {
+        if (!dateKey) return '';
+        
+        if (dateKey.includes('/')) {
+            return dateKey;
+        }
+        
+        const [year, month, day] = dateKey.split('-');
+        
+        if (!year || !month || !day) {
+            return dateKey;
+        }
+        
+        return `${day}/${month}/${year}`;
+        
+    } catch (error) {
+        return dateKey;
+    }
+}
+
+formatDateForFirebase(dateStr) {
+    try {
+        if (!dateStr) return '';
+        
+        if (dateStr.includes('-') && dateStr.split('-')[0].length === 4) {
+            return dateStr;
+        }
+        
+        const [day, month, year] = dateStr.split('/');
+        
+        if (!day || !month || !year) {
+            return dateStr;
+        }
+        
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        
+    } catch (error) {
+        return dateStr;
+    }
+}
+    async deleteEmployee(employeeId) {
+    try {
+        const employees = await this.loadEmployees();
+        const index = employees.findIndex(e => e.id == employeeId);
+        
+        if (index === -1) {
+            window.showToast('Không tìm thấy nhân viên', 'error');
             return false;
         }
+        
+        const employeeName = employees[index].name;
+        
+        // 1. XÓA HOÀN TOÀN TỪ FIREBASE - DÙNG deleteData()
+        console.log(`🗑️ Deleting employee_${employeeId} from Firebase...`);
+        await window.githubManager.deleteData(`employees/employee_${employeeId}`);
+        
+        // 2. Xóa khỏi mảng local
+        employees.splice(index, 1);
+        
+        // 3. Cập nhật cache
+        this.cache.employees = employees;
+        
+        // 4. Cập nhật DataManager
+        window.dataManager.data.employees.list = employees;
+        window.dataManager.saveLocalData();
+        
+        console.log(`✅ Deleted employee "${employeeName}" completely`);
+        window.showToast(`✅ Đã xóa hoàn toàn nhân viên "${employeeName}"`, 'success');
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error deleting employee:', error);
+        window.showToast('Lỗi khi xóa nhân viên', 'error');
+        return false;
+    }
+}
+    
+    // ========== CALCULATION METHODS ==========
+    
+    getEmployeeMonthlyData(employee, monthKey = null) {
+        const targetMonth = monthKey || this.currentMonthKey;
+        
+        const cacheKey = `${employee.id}_${targetMonth}`;
+        if (this.cache.monthlyCalculations[cacheKey]) {
+            return this.cache.monthlyCalculations[cacheKey];
+        }
+        
+        if (!employee.monthlyData || !Array.isArray(employee.monthlyData)) {
+            employee.monthlyData = [];
+        }
+        
+        let monthData = employee.monthlyData.find(m => m.month === targetMonth);
+        
+        if (!monthData) {
+            monthData = {
+                month: targetMonth,
+                workdays: {},
+                penalties: [],
+                calculated: {
+                    totalOff: 0,
+                    totalOvertime: 0,
+                    normalDays: 30,
+                    actualSalary: employee.baseSalary || 0
+                }
+            };
+            employee.monthlyData.push(monthData);
+        }
+        
+        this.cache.monthlyCalculations[cacheKey] = monthData;
+        
+        return monthData;
     }
     
-    async deleteEmployee(employeeId) {
-        try {
-            const employees = await this.loadEmployees();
-            const index = employees.findIndex(e => e.id == employeeId);
-            
-            if (index === -1) {
-                window.showToast('Không tìm thấy nhân viên', 'error');
-                return false;
-            }
-            
-            const employeeName = employees[index].name;
-            employees.splice(index, 1);
-            this.cache.employees = employees;
-            
-            // Mark data changed
-            this.markDataChanged();
-            
-            window.showToast(`Đã xóa nhân viên "${employeeName}"`, 'success');
-            return true;
-            
-        } catch (error) {
-            console.error('Error deleting employee:', error);
-            window.showToast('Lỗi khi xóa nhân viên', 'error');
-            return false;
+    calculateMonthlyData(employee, monthKey) {
+        const monthData = this.getEmployeeMonthlyData(employee, monthKey);
+        const baseSalary = employee.baseSalary || 0;
+        const dailySalary = Math.round(baseSalary / 30);
+        
+        let offDays = 0;
+        let overtimeDays = 0;
+        
+        Object.values(monthData.workdays || {}).forEach(status => {
+            if (status === 'off') offDays++;
+            if (status === 'overtime') overtimeDays++;
+        });
+        
+        const normalDays = 30 - offDays - overtimeDays;
+        
+        let actualSalary = (normalDays * dailySalary) + (overtimeDays * dailySalary * 2);
+        
+        if (monthData.penalties && Array.isArray(monthData.penalties)) {
+            monthData.penalties.forEach(p => {
+                if (p.type === 'reward') {
+                    actualSalary += p.amount || 0;
+                } else if (p.type === 'penalty') {
+                    actualSalary -= p.amount || 0;
+                }
+            });
         }
+        
+        actualSalary = Math.max(0, actualSalary);
+        
+        monthData.calculated = {
+            totalOff: offDays,
+            totalOvertime: overtimeDays,
+            normalDays: normalDays,
+            actualSalary: actualSalary
+        };
+        
+        return monthData.calculated;
+    }
+    
+    // ========== CACHE MANAGEMENT ==========
+    
+    clearMonthlyCache() {
+        this.cache.monthlyCalculations = {};
     }
     
     // ========== UI RENDER METHODS ==========
     
     async render() {
-        if (this.isLoading) return;
+        if (this.isLoading || this.isRendering) return;
         
         this.isLoading = true;
+        this.isRendering = true;
         const mainContent = document.getElementById('mainContent');
         
         try {
-            // Tải dữ liệu nhân viên
             const employees = await this.loadEmployees();
-            const totalSalary = await this.calculateTotalSalary(employees);
-            const stats = await this.calculateStats(employees);
+            const totalSalary = this.calculateTotalSalary(employees);
+            const stats = this.calculateStats(employees);
             
-            mainContent.innerHTML = `
-                <div class="employees-container">
-                    <div class="employees-header">
-                        <button class="btn-primary" onclick="window.employeesModule.showAddEmployeeModal()">
-                            <i class="fas fa-plus"></i> THÊM NHÂN VIÊN
-                        </button>
-                    </div>
-                    
-                    <div class="month-selector">
-                        <label>Tháng lương:</label>
-                        <select id="salaryMonth" onchange="window.employeesModule.changeMonth()">
-                            ${this.generateMonthOptions()}
-                        </select>
-                    </div>
-                    
-                    <div class="summary-cards" onclick="window.employeesModule.showSalaryDetails()" style="cursor: pointer;">
-                        <div class="summary-card">
-                            <i class="fas fa-users"></i>
-                            <div>
-                                <div class="summary-label">Tổng NV</div>
-                                <div class="summary-value">${employees.length}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="summary-card">
-                            <i class="fas fa-calendar-times"></i>
-                            <div>
-                                <div class="summary-label">Ngày OFF</div>
-                                <div class="summary-value">${stats.totalOff}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="summary-card">
-                            <i class="fas fa-clock"></i>
-                            <div>
-                                <div class="summary-label">Tăng ca</div>
-                                <div class="summary-value">${stats.totalOvertime}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="summary-card highlight">
-                            <i class="fas fa-money-bill-wave"></i>
-                            <div>
-                                <div class="summary-label">Tổng lương</div>
-                                <div class="summary-value">${totalSalary.toLocaleString()} ₫</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="employees-list">
-                        <h3>DANH SÁCH NHÂN VIÊN</h3>
-                        
-                        ${employees.map((employee, index) => {
-                            const salary = this.calculateEmployeeSalary(employee);
-                            const workStats = this.getWorkStatsSync(employee);
-                            
-                            return `
-                                <div class="employee-card" onclick="window.employeesModule.showEmployeeDetail(${index})">
-                                    <div class="employee-avatar">
-                                        <i class="fas fa-user"></i> 
-                                    </div>
-                                    <div class="employee-info">
-                                        <div class="employee-name">${employee.name}</div>
-                                        <div class="employee-phone">
-                                            <i class="fas fa-phone"></i> ${employee.phone || 'Chưa có SĐT'}
-                                        </div>
-                                        <div class="employee-stats">
-                                            <span class="stat-off">OFF: ${workStats.off} ngày</span>
-                                            <span class="stat-overtime">Tăng ca: ${workStats.overtime} ngày</span>
-                                        </div>
-                                        <div class="employee-salary">
-                                            Thực lãnh: <strong>${salary.actual.toLocaleString()} ₫</strong>
-                                        </div>
-                                    </div>
-                                    <div class="employee-arrow">
-                                        <i class="fas fa-chevron-right"></i>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                        
-                        ${employees.length === 0 ? `
-                            <div class="empty-state">
-                                <i class="fas fa-user-slash"></i>
-                                <p>Chưa có nhân viên nào</p>
-                                <button class="btn-primary" onclick="window.employeesModule.showAddEmployeeModal()">
-                                    <i class="fas fa-plus"></i> THÊM NHÂN VIÊN ĐẦU TIÊN
-                                </button>
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    
-                </div>
-            `;
+            mainContent.innerHTML = this.renderEmployeesUI(employees, totalSalary, stats);
             
         } catch (error) {
-            console.error('Error rendering employees:', error);
             mainContent.innerHTML = `
                 <div class="error">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <p>Lỗi khi tải dữ liệu nhân viên: ${error.message}</p>
+                    <p>Lỗi khi tải dữ liệu</p>
                     <button onclick="window.employeesModule.render()">Thử lại</button>
                 </div>
             `;
         } finally {
             this.isLoading = false;
+            this.isRendering = false;
         }
     }
     
-    getWorkStatsSync(employee) {
-        // Synchronous version for rendering
-        if (!employee) return { off: 0, overtime: 0 };
-        const monthData = this.getEmployeeMonthlyData(employee);
-        return {
-            off: monthData.calculated.totalOff || 0,
-            overtime: monthData.calculated.totalOvertime || 0
-        };
+    renderEmployeesUI(employees, totalSalary, stats) {
+        return `
+            <div class="employees-container">
+                <div class="employees-header">
+                    <button class="btn-primary" onclick="window.employeesModule.showAddEmployeeModal()">
+                        <i class="fas fa-plus"></i> THÊM NHÂN VIÊN
+                    </button>
+                </div>
+                
+                <div class="month-selector">
+                    <label>Tháng lương:</label>
+                    <select id="salaryMonth" onchange="window.employeesModule.changeMonth()">
+                        ${this.generateMonthOptions()}
+                    </select>
+                </div>
+                
+                <div class="summary-cards" onclick="window.employeesModule.showSalaryDetails()" style="cursor: pointer;">
+                    <div class="summary-card">
+                        <i class="fas fa-users"></i>
+                        <div>
+                            <div class="summary-label">Tổng NV</div>
+                            <div class="summary-value">${employees.length}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card">
+                        <i class="fas fa-calendar-times"></i>
+                        <div>
+                            <div class="summary-label">Ngày OFF</div>
+                            <div class="summary-value">${stats.totalOff}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <div class="summary-label">Tăng ca</div>
+                            <div class="summary-value">${stats.totalOvertime}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card highlight">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <div>
+                            <div class="summary-label">Tổng lương</div>
+                            <div class="summary-value">${totalSalary.toLocaleString()} ₫</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="employees-list">
+                    <h3>DANH SÁCH NHÂN VIÊN</h3>
+                    
+                    ${employees.length > 0 ? employees.map((employee, index) => {
+                        const salary = this.calculateEmployeeSalary(employee);
+                        const workStats = this.getWorkStatsSync(employee);
+                        
+                        return `
+                            <div class="employee-card" onclick="window.employeesModule.showEmployeeDetail(${index})">
+                                <div class="employee-avatar">
+                                    <i class="fas fa-user"></i> 
+                                </div>
+                                <div class="employee-info">
+                                    <div class="employee-name">${employee.name}</div>
+                                    <div class="employee-phone">
+                                        <i class="fas fa-phone"></i> ${employee.phone || 'Chưa có SĐT'}
+                                    </div>
+                                    <div class="employee-stats">
+                                        <span class="stat-off">OFF: ${workStats.off} ngày</span>
+                                        <span class="stat-overtime">Tăng ca: ${workStats.overtime} ngày</span>
+                                    </div>
+                                    <div class="employee-salary">
+                                        Thực lãnh: <strong>${salary.actual.toLocaleString()} ₫</strong>
+                                    </div>
+                                </div>
+                                <div class="employee-arrow">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            </div>
+                        `;
+                    }).join('') : `
+                        <div class="empty-state">
+                            <i class="fas fa-user-slash"></i>
+                            <p>Chưa có nhân viên nào</p>
+                            <button class="btn-primary" onclick="window.employeesModule.showAddEmployeeModal()">
+                                <i class="fas fa-plus"></i> THÊM NHÂN VIÊN ĐẦU TIÊN
+                            </button>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
     }
     
     generateMonthOptions() {
@@ -559,10 +585,11 @@ class EmployeesModule {
         this.currentMonth = select.value;
         const [month, year] = this.currentMonth.split('/');
         this.currentMonthKey = `${year}-${month.padStart(2, '0')}`;
+        this.clearMonthlyCache();
         await this.render();
     }
     
-    async calculateTotalSalary(employees) {
+    calculateTotalSalary(employees) {
         let total = 0;
         for (const employee of employees) {
             const salary = this.calculateEmployeeSalary(employee);
@@ -571,7 +598,7 @@ class EmployeesModule {
         return total;
     }
     
-    async calculateStats(employees) {
+    calculateStats(employees) {
         let totalOff = 0;
         let totalOvertime = 0;
         
@@ -630,21 +657,35 @@ class EmployeesModule {
         window.showModal(modalContent);
     }
     
-    formatCurrency(input) {
-        let value = input.value.replace(/\D/g, '');
-        if (value) {
-            value = parseInt(value).toLocaleString('vi-VN');
-        }
-        input.value = value;
-    }
     
     getCurrencyValue(inputId) {
+    try {
         const input = document.getElementById(inputId);
-        if (!input) return 0;
+        if (!input) {
+            console.warn(`❌ Input not found: ${inputId}`);
+            return 0;
+        }
         
         const value = input.value.replace(/\D/g, '');
-        return parseInt(value) || 0;
+        const parsedValue = parseInt(value) || 0;
+        
+        console.log(`💰 Currency value for ${inputId}: ${value} -> ${parsedValue}`);
+        
+        return parsedValue;
+        
+    } catch (error) {
+        console.error('Error in getCurrencyValue:', error);
+        return 0;
     }
+}
+
+formatCurrency(input) {
+    let value = input.value.replace(/\D/g, '');
+    if (value) {
+        value = parseInt(value).toLocaleString('vi-VN');
+    }
+    input.value = value;
+}
     
     async addEmployeeFromModal() {
         try {
@@ -653,7 +694,6 @@ class EmployeesModule {
             const salary = this.getCurrencyValue('employeeSalary');
             const position = document.getElementById('employeePosition').value.trim() || 'Nhân viên';
             
-            // Validation
             if (!name) {
                 window.showToast('Vui lòng nhập tên nhân viên', 'warning');
                 document.getElementById('employeeName').focus();
@@ -666,7 +706,6 @@ class EmployeesModule {
                 return;
             }
             
-            // Kiểm tra trùng tên
             const employees = await this.loadEmployees();
             const isDuplicate = employees.some(emp => 
                 emp.name.toLowerCase() === name.toLowerCase()
@@ -690,7 +729,6 @@ class EmployeesModule {
             }
             
         } catch (error) {
-            console.error('Error adding employee:', error);
             window.showToast('Lỗi khi thêm nhân viên', 'error');
         }
     }
@@ -702,10 +740,15 @@ class EmployeesModule {
         this.selectedEmployee = employees[index];
         
         const salary = this.calculateEmployeeSalary(this.selectedEmployee);
-        const workStats = await this.getWorkStats(this.selectedEmployee);
+        const monthData = this.getEmployeeMonthlyData(this.selectedEmployee);
+        const workStats = {
+            off: monthData.calculated.totalOff || 0,
+            overtime: monthData.calculated.totalOvertime || 0,
+            workdays: monthData.workdays || {}
+        };
+        
         const [month, year] = this.currentMonth.split('/');
         
-        // Tạo lịch cho tháng hiện tại
         const daysInMonth = new Date(year, month, 0).getDate();
         let calendarHTML = '<div class="week-days">';
         let dayCount = 1;
@@ -732,31 +775,31 @@ class EmployeesModule {
         }
         calendarHTML += '</div>';
         
-        // Lấy penalties của tháng
-        const monthData = this.getEmployeeMonthlyData(this.selectedEmployee);
         const penalties = monthData.penalties || [];
         
         const modalContent = `
             <div class="modal-header">
                 <h2><i class="fas fa-user"></i> ${this.selectedEmployee.name.toUpperCase()}</h2>
                 <div class="employee-phone">
-                        <i class="fas fa-phone"></i> ${this.selectedEmployee.phone || 'Chưa có SĐT'}
-                    </div>
+                    <i class="fas fa-phone"></i> ${this.selectedEmployee.phone || 'Chưa có SĐT'}
+                </div>
                 <button class="btn-icon danger" onclick="window.employeesModule.deleteCurrentEmployee()">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <i class="fas fa-trash"></i>
+                </button>
                 <button class="modal-close" onclick="closeModal()">&times;</button>
             </div>
+            
             <div class="modal-body">
-                        <strong>THỰC LÃNH:</strong>
-                        <span>${salary.actual.toLocaleString()} ₫</span>
-                    </div>
+                <div class="modal-section">
+                    <strong>THỰC LÃNH:</strong>
+                    <span class="salary-highlight">${salary.actual.toLocaleString()} ₫</span>
+                </div>
+            </div>
+            
             <div class="modal-body">
                 <div class="calendar-section">
                     <h3>LỊCH LÀM VIỆC THÁNG ${month}</h3>
                     ${calendarHTML}
-                    
-                    
                 </div>
                 
                 ${penalties.length > 0 ? `
@@ -783,12 +826,11 @@ class EmployeesModule {
                     <button class="btn-secondary" onclick="window.employeesModule.showEditModal()">
                         <i class="fas fa-edit"></i> SỬA
                     </button>
-             
-                <button class="btn-outline" onclick="closeModal()">
-                    ĐÓNG
-                </button>
-            </div>
-            
+                    <button class="btn-outline" onclick="closeModal()">
+                        ĐÓNG
+                    </button>
+                </div>
+                
                 <div class="salary-card">
                     <h3>LƯƠNG THÁNG ${this.currentMonth}</h3>
                     <div class="salary-details">
@@ -799,11 +841,8 @@ class EmployeesModule {
                         <div><span>Ngày tăng ca:</span> <span>${salary.overtime} ngày</span></div>
                         <div><span>Thưởng/Phạt:</span> <span>${this.getPenaltiesTotal(penalties).toLocaleString()} ₫</span></div>
                     </div>
-                    
-                    
                 </div>
-                
-                
+            </div>
         `;
         
         window.showModal(modalContent);
@@ -891,7 +930,7 @@ class EmployeesModule {
         if (!this.selectedEmployee) return 'normal';
         const monthData = this.getEmployeeMonthlyData(this.selectedEmployee);
         const dayStr = String(day).padStart(2, '0');
-        return monthData.workdays[dayStr] || 'normal';
+        return (monthData.workdays && monthData.workdays[dayStr]) || 'normal';
     }
     
     async updateSelectedWorkDay(day) {
@@ -905,12 +944,12 @@ class EmployeesModule {
         
         if (success) {
             closeModal();
-            // Refresh modal
             const employees = await this.loadEmployees();
             const index = employees.findIndex(e => e.id === this.selectedEmployee.id);
             if (index >= 0) {
                 this.selectedEmployee = employees[index];
-                this.showEmployeeDetail(index);
+                const modalIndex = employees.indexOf(this.selectedEmployee);
+                this.showEmployeeDetail(modalIndex);
             }
         }
     }
@@ -919,24 +958,22 @@ class EmployeesModule {
         const modalContent = `
             <div class="modal-header">
                 <strong>NV:</strong> ${this.selectedEmployee.name}
-
                 <button class="modal-close" onclick="closeModal()">&times;</button>
             </div>
             <div class="modal-body">
-                
                 <div class="form-group">
-    <label>Loại:</label>
-    <div class="button-radio-group">
-        <label class="radio-button-label">
-            <input type="radio" name="penaltyType" value="reward" checked>
-            <span class="button-radio reward">Thưởng (+)</span>
-        </label>
-        <label class="radio-button-label">
-            <input type="radio" name="penaltyType" value="penalty">
-            <span class="button-radio penalty">Phạt (-)</span>
-        </label>
-    </div>
-</div>
+                    <label>Loại:</label>
+                    <div class="button-radio-group">
+                        <label class="radio-button-label">
+                            <input type="radio" name="penaltyType" value="reward" checked>
+                            <span class="button-radio reward">Thưởng (+)</span>
+                        </label>
+                        <label class="radio-button-label">
+                            <input type="radio" name="penaltyType" value="penalty">
+                            <span class="button-radio penalty">Phạt (-)</span>
+                        </label>
+                    </div>
+                </div>
                 
                 <div class="form-group">
                     <label>Số tiền (VND):</label>
@@ -992,14 +1029,12 @@ class EmployeesModule {
             
             if (success) {
                 closeModal();
-                // Refresh modal
                 const employees = await this.loadEmployees();
                 const index = employees.findIndex(e => e.id === this.selectedEmployee.id);
                 this.showEmployeeDetail(index);
             }
             
         } catch (error) {
-            console.error('Error adding penalty:', error);
             window.showToast('Lỗi khi thêm chế tài', 'error');
         }
     }
@@ -1071,7 +1106,6 @@ class EmployeesModule {
             }
             
         } catch (error) {
-            console.error('Error updating employee:', error);
             window.showToast('Lỗi khi cập nhật', 'error');
         }
     }
@@ -1127,113 +1161,10 @@ class EmployeesModule {
         window.showModal(modalContent);
     }
     
-    toggleWorkCalendar() {
-        const section = document.getElementById('calendarSection');
-        const toggleIcon = document.getElementById('calendarToggle');
-        
-        if (section.style.display === 'none') {
-            section.style.display = 'block';
-            toggleIcon.className = 'fas fa-chevron-up';
-            this.renderWorkCalendar();
-        } else {
-            section.style.display = 'none';
-            toggleIcon.className = 'fas fa-chevron-down';
-        }
-    }
-    
-    async renderWorkCalendar() {
-        const section = document.getElementById('calendarSection');
-        if (!section) return;
-        
-        const employees = await this.loadEmployees();
-        const [month, year] = this.currentMonth.split('/');
-        const monthKey = `${year}-${month.padStart(2, '0')}`;
-        const daysInMonth = new Date(year, month, 0).getDate();
-        
-        // Tạo header với các ngày
-        let calendarHTML = '<div class="calendar-header">';
-        calendarHTML += '<div class="calendar-cell employee-name">Nhân viên</div>';
-        
-        for (let day = 1; day <= daysInMonth; day++) {
-            calendarHTML += `<div class="calendar-cell day-header">${day}</div>`;
-        }
-        calendarHTML += '</div>';
-        
-        // Tạo hàng cho mỗi nhân viên
-        employees.forEach(employee => {
-            calendarHTML += '<div class="calendar-row">';
-            calendarHTML += `<div class="calendar-cell employee-name">${employee.name}</div>`;
-            
-            const monthData = this.getEmployeeMonthlyData(employee);
-            
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dayStr = String(day).padStart(2, '0');
-                const status = monthData.workdays[dayStr] || 'normal';
-                
-                calendarHTML += `
-                    <div class="calendar-cell day-cell ${status}" 
-                         onclick="window.employeesModule.quickUpdateWorkDay('${employee.id}', ${day}, '${status}')">
-                        <div class="day-status">${this.getStatusSymbol(status)}</div>
-                    </div>
-                `;
-            }
-            
-            calendarHTML += '</div>';
-        });
-        
-        section.innerHTML = `
-            <div class="work-calendar">
-                <h4>LỊCH LÀM VIỆC THÁNG ${month}/${year}</h4>
-                
-                <div class="calendar-container">
-                    ${calendarHTML}
-                </div>
-                
-                <div class="calendar-legend">
-                    <div class="legend-item">
-                        <span class="legend-color normal"></span>
-                        <span>Bình thường</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color off"></span>
-                        <span>OFF</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color overtime"></span>
-                        <span>Tăng ca</span>
-                    </div>
-                    <div class="legend-item">
-                        <small>Click vào ô để thay đổi trạng thái</small>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    getStatusSymbol(status) {
-        switch(status) {
-            case 'normal': return '•';
-            case 'overtime': return '+';
-            case 'off': return 'O';
-            default: return '•';
-        }
-    }
-    
-    async quickUpdateWorkDay(employeeId, day, currentStatus) {
-        const employees = await this.loadEmployees();
-        const employee = employees.find(e => e.id == employeeId);
-        if (!employee) return;
-        
-        this.selectedEmployee = employee;
-        this.selectWorkDay(day);
-    }
-    
     // ========== INITIALIZATION ==========
     
     async init() {
-        // Tải dữ liệu khi vào trang
         await this.loadEmployees();
-        console.log('✅ Employees module initialized');
     }
 }
 
@@ -1242,5 +1173,5 @@ window.employeesModule = new EmployeesModule();
 
 // Tự động init khi trang load
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => window.employeesModule.init(), 1000);
+    setTimeout(() => window.employeesModule.init(), 100);
 });

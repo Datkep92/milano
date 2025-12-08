@@ -1,17 +1,65 @@
 // reports.js - Module báo cáo với lưu trữ theo ngày
 class ReportsModule {
     constructor() {
-        this.currentDate = this.formatDateForDisplay(new Date());
-        this.currentDateKey = this.formatDateForStorage(new Date());
-        this.expenses = [];
-        this.transfers = [];
-        this.inventoryExports = [];
-        this.isLoading = false;
-        this.currentReport = null;
-        this.calculatedRevenue = 0; // Thêm biến này
-
-    }
+    this.currentDate = this.formatDateForDisplay(new Date());
+    this.currentDateKey = this.formatDateForStorage(new Date());
+    this.expenses = [];
+    this.transfers = [];
+    this.inventoryExports = [];
+    this.isLoading = false;
+    this.currentReport = null;
+    this.calculatedRevenue = 0;
     
+    // THÊM: Auto-complete suggestions
+    this.expenseSuggestions = this.loadSuggestions('expenseSuggestions');
+    this.transferSuggestions = this.loadSuggestions('transferSuggestions');
+}
+    // THÊM: Hàm quản lý suggestions
+loadSuggestions(key) {
+    try {
+        const saved = localStorage.getItem(`milano_${key}`);
+        if (saved) {
+            return JSON.parse(saved);
+        }
+    } catch (e) {
+        console.warn('Error loading suggestions:', e);
+    }
+    return [];
+}
+
+saveSuggestions(key, suggestions) {
+    try {
+        localStorage.setItem(`milano_${key}`, JSON.stringify(suggestions.slice(0, 20))); // Lưu 20 mục gần nhất
+    } catch (e) {
+        console.warn('Error saving suggestions:', e);
+    }
+}
+
+addExpenseSuggestion(name) {
+    if (!name || name.trim() === '') return;
+    
+    const trimmedName = name.trim();
+    // Loại bỏ nếu đã tồn tại
+    this.expenseSuggestions = this.expenseSuggestions.filter(s => s !== trimmedName);
+    // Thêm vào đầu
+    this.expenseSuggestions.unshift(trimmedName);
+    // Giữ tối đa 20 mục
+    this.expenseSuggestions = this.expenseSuggestions.slice(0, 20);
+    this.saveSuggestions('expenseSuggestions', this.expenseSuggestions);
+}
+
+addTransferSuggestion(content) {
+    if (!content || content.trim() === '') return;
+    
+    const trimmedContent = content.trim();
+    // Loại bỏ nếu đã tồn tại
+    this.transferSuggestions = this.transferSuggestions.filter(s => s !== trimmedContent);
+    // Thêm vào đầu
+    this.transferSuggestions.unshift(trimmedContent);
+    // Giữ tối đa 20 mục
+    this.transferSuggestions = this.transferSuggestions.slice(0, 20);
+    this.saveSuggestions('transferSuggestions', this.transferSuggestions);
+}
     formatDateForDisplay(date) {
         const d = new Date(date);
         const day = String(d.getDate()).padStart(2, '0');
@@ -37,7 +85,56 @@ class ReportsModule {
         const [day, month, year] = dateStr.split('/').map(Number);
         return new Date(year, month - 1, day);
     }
-    
+    formatDateFromFirebase(dateKey) {
+    try {
+        // Chuyển từ yyyy-mm-dd thành dd/mm/yyyy
+        if (!dateKey) return '';
+        
+        // Nếu đã là định dạng dd/mm/yyyy thì trả về luôn
+        if (dateKey.includes('/')) {
+            return dateKey;
+        }
+        
+        // Xử lý yyyy-mm-dd
+        const [year, month, day] = dateKey.split('-');
+        
+        if (!year || !month || !day) {
+            console.warn(`⚠️ Invalid date format: ${dateKey}`);
+            return dateKey;
+        }
+        
+        return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+        
+    } catch (error) {
+        console.error('❌ Error formatting date from Firebase:', error, 'Input:', dateKey);
+        return dateKey;
+    }
+}
+formatDateForFirebase(dateStr) {
+    try {
+        // Chuyển từ dd/mm/yyyy thành yyyy-mm-dd
+        if (!dateStr) return '';
+        
+        // Nếu đã là định dạng yyyy-mm-dd thì trả về luôn
+        if (dateStr.includes('-') && dateStr.split('-')[0].length === 4) {
+            return dateStr;
+        }
+        
+        // Xử lý dd/mm/yyyy
+        const [day, month, year] = dateStr.split('/');
+        
+        if (!day || !month || !year) {
+            console.warn(`⚠️ Invalid date format: ${dateStr}`);
+            return dateStr;
+        }
+        
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        
+    } catch (error) {
+        console.error('❌ Error formatting date for Firebase:', error, 'Input:', dateStr);
+        return dateStr;
+    }
+}
    async render() {
     if (this.isLoading) return;
     
@@ -45,152 +142,216 @@ class ReportsModule {
     const mainContent = document.getElementById('mainContent');
     
     try {
-        // Tải báo cáo cho ngày hiện tại (currentDateKey) nếu chưa có
+        // Tải báo cáo cho ngày hiện tại
         if (!this.currentReport || this.currentReport.date !== this.currentDate) {
             this.currentReport = await this.loadReportForDate(this.currentDateKey);
             
-            // KHÔI PHỤC DỮ LIỆU TỪ REPORT CỦA NGÀY ĐƯỢC CHỌN
             if (this.currentReport) {
+                console.log('📊 Current report loaded:', this.currentReport);
                 this.expenses = this.currentReport.expenses || [];
                 this.transfers = this.currentReport.transfers || [];
-                
-                // **QUAN TRỌNG: Nếu báo cáo đã có inventoryExports thì KHÔNG load vào pending exports**
-                // Chỉ load nếu chưa được xử lý (processed: false)
-                const savedExports = this.currentReport.inventoryExports || [];
-                this.inventoryExports = savedExports.filter(item => !item.processed);
-                
-                //console.log(`📦 Loaded ${this.inventoryExports.length} pending exports (filtered from ${savedExports.length} total)`);
+                this.inventoryExports = this.currentReport.inventoryExports || [];
             } else {
-                // Reset khi không có report (ngày chưa có báo cáo)
-                //console.log(`📭 Không có báo cáo cho ngày ${this.currentDate}, tạo mới`);
+                // Reset khi không có report
                 this.expenses = [];
                 this.transfers = [];
-                this.inventoryExports = []; // Luôn bắt đầu với danh sách rỗng
-                this.currentReport = {
-                    date: this.currentDate,
-                    revenue: 0,
-                    openingBalance: 0,
-                    closingBalance: 0,
-                    actualReceived: 0
-                };
+                this.inventoryExports = [];
+                this.currentReport = null;
             }
         }
-            
-            // Lấy số dư đầu kỳ từ ngày trước đó
-            let openingBalance = await this.getOpeningBalance(this.currentDateKey);
-            
-             mainContent.innerHTML = `
+        
+        // Lấy số dư đầu kỳ - SỬA QUAN TRỌNG
+        let openingBalance = 0;
+        
+        // Ưu tiên lấy từ report hiện tại nếu có
+        if (this.currentReport?.openingBalance !== undefined) {
+            openingBalance = this.currentReport.openingBalance;
+            console.log(`💰 Using opening balance from report: ${openingBalance}`);
+        } else {
+            // Tính từ ngày trước nếu không có
+            openingBalance = await this.getOpeningBalance(this.currentDateKey);
+            console.log(`💰 Calculated opening balance: ${openingBalance}`);
+        }
+        
+        // Format actualReceived và closingBalance từ report nếu có
+        const actualReceived = this.currentReport?.actualReceived || 0;
+        const closingBalance = this.currentReport?.closingBalance || 0;
+        const exportedItems = this.currentReport?.inventoryExports || [];
+        const exportText = exportedItems.length > 0 
+            ? exportedItems.map(item => `${item.product} - ${item.quantity}${item.unit ? item.unit : ''}`).join(', ')
+            : 'Chưa có hàng xuất';
+        mainContent.innerHTML = `
             <div class="report-container">
                 <div class="report-header">
-                    <h3><i class="fas fa-chart-line"></i> ${this.currentDate}: Dư đầu kỳ: ${openingBalance.toLocaleString()}</h3> 
+                    <h3><i class="fas fa-chart-line"></i> BÁO CÁO NGÀY ${this.currentDate}</h3>
+                    <div class="opening-balance">
+                        <i class="fas fa-wallet"></i> Dư đầu kỳ: <strong>${openingBalance.toLocaleString()} ₫</strong>
+                    </div>
                     <div class="date-picker">
                         <input type="date" id="reportDate" value="${this.getInputDateValue()}"
                                onchange="window.reportsModule.changeDate()">
                     </div>
                 </div>
-                <div class="action-card" onclick="window.reportsModule.showExpensesModal()">
-                    <i class="fas fa-credit-card"></i>
-                    <span>💳 CHI PHÍ</span>
-                    <span id="expensesTotal" class="amount">${this.getTotalExpenses().toLocaleString()} ₫</span>
-                </div>
                 
-                <div class="action-card" onclick="window.reportsModule.showTransfersModal()">
-                    <i class="fas fa-university"></i>
-                    <span>🏦 CHUYỂN KHOẢN</span>
-                    <span id="transfersTotal" class="amount">${this.getTotalTransfers().toLocaleString()} ₫</span>
-                </div>
-                
-                
-                <div class="report-card">
-                    <label>THỰC NHẬN (tiền mặt)</label>
-                    <div class="input-group">
-                        <input type="text" id="actualReceived" value="${this.currentReport?.actualReceived || 0}" 
-                               oninput="window.reportsModule.formatCurrency(this); window.reportsModule.calculate()" 
-                               placeholder="0">
-                        <span class="currency">₫</span>
+                <div class="quick-stats">
+                    <div class="stat-card" onclick="window.reportsModule.showExpensesModal()">
+                        <i class="fas fa-credit-card"></i>
+                        <span>💳 CHI PHÍ</span>
+                        <span id="expensesTotal" class="amount">${this.getTotalExpenses().toLocaleString()} ₫</span>
+                    </div>
+                    
+                    <div class="stat-card" onclick="window.reportsModule.showTransfersModal()">
+                        <i class="fas fa-university"></i>
+                        <span>🏦 CHUYỂN KHOẢN</span>
+                        <span id="transfersTotal" class="amount">${this.getTotalTransfers().toLocaleString()} ₫</span>
                     </div>
                 </div>
                 
-                
-                
                 <div class="report-card">
-                    <label>SỐ DƯ CUỐI KỲ</label>
+                    <label>THỰC NHẬN (tiền mặt) <small class="required">*</small></label>
                     <div class="input-group">
-                        <input type="text" id="closingBalance" value="${this.currentReport?.closingBalance || 0}" 
+                        <input type="text" id="actualReceived" 
+                               value="${actualReceived.toLocaleString()}" 
                                oninput="window.reportsModule.formatCurrency(this); window.reportsModule.calculate()" 
-                               placeholder="0">
+                               placeholder="0" required>
                         <span class="currency">₫</span>
                     </div>
+                    <small class="input-help">Số tiền mặt thực tế nhận được</small>
                 </div>
-
+                
+                <div class="report-card">
+                    <label>SỐ DƯ CUỐI KỲ <small class="required">*</small></label>
+                    <div class="input-group">
+                        <input type="text" id="closingBalance" 
+                               value="${closingBalance.toLocaleString()}" 
+                               oninput="window.reportsModule.formatCurrency(this); window.reportsModule.calculate()" 
+                               placeholder="0" required>
+                        <span class="currency">₫</span>
+                    </div>
+                    <small class="input-help">Số tiền còn lại sau ngày</small>
+                </div>
+                
+                <!-- Doanh thu tính toán -->
+                <div class="revenue-display">
+                    <div class="revenue-label">
+                        <i class="fas fa-chart-line"></i>
+                        <span>DOANH THU TÍNH TOÁN</span>
+                    </div>
+                    <div class="revenue-value" id="revenue">${this.calculatedRevenue.toLocaleString()} ₫</div>
+                    
+                </div>
+                <div class="export-line">
+                    <i class="fas fa-box" style="color: #4CAF50; margin-right: 5px;"></i>
+                    <strong>Hàng xuất:</strong> ${exportText}
+                </div>
+                <!-- Action cards -->
+                <div class="action-card" onclick="window.reportsModule.toggleInventory()">
+                    <i class="fas fa-boxes"></i>
+                    <span>📦 XUẤT KHO</span>
+                    <span id="inventoryCount" class="amount">${this.inventoryExports.length} sản phẩm</span>
+                    <i class="fas fa-chevron-down" id="inventoryToggle"></i>
+                </div>
+                
+                <div id="inventorySection" class="collapsible-section" style="display: none;">
+                    <!-- Inventory sẽ được render riêng -->
+                </div>
+                
+                <div class="action-card" onclick="window.reportsModule.toggleHistory()">
+                    <i class="fas fa-history"></i>
+                    <span>📜 LỊCH SỬ BÁO CÁO</span>
+                    <i class="fas fa-chevron-down" id="historyToggle"></i>
+                </div>
+                
+                <div id="historySection" class="collapsible-section" style="display: none;">
+                    <!-- Lịch sử sẽ được render riêng -->
+                </div>
                 
                 <div class="action-buttons">
                     <button class="btn-primary" onclick="window.reportsModule.saveReport()" id="saveButton">
-                        <i class="fas fa-save"></i> 💾 LƯU
+                        <i class="fas fa-save"></i> 💾 LƯU BÁO CÁO
                     </button>
                     <button class="btn-secondary" onclick="window.reportsModule.sendToZalo()">
                         <i class="fas fa-paper-plane"></i> 📱 GỬI ZALO
                     </button>
                 </div>
-                    <div class="action-card" onclick="window.reportsModule.toggleInventory()">
-                        <i class="fas fa-boxes"></i>
-                        <span>📦 XUẤT KHO</span>
-                        <span id="inventoryCount" class="amount">${this.inventoryExports.length} sản phẩm</span>
-                        <i class="fas fa-chevron-down" id="inventoryToggle"></i>
-                    </div>
-                    
-                    <div id="inventorySection" class="collapsible-section" style="display: none;">
-                        <!-- Inventory sẽ được render riêng -->
-                    </div>
-                    
-                    <div class="action-card" onclick="window.reportsModule.toggleHistory()">
-                        <i class="fas fa-history"></i>
-                        <span>📜 LỊCH SỬ BÁO CÁO</span>
-                        <i class="fas fa-chevron-down" id="historyToggle"></i>
-                    </div>
-                    
-                    <div id="historySection" class="collapsible-section" style="display: none;">
-                        <!-- Lịch sử sẽ được render riêng -->
-                    </div>
-                    
-                    
-                </div>
-            `;
-            
-            // Tính toán ban đầu
+            </div>
+        `;
+        
+        // Tính toán ban đầu
         this.calculate();
         
+        // Cập nhật UI cho inventory nếu có
+        this.updateInventoryUI();
+        
     } catch (error) {
-        console.error('Error rendering reports:', error);
-        // ... (phần error giữ nguyên)
+        console.error('❌ Error rendering reports:', error);
+        mainContent.innerHTML = `
+            <div class="error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Lỗi khi tải báo cáo: ${error.message}</p>
+                <button onclick="window.reportsModule.render()">Thử lại</button>
+            </div>
+        `;
     } finally {
         this.isLoading = false;
     }
 }
     
     async loadReportForDate(dateKey) {
-    // CHỈ dùng local data
-    return window.dataManager.getReport(dateKey);
+    try {
+        // Lấy report từ DataManager
+        const report = await window.dataManager.getReport(this.formatDateFromFirebase(dateKey));
+        
+        if (report) {
+            console.log(`📊 Loaded report for ${dateKey}:`, report);
+            return report;
+        }
+        
+        // Nếu không tìm thấy, kiểm tra trong data trực tiếp
+        const displayDate = this.formatDateFromFirebase(dateKey);
+        const directReport = window.dataManager.data.reports?.[displayDate];
+        
+        if (directReport) {
+            console.log(`📊 Found direct report for ${displayDate}:`, directReport);
+            return directReport;
+        }
+        
+        console.log(`📭 No report found for ${dateKey}`);
+        return null;
+        
+    } catch (error) {
+        console.error('Error loading report:', error);
+        return null;
+    }
 }
     
     async getOpeningBalance(dateKey) {
-        try {
-            const currentDate = this.parseStorageDate(dateKey);
-            const previousDate = new Date(currentDate);
-            previousDate.setDate(previousDate.getDate() - 1);
-            const previousDateKey = this.formatDateForStorage(previousDate);
-            
-            const previousReport = await this.loadReportForDate(previousDateKey);
-            if (previousReport) {
-                return previousReport.closingBalance || 0;
-            }
-            
-            return 0;
-        } catch (error) {
-            console.error('Error getting opening balance:', error);
-            return 0;
+    try {
+        const currentDate = this.parseStorageDate(dateKey);
+        const previousDate = new Date(currentDate);
+        previousDate.setDate(previousDate.getDate() - 1);
+        const previousDateKey = this.formatDateForStorage(previousDate);
+        const previousDisplayDate = this.formatDateFromFirebase(previousDateKey);
+        
+        console.log(`🔍 Looking for previous day report: ${previousDisplayDate} (${previousDateKey})`);
+        
+        // Tìm report của ngày trước trong data
+        const allReports = window.dataManager.getReports();
+        const previousReport = allReports.find(r => r.date === previousDisplayDate);
+        
+        if (previousReport) {
+            console.log(`✅ Found previous report, closing balance: ${previousReport.closingBalance || 0}`);
+            return previousReport.closingBalance || 0;
         }
+        
+        console.log('📭 No previous report found, using 0');
+        return 0;
+        
+    } catch (error) {
+        console.error('Error getting opening balance:', error);
+        return 0;
     }
+}
     
     getInputDateValue() {
         const [day, month, year] = this.currentDate.split('/');
@@ -305,106 +466,163 @@ class ReportsModule {
     }
     
     showExpensesModal() {
-        const modalContent = `
-            <div class="modal-header">
-                <h2><i class="fas fa-credit-card"></i> CHI PHÍ NGÀY ${this.currentDate}</h2>
-                <button class="modal-close" onclick="closeModal(); window.reportsModule.calculate()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Tên chi phí:</label>
-                    <input type="text" id="expenseName" placeholder="Tiền điện, nước, vệ sinh...">
-                </div>
-                
-                <div class="form-group">
-                    <label>Số tiền:</label>
-                    <div class="input-group">
-                        <input type="text" id="expenseAmount" placeholder="0" 
-                               oninput="window.reportsModule.formatCurrency(this)">
-                        <span class="currency">₫</span>
+    const suggestionsHTML = this.expenseSuggestions.map(suggestion => 
+        `<div class="suggestion-item" onclick="window.reportsModule.selectExpenseSuggestion('${suggestion.replace(/'/g, "\\'")}')">
+            ${suggestion}
+        </div>`
+    ).join('');
+    
+    const modalContent = `
+        <div class="modal-header">
+            <h2><i class="fas fa-credit-card"></i> CHI PHÍ NGÀY ${this.currentDate}</h2>
+            <button class="modal-close" onclick="closeModal(); window.reportsModule.calculate()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Tên chi phí:</label>
+                <div class="suggestion-wrapper">
+                    <input type="text" id="expenseName" placeholder="Tiền điện, nước, vệ sinh..." 
+                           oninput="window.reportsModule.showExpenseSuggestions(this.value)">
+                    <div class="suggestions-dropdown" id="expenseSuggestions" style="display: none;">
+                        ${suggestionsHTML}
+                        ${this.expenseSuggestions.length === 0 ? 
+                            '<div class="suggestion-empty">Nhập tên chi phí mới</div>' : ''}
                     </div>
                 </div>
-                
-                <button class="btn-primary" onclick="window.reportsModule.addExpense()">
-                    <i class="fas fa-plus"></i> THÊM CHI PHÍ NGÀY ${this.currentDate}
-                </button>
-                
-                <div class="modal-list-header">
-                    <h3>DANH SÁCH CHI PHÍ NGÀY ${this.currentDate}</h3>
-                </div>
-                
-                <div class="modal-list" id="expensesList">
-                    ${this.expenses.map((expense, index) => `
-                        <div class="list-item">
-                            <div class="item-info">
-                                <div class="item-name">${expense.name}</div>
-                                <div class="item-amount">${expense.amount.toLocaleString()} ₫</div>
-                            </div>
-                            <div class="item-actions">
-                                <button class="btn-icon" onclick="window.reportsModule.removeExpense(${index})">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
-                    
-                    ${this.expenses.length === 0 ? `
-                        <div class="empty-state">
-                            <i class="fas fa-receipt"></i>
-                            <p>Chưa có chi phí nào</p>
-                        </div>
-                    ` : ''}
-                </div>
-                
-                <div class="modal-total">
-                    <strong>TỔNG CHI PHÍ NGÀY ${this.currentDate}:</strong>
-                    <span>${this.getTotalExpenses().toLocaleString()} ₫</span>
-                </div>
-                
-                <button class="btn-secondary" onclick="closeModal(); window.reportsModule.calculate()">
-                    ĐÓNG
-                </button>
             </div>
-        `;
-        
-        window.showModal(modalContent);
+            
+            <div class="form-group">
+                <label>Số tiền:</label>
+                <div class="input-group">
+                    <input type="text" id="expenseAmount" placeholder="0" 
+                           oninput="window.reportsModule.formatCurrency(this)">
+                    <span class="currency">₫</span>
+                </div>
+            </div>
+            
+            <button class="btn-primary" onclick="window.reportsModule.addExpense()">
+                <i class="fas fa-plus"></i> THÊM CHI PHÍ NGÀY ${this.currentDate}
+            </button>
+            
+            <div class="modal-list-header">
+                <h3>DANH SÁCH CHI PHÍ NGÀY ${this.currentDate}</h3>
+            </div>
+            
+            <div class="modal-list" id="expensesList">
+                ${this.expenses.map((expense, index) => `
+                    <div class="list-item">
+                        <div class="item-info">
+                            <div class="item-name">${expense.name}</div>
+                            <div class="item-amount">${expense.amount.toLocaleString()} ₫</div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn-icon" onclick="window.reportsModule.removeExpense(${index})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+                
+                ${this.expenses.length === 0 ? `
+                    <div class="empty-state">
+                        <i class="fas fa-receipt"></i>
+                        <p>Chưa có chi phí nào</p>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div class="modal-total">
+                <strong>TỔNG CHI PHÍ NGÀY ${this.currentDate}:</strong>
+                <span>${this.getTotalExpenses().toLocaleString()} ₫</span>
+            </div>
+            
+            <button class="btn-secondary" onclick="closeModal(); window.reportsModule.calculate()">
+                ĐÓNG
+            </button>
+        </div>
+    `;
+    
+    window.showModal(modalContent);
+}
+    // THÊM: Hàm xử lý suggestions cho chi phí
+showExpenseSuggestions(searchText) {
+    const dropdown = document.getElementById('expenseSuggestions');
+    if (!dropdown) return;
+    
+    if (!searchText || searchText.trim() === '') {
+        dropdown.style.display = 'none';
+        return;
     }
     
-    addExpense() {
-        const nameInput = document.getElementById('expenseName');
-        const amountInput = document.getElementById('expenseAmount');
-        
-        const name = nameInput.value.trim();
-        const amount = parseInt(amountInput.value.replace(/\D/g, '') || 0);
-        
-        if (!name) {
-            window.showToast('Vui lòng nhập tên chi phí', 'warning');
-            nameInput.focus();
-            return;
-        }
-        
-        if (amount <= 0) {
-            window.showToast('Vui lòng nhập số tiền', 'warning');
-            amountInput.focus();
-            return;
-        }
-        
-        this.expenses.push({ 
-            id: Date.now(),
-            name, 
-            amount,
-            date: this.currentDate,
-            addedAt: new Date().toISOString()
-        });
-        
-        nameInput.value = '';
-        amountInput.value = '';
-        
-        this.showExpensesModal();
-        this.calculate();
-        
-        window.showToast(`Đã thêm chi phí cho ngày ${this.currentDate}`, 'success');
+    const searchLower = searchText.toLowerCase();
+    const filtered = this.expenseSuggestions.filter(suggestion => 
+        suggestion.toLowerCase().includes(searchLower)
+    );
+    
+    if (filtered.length > 0) {
+        dropdown.innerHTML = filtered.map(suggestion => 
+            `<div class="suggestion-item" onclick="window.reportsModule.selectExpenseSuggestion('${suggestion.replace(/'/g, "\\'")}')">
+                ${suggestion}
+            </div>`
+        ).join('');
+        dropdown.style.display = 'block';
+    } else {
+        dropdown.innerHTML = '<div class="suggestion-empty">Không tìm thấy gợi ý</div>';
+        dropdown.style.display = 'block';
     }
+}
+
+selectExpenseSuggestion(suggestion) {
+    const input = document.getElementById('expenseName');
+    if (input) {
+        input.value = suggestion;
+        input.focus();
+    }
+    
+    const dropdown = document.getElementById('expenseSuggestions');
+    if (dropdown) {
+        dropdown.style.display = 'none';
+    }
+}
+    addExpense() {
+    const nameInput = document.getElementById('expenseName');
+    const amountInput = document.getElementById('expenseAmount');
+    
+    const name = nameInput.value.trim();
+    const amount = parseInt(amountInput.value.replace(/\D/g, '') || 0);
+    
+    if (!name) {
+        window.showToast('Vui lòng nhập tên chi phí', 'warning');
+        nameInput.focus();
+        return;
+    }
+    
+    if (amount <= 0) {
+        window.showToast('Vui lòng nhập số tiền', 'warning');
+        amountInput.focus();
+        return;
+    }
+    
+    // THÊM: Lưu vào suggestions
+    this.addExpenseSuggestion(name);
+    
+    this.expenses.push({ 
+        id: Date.now(),
+        name, 
+        amount,
+        date: this.currentDate,
+        addedAt: new Date().toISOString(),
+        suggestionUsed: true
+    });
+    
+    nameInput.value = '';
+    amountInput.value = '';
+    
+    this.showExpensesModal();
+    this.calculate();
+    
+    window.showToast(`Đã thêm chi phí cho ngày ${this.currentDate}`, 'success');
+}
     
     removeExpense(index) {
         if (index >= 0 && index < this.expenses.length) {
@@ -415,101 +633,286 @@ class ReportsModule {
         }
     }
     
-    showTransfersModal() {
-        const modalContent = `
-            <div class="modal-header">
-                <h2><i class="fas fa-university"></i> CHUYỂN KHOẢN NGÀY ${this.currentDate}</h2>
-                <button class="modal-close" onclick="closeModal(); window.reportsModule.calculate()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Nội dung chuyển khoản:</label>
-                    <input type="text" id="transferContent" placeholder="Tiết kiệm, trả nợ...">
-                </div>
-                
-                <div class="form-group">
-                    <label>Số tiền:</label>
-                    <div class="input-group">
-                        <input type="text" id="transferAmount" placeholder="0" 
-                               oninput="window.reportsModule.formatCurrency(this)">
-                        <span class="currency">₫</span>
+    // THÊM: Tương tự cho transfers
+showTransfersModal() {
+    const suggestionsHTML = this.transferSuggestions.map(suggestion => 
+        `<div class="suggestion-item" onclick="window.reportsModule.selectTransferSuggestion('${suggestion.replace(/'/g, "\\'")}')">
+            ${suggestion}
+        </div>`
+    ).join('');
+    
+    const modalContent = `
+        <div class="modal-header">
+            <h2><i class="fas fa-university"></i> CHUYỂN KHOẢN NGÀY ${this.currentDate}</h2>
+            <button class="modal-close" onclick="closeModal(); window.reportsModule.calculate()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Nội dung chuyển khoản:</label>
+                <div class="suggestion-wrapper">
+                    <input type="text" id="transferContent" placeholder="Tiết kiệm, trả nợ..." 
+                           oninput="window.reportsModule.showTransferSuggestions(this.value)">
+                    <div class="suggestions-dropdown" id="transferSuggestions" style="display: none;">
+                        ${suggestionsHTML}
+                        ${this.transferSuggestions.length === 0 ? 
+                            '<div class="suggestion-empty">Nhập nội dung mới</div>' : ''}
                     </div>
                 </div>
-                
-                <button class="btn-primary" onclick="window.reportsModule.addTransfer()">
-                    <i class="fas fa-plus"></i> THÊM CHUYỂN KHOẢN NGÀY ${this.currentDate}
-                </button>
-                
-                <div class="modal-list-header">
-                    <h3>DANH SÁCH CHUYỂN KHOẢN NGÀY ${this.currentDate}</h3>
-                </div>
-                
-                <div class="modal-list" id="transfersList">
-                    ${this.transfers.map((transfer, index) => `
-                        <div class="list-item">
-                            <div class="item-info">
-                                <div class="item-name">${transfer.content || 'Không có nội dung'}</div>
-                                <div class="item-amount">${transfer.amount.toLocaleString()} ₫</div>
-                            </div>
-                            <div class="item-actions">
-                                <button class="btn-icon" onclick="window.reportsModule.removeTransfer(${index})">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
-                    
-                    ${this.transfers.length === 0 ? `
-                        <div class="empty-state">
-                            <i class="fas fa-exchange-alt"></i>
-                            <p>Chưa có chuyển khoản nào</p>
-                        </div>
-                    ` : ''}
-                </div>
-                
-                <div class="modal-total">
-                    <strong>TỔNG CHUYỂN KHOẢN NGÀY ${this.currentDate}:</strong>
-                    <span>${this.getTotalTransfers().toLocaleString()} ₫</span>
-                </div>
-                
-                <button class="btn-secondary" onclick="closeModal(); window.reportsModule.calculate()">
-                    ĐÓNG
-                </button>
             </div>
-        `;
-        
-        window.showModal(modalContent);
+            
+            <div class="form-group">
+                <label>Số tiền:</label>
+                <div class="input-group">
+                    <input type="text" id="transferAmount" placeholder="0" 
+                           oninput="window.reportsModule.formatCurrency(this)">
+                    <span class="currency">₫</span>
+                </div>
+            </div>
+            
+            <button class="btn-primary" onclick="window.reportsModule.addTransfer()">
+                <i class="fas fa-plus"></i> THÊM CHUYỂN KHOẢN NGÀY ${this.currentDate}
+            </button>
+            
+            <div class="modal-list-header">
+                <h3>DANH SÁCH CHUYỂN KHOẢN NGÀY ${this.currentDate}</h3>
+            </div>
+            
+            <div class="modal-list" id="transfersList">
+                ${this.transfers.map((transfer, index) => `
+                    <div class="list-item">
+                        <div class="item-info">
+                            <div class="item-name">${transfer.content || 'Không có nội dung'}</div>
+                            <div class="item-amount">${transfer.amount.toLocaleString()} ₫</div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn-icon" onclick="window.reportsModule.removeTransfer(${index})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+                
+                ${this.transfers.length === 0 ? `
+                    <div class="empty-state">
+                        <i class="fas fa-exchange-alt"></i>
+                        <p>Chưa có chuyển khoản nào</p>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div class="modal-total">
+                <strong>TỔNG CHUYỂN KHOẢN NGÀY ${this.currentDate}:</strong>
+                <span>${this.getTotalTransfers().toLocaleString()} ₫</span>
+            </div>
+            
+            <button class="btn-secondary" onclick="closeModal(); window.reportsModule.calculate()">
+                ĐÓNG
+            </button>
+        </div>
+    `;
+    
+    window.showModal(modalContent);
+}
+
+// THÊM: Hàm xử lý suggestions cho chuyển khoản
+showTransferSuggestions(searchText) {
+    const dropdown = document.getElementById('transferSuggestions');
+    if (!dropdown) return;
+    
+    if (!searchText || searchText.trim() === '') {
+        dropdown.style.display = 'none';
+        return;
     }
     
-    addTransfer() {
-        const contentInput = document.getElementById('transferContent');
-        const amountInput = document.getElementById('transferAmount');
-        
-        const content = contentInput.value.trim();
-        const amount = parseInt(amountInput.value.replace(/\D/g, '') || 0);
-        
-        if (amount < 0) {
-            window.showToast('Số tiền không hợp lệ', 'warning');
-            amountInput.focus();
-            return;
-        }
-        
-        this.transfers.push({ 
-            id: Date.now(),
-            content: content || 'Không có nội dung', 
-            amount,
-            date: this.currentDate,
-            addedAt: new Date().toISOString()
-        });
-        
-        contentInput.value = '';
-        amountInput.value = '';
-        
-        this.showTransfersModal();
-        this.calculate();
-        
-        window.showToast(`Đã thêm chuyển khoản cho ngày ${this.currentDate}`, 'success');
+    const searchLower = searchText.toLowerCase();
+    const filtered = this.transferSuggestions.filter(suggestion => 
+        suggestion.toLowerCase().includes(searchLower)
+    );
+    
+    if (filtered.length > 0) {
+        dropdown.innerHTML = filtered.map(suggestion => 
+            `<div class="suggestion-item" onclick="window.reportsModule.selectTransferSuggestion('${suggestion.replace(/'/g, "\\'")}')">
+                ${suggestion}
+            </div>`
+        ).join('');
+        dropdown.style.display = 'block';
+    } else {
+        dropdown.innerHTML = '<div class="suggestion-empty">Không tìm thấy gợi ý</div>';
+        dropdown.style.display = 'block';
     }
+}
+
+selectTransferSuggestion(suggestion) {
+    const input = document.getElementById('transferContent');
+    if (input) {
+        input.value = suggestion;
+        input.focus();
+    }
+    
+    const dropdown = document.getElementById('transferSuggestions');
+    if (dropdown) {
+        dropdown.style.display = 'none';
+    }
+}
+
+addTransfer() {
+    const contentInput = document.getElementById('transferContent');
+    const amountInput = document.getElementById('transferAmount');
+    
+    const content = contentInput.value.trim();
+    const amount = parseInt(amountInput.value.replace(/\D/g, '') || 0);
+    
+    if (amount < 0) {
+        window.showToast('Số tiền không hợp lệ', 'warning');
+        amountInput.focus();
+        return;
+    }
+    
+    // THÊM: Lưu vào suggestions
+    if (content) {
+        this.addTransferSuggestion(content);
+    }
+    
+    this.transfers.push({ 
+        id: Date.now(),
+        content: content || 'Không có nội dung', 
+        amount,
+        date: this.currentDate,
+        addedAt: new Date().toISOString(),
+        suggestionUsed: true
+    });
+    
+    contentInput.value = '';
+    amountInput.value = '';
+    
+    this.showTransfersModal();
+    this.calculate();
+    
+    window.showToast(`Đã thêm chuyển khoản cho ngày ${this.currentDate}`, 'success');
+}
+    // THÊM: Tương tự cho transfers
+showTransfersModal() {
+    const suggestionsHTML = this.transferSuggestions.map(suggestion => 
+        `<div class="suggestion-item" onclick="window.reportsModule.selectTransferSuggestion('${suggestion.replace(/'/g, "\\'")}')">
+            ${suggestion}
+        </div>`
+    ).join('');
+    
+    const modalContent = `
+        <div class="modal-header">
+            <h2><i class="fas fa-university"></i> CHUYỂN KHOẢN NGÀY ${this.currentDate}</h2>
+            <button class="modal-close" onclick="closeModal(); window.reportsModule.calculate()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Nội dung chuyển khoản:</label>
+                <div class="suggestion-wrapper">
+                    <input type="text" id="transferContent" placeholder="Tiết kiệm, trả nợ..." 
+                           oninput="window.reportsModule.showTransferSuggestions(this.value)">
+                    <div class="suggestions-dropdown" id="transferSuggestions" style="display: none;">
+                        ${suggestionsHTML}
+                        ${this.transferSuggestions.length === 0 ? 
+                            '<div class="suggestion-empty">Nhập nội dung mới</div>' : ''}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Số tiền:</label>
+                <div class="input-group">
+                    <input type="text" id="transferAmount" placeholder="0" 
+                           oninput="window.reportsModule.formatCurrency(this)">
+                    <span class="currency">₫</span>
+                </div>
+            </div>
+            
+            <button class="btn-primary" onclick="window.reportsModule.addTransfer()">
+                <i class="fas fa-plus"></i> THÊM CHUYỂN KHOẢN NGÀY ${this.currentDate}
+            </button>
+            
+            <div class="modal-list-header">
+                <h3>DANH SÁCH CHUYỂN KHOẢN NGÀY ${this.currentDate}</h3>
+            </div>
+            
+            <div class="modal-list" id="transfersList">
+                ${this.transfers.map((transfer, index) => `
+                    <div class="list-item">
+                        <div class="item-info">
+                            <div class="item-name">${transfer.content || 'Không có nội dung'}</div>
+                            <div class="item-amount">${transfer.amount.toLocaleString()} ₫</div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn-icon" onclick="window.reportsModule.removeTransfer(${index})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+                
+                ${this.transfers.length === 0 ? `
+                    <div class="empty-state">
+                        <i class="fas fa-exchange-alt"></i>
+                        <p>Chưa có chuyển khoản nào</p>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <div class="modal-total">
+                <strong>TỔNG CHUYỂN KHOẢN NGÀY ${this.currentDate}:</strong>
+                <span>${this.getTotalTransfers().toLocaleString()} ₫</span>
+            </div>
+            
+            <button class="btn-secondary" onclick="closeModal(); window.reportsModule.calculate()">
+                ĐÓNG
+            </button>
+        </div>
+    `;
+    
+    window.showModal(modalContent);
+}
+
+// THÊM: Hàm xử lý suggestions cho chuyển khoản
+showTransferSuggestions(searchText) {
+    const dropdown = document.getElementById('transferSuggestions');
+    if (!dropdown) return;
+    
+    if (!searchText || searchText.trim() === '') {
+        dropdown.style.display = 'none';
+        return;
+    }
+    
+    const searchLower = searchText.toLowerCase();
+    const filtered = this.transferSuggestions.filter(suggestion => 
+        suggestion.toLowerCase().includes(searchLower)
+    );
+    
+    if (filtered.length > 0) {
+        dropdown.innerHTML = filtered.map(suggestion => 
+            `<div class="suggestion-item" onclick="window.reportsModule.selectTransferSuggestion('${suggestion.replace(/'/g, "\\'")}')">
+                ${suggestion}
+            </div>`
+        ).join('');
+        dropdown.style.display = 'block';
+    } else {
+        dropdown.innerHTML = '<div class="suggestion-empty">Không tìm thấy gợi ý</div>';
+        dropdown.style.display = 'block';
+    }
+}
+
+selectTransferSuggestion(suggestion) {
+    const input = document.getElementById('transferContent');
+    if (input) {
+        input.value = suggestion;
+        input.focus();
+    }
+    
+    const dropdown = document.getElementById('transferSuggestions');
+    if (dropdown) {
+        dropdown.style.display = 'none';
+    }
+}
+
+
     
     removeTransfer(index) {
         if (index >= 0 && index < this.transfers.length) {
@@ -700,29 +1103,13 @@ class ReportsModule {
             toggleIcon.className = 'fas fa-chevron-down';
         }
     }
-    
     async renderHistorySection() {
     const section = document.getElementById('historySection');
     if (!section) return;
     
-    // Lấy tất cả reports từ dataManager
-    const allReports = window.dataManager.getReports('01/01/2024', '31/12/2025');
+    const allReports = window.dataManager.getReports();
     
-    //console.log(`📊 Found ${allReports.length} reports for history`);
-    
-    // Kiểm tra dữ liệu
-    if (!Array.isArray(allReports)) {
-        console.error('❌ allReports is not an array:', allReports);
-        section.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>Lỗi dữ liệu báo cáo</p>
-            </div>
-        `;
-        return;
-    }
-    
-    if (allReports.length === 0) {
+    if (!Array.isArray(allReports) || allReports.length === 0) {
         section.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-history"></i>
@@ -735,10 +1122,7 @@ class ReportsModule {
     // Nhóm báo cáo theo ngày (lấy phiên bản mới nhất mỗi ngày)
     const reportsByDate = {};
     allReports.forEach(report => {
-        if (!report || !report.date) {
-            console.warn('⚠️ Invalid report found:', report);
-            return;
-        }
+        if (!report || !report.date) return;
         
         const date = report.date;
         if (!reportsByDate[date] || 
@@ -753,7 +1137,7 @@ class ReportsModule {
         .sort((a, b) => {
             const dateA = this.parseDisplayDate(a.date);
             const dateB = this.parseDisplayDate(b.date);
-            return dateB - dateA; // Mới nhất trước
+            return dateB - dateA;
         });
     
     section.innerHTML = `
@@ -768,9 +1152,6 @@ class ReportsModule {
                 
                 const inventoryTotal = report.inventoryExports ?
                     report.inventoryExports.reduce((sum, i) => sum + (i.quantity || 0), 0) : 0;
-                
-                const inventoryValue = report.inventoryExports ?
-                    report.inventoryExports.reduce((sum, i) => sum + (i.totalValue || 0), 0) : 0;
                 
                 // Format savedAt time
                 let savedTime = '';
@@ -791,10 +1172,12 @@ class ReportsModule {
                         <div class="history-header">
                             <span class="history-date">📅 ${report.date}</span>
                             ${savedTime ? `<span class="history-time">${savedTime}</span>` : ''}
-                            ${report.version ? `<span class="history-version">v${report.version}</span>` : ''}
                             <div class="history-actions">
                                 <button class="btn-small" onclick="window.reportsModule.loadReport('${report.date}')">
                                     <i class="fas fa-eye"></i> Xem
+                                </button>
+                                <button class="btn-small danger" onclick="window.reportsModule.deleteReportFirebase('${report.date}')">
+                                    <i class="fas fa-trash"></i> Xóa
                                 </button>
                             </div>
                         </div>
@@ -836,20 +1219,18 @@ class ReportsModule {
                             <div class="inventory-summary">
                                 <div class="inventory-header">
                                     <h4><i class="fas fa-boxes"></i> Xuất kho (${inventoryTotal} sản phẩm)</h4>
-                                    <small>${inventoryValue.toLocaleString()} ₫</small>
                                 </div>
                                 <div class="inventory-details">
-                                    ${report.inventoryExports.slice(0, 3).map((item, index) => `
+                                    ${report.inventoryExports.map((item, index) => `
                                         <div class="export-detail">
-                                            <span>${item.product || 'N/A'}</span>
-                                            <span>${item.quantity} ${item.unit || ''}</span>
-                                            <span>${(item.totalValue || 0).toLocaleString()} ₫</span>
+                                            <span class="export-product">${item.product || 'N/A'}</span>
+                                            <span class="export-quantity">${item.quantity} ${item.unit || ''}</span>
                                         </div>
                                     `).join('')}
-                                    ${report.inventoryExports.length > 3 ? `
+                                    ${report.inventoryExports.length > 5 ? `
                                         <div class="more-items">
                                             <i class="fas fa-ellipsis-h"></i>
-                                            ${report.inventoryExports.length - 3} sản phẩm khác
+                                            ${report.inventoryExports.length - 5} sản phẩm khác
                                         </div>
                                     ` : ''}
                                 </div>
@@ -858,7 +1239,7 @@ class ReportsModule {
                         
                         <div class="history-footer">
                             <small>
-                                ${report.savedAt ? `Lưu lúc: ${new Date(report.savedAt).toLocaleString('vi-VN')}` : ''}
+                                ${report.savedAt ? `Lưu: ${new Date(report.savedAt).toLocaleString('vi-VN')}` : ''}
                             </small>
                         </div>
                     </div>
@@ -919,288 +1300,164 @@ showReportVersions(date) {
     window.showModal(modalContent);
 }
 
-// Thêm phương thức xóa báo cáo với xác nhận
-async deleteReportConfirm(date, filename) {
-    if (!confirm(`Bạn có chắc muốn xóa báo cáo ngày ${date}?\n\n⚠️ Cảnh báo: Hàng hóa đã xuất sẽ được hoàn trả vào kho!`)) return;
-    
-    try {
-        // 1. Hoàn trả hàng hóa vào kho trước khi xóa
-        const report = window.dataManager.data.reports[this.formatDateForStorage(this.parseDisplayDate(date))];
-        if (report && report.inventoryExports && report.inventoryExports.length > 0) {
-            const restoreSuccess = await this.restoreInventoryFromReport(report);
-            if (!restoreSuccess) {
-                window.showToast('Không thể hoàn trả hàng hóa', 'error');
-                return;
-            }
-        }
-        
-        // 2. Xóa file trên GitHub
-        const success = await window.githubManager.deleteFile(`reports/${filename}`, `Xóa báo cáo ngày ${date}`);
-        
-        if (success) {
-            // 3. Xóa khỏi local storage
-            const dateKey = filename.replace(/_v\d+\.json$/, '').replace('.json', '');
-            delete window.dataManager.data.reports[dateKey];
-            window.dataManager.saveToLocalStorage();
-            
-            // 4. Refresh lịch sử
-            this.renderHistorySection();
-            
-            window.showToast(`✅ Đã xóa báo cáo ngày ${date} và hoàn trả hàng hóa`, 'success');
-        } else {
-            window.showToast('Không thể xóa báo cáo', 'error');
-        }
-    } catch (error) {
-        console.error('Error deleting report:', error);
-        window.showToast('Lỗi khi xóa báo cáo', 'error');
-    }
-}
-
-// Thêm phương thức hoàn trả hàng hóa
-async restoreInventoryFromReport(report) {
-    try {
-        if (!report.inventoryExports || report.inventoryExports.length === 0) {
-            return true;
-        }
-        
-        const products = window.dataManager.getInventoryProducts();
-        const updatedProducts = [...products];
-        
-        // Cộng hàng trở lại kho
-        for (const exportItem of report.inventoryExports) {
-            const productIndex = updatedProducts.findIndex(p => p.id === exportItem.productId);
-            
-            if (productIndex !== -1) {
-                updatedProducts[productIndex] = {
-                    ...updatedProducts[productIndex],
-                    quantity: updatedProducts[productIndex].quantity + exportItem.quantity,
-                    history: [
-                        ...(updatedProducts[productIndex].history || []),
-                        {
-                            type: 'restore',
-                            date: new Date().toISOString().split('T')[0],
-                            quantity: exportItem.quantity,
-                            note: `Hoàn trả từ xóa báo cáo ngày ${report.date}`,
-                            timestamp: new Date().toISOString()
-                        }
-                    ]
-                };
-            }
-        }
-        
-        // Lưu kho mới
-        window.dataManager.data.inventory = updatedProducts;
-        window.dataManager.saveToLocalStorage();
-        
-        // Đồng bộ lên GitHub
-        await window.dataManager.syncToGitHub(
-            'inventory',
-            'products',
-            { products: updatedProducts },
-            `Hoàn trả hàng từ xóa báo cáo ngày ${report.date}`
-        );
-        
-        return true;
-        
-    } catch (error) {
-        console.error('Error restoring inventory:', error);
-        return false;
-    }
-}
-
-// Thêm phương thức khôi phục phiên bản cũ
-async restoreVersion(date, versionIndex) {
-    if (!confirm(`Khôi phục phiên bản cũ của ngày ${date}?\nPhiên bản hiện tại sẽ bị ghi đè.`)) return;
-    
-    try {
-        const allReports = window.dataManager.getReports('01/01/2024', '31/12/2025');
-        const reportsForDate = allReports.filter(r => r.date === date);
-        
-        if (versionIndex >= reportsForDate.length) {
-            window.showToast('Phiên bản không tồn tại', 'error');
-            return;
-        }
-        
-        const versionToRestore = reportsForDate[versionIndex];
-        
-        // Tạo phiên bản mới từ phiên bản cũ
-        const restoredReport = {
-            ...versionToRestore,
-            savedAt: new Date().toISOString(),
-            version: (reportsForDate[reportsForDate.length - 1]?.version || 0) + 1,
-            restoredFrom: versionToRestore.savedAt
-        };
-        
-        // Lưu phiên bản mới
-        const dateKey = this.formatDateForStorage(this.parseDisplayDate(date));
-        const success = await window.dataManager.syncToGitHub(
-            'reports',
-            `${dateKey}_v${restoredReport.version}`,
-            restoredReport,
-            `Khôi phục phiên bản ngày ${date} - Phiên bản ${restoredReport.version}`
-        );
-        
-        if (success) {
-            window.dataManager.data.reports[dateKey] = restoredReport;
-            window.dataManager.saveToLocalStorage();
-            
-            window.showToast(`✅ Đã khôi phục phiên bản ngày ${date}`, 'success');
-            closeModal();
-            this.renderHistorySection();
-        }
-        
-    } catch (error) {
-        console.error('Error restoring version:', error);
-        window.showToast('Lỗi khi khôi phục', 'error');
-    }
-}
     
     async loadReport(date) {
-        const [day, month, year] = date.split('/');
-        const dateKey = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        
-        this.currentDateKey = dateKey;
-        this.currentDate = date;
-        
-        await this.render();
-        window.showToast(`Đã tải báo cáo ngày ${date}`, 'success');
-        closeModal();
+    console.log(`📥 Loading report for date: ${date}`);
+    
+    // Parse date
+    const [day, month, year] = date.split('/');
+    const dateKey = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    
+    // Cập nhật ngày hiện tại
+    this.currentDateKey = dateKey;
+    this.currentDate = date;
+    
+    // Reset current report để tải mới
+    this.currentReport = null;
+    this.expenses = [];
+    this.transfers = [];
+    this.inventoryExports = [];
+    
+    // Hiển thị loading
+    const mainContent = document.getElementById('mainContent');
+    if (mainContent) {
+        mainContent.innerHTML = `
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Đang tải báo cáo ngày ${date}...</p>
+            </div>
+        `;
     }
     
-    async deleteReport(filename) {
-        if (!confirm(`Xóa báo cáo này?`)) return;
-        
-        try {
-            const success = await window.githubManager.deleteFile(`reports/${filename}`, `Xóa báo cáo`);
-            
-            if (success) {
-                const dateKey = filename.replace(/_v\d+\.json$/, '').replace('.json', '');
-                delete window.dataManager.data.reports[dateKey];
-                window.dataManager.saveToLocalStorage();
-                
-                window.showToast('Đã xóa báo cáo', 'success');
-                this.renderHistorySection();
-            } else {
-                window.showToast('Không thể xóa báo cáo', 'error');
-            }
-        } catch (error) {
-            console.error('Error deleting report:', error);
-            window.showToast('Lỗi khi xóa báo cáo', 'error');
+    // Tải và render
+    await this.render();
+    
+    window.showToast(`✅ Đã tải báo cáo ngày ${date}`, 'success');
+    
+    // Đóng history section nếu đang mở
+    const historySection = document.getElementById('historySection');
+    if (historySection) {
+        historySection.style.display = 'none';
+        const toggleIcon = document.getElementById('historyToggle');
+        if (toggleIcon) {
+            toggleIcon.className = 'fas fa-chevron-down';
         }
     }
+}
+    
     
     async saveReport() {
     try {
-        const openingBalance = this.getCurrencyValue('openingBalance');
-        const actualReceived = this.getCurrencyValue('actualReceived'); // Đổi từ revenue sang actualReceived
+        // 1. Lấy số dư đầu kỳ từ ngày trước (tính tự động)
+        const openingBalance = await this.getOpeningBalance(this.currentDateKey);
+        
+        // 2. Lấy giá trị từ UI
+        const actualReceived = this.getCurrencyValue('actualReceived');
         const closingBalance = this.getCurrencyValue('closingBalance');
         const expensesTotal = this.getTotalExpenses();
         const transfersTotal = this.getTotalTransfers();
         
-        // Validation
+        // 3. Validation cơ bản
         if (actualReceived < 0) {
             window.showToast('Số tiền thực nhận không hợp lệ', 'warning');
+            document.getElementById('actualReceived').focus();
             return;
         }
         
         if (closingBalance < 0) {
             window.showToast('Số dư cuối kỳ không hợp lệ', 'warning');
+            document.getElementById('closingBalance').focus();
             return;
         }
         
-        // Tính toán doanh thu theo công thức mới
-        // Doanh thu = Thực nhận + Chi phí + Chuyển khoản - Số dư đầu kỳ + Số dư cuối kỳ
+        // 4. Tính toán doanh thu
         const revenue = actualReceived + expensesTotal + transfersTotal - openingBalance + closingBalance;
         
-        // **KIỂM TRA NẾU CÓ XUẤT KHO**
+        console.log('💰 Revenue calculation:', {
+            actualReceived,
+            expensesTotal,
+            transfersTotal,
+            openingBalance,
+            closingBalance,
+            revenue
+        });
+        
+        // 5. KIỂM TRA VÀ XỬ LÝ XUẤT KHO
         let exportSuccess = true;
+        let exportedItems = [];
+        
         if (this.inventoryExports.length > 0) {
+            console.log(`📦 Processing ${this.inventoryExports.length} inventory exports...`);
             exportSuccess = await this.processInventoryExports();
+            
             if (!exportSuccess) {
                 window.showToast('Lỗi khi xuất kho', 'error');
                 return;
             }
+            
+            // Lưu danh sách hàng đã xuất để hiển thị
+            exportedItems = [...this.inventoryExports];
         }
         
+        // 6. TẠO REPORT DATA với thông tin hàng đã xuất
         const reportData = {
             date: this.currentDate,
             openingBalance,
-            actualReceived, // Lưu thực nhận (tiền mặt nhận được)
-            revenue, // Lưu doanh thu đã tính toán
+            actualReceived,
+            revenue,
             expenses: this.expenses,
             transfers: this.transfers,
             closingBalance,
-            inventoryExports: this.inventoryExports, // Lưu danh sách đã xuất
+            inventoryExports: exportSuccess ? exportedItems : [], // Lưu danh sách hàng đã xuất
             savedAt: new Date().toISOString(),
             version: (this.currentReport?.version || 0) + 1,
-            inventoryUpdated: exportSuccess && this.inventoryExports.length > 0
+            inventoryUpdated: exportSuccess && exportedItems.length > 0,
+            exportedItemsCount: exportedItems.length,
+            exportedItemsTotal: exportedItems.reduce((sum, item) => sum + item.quantity, 0)
         };
-        
-        const saveButton = document.getElementById('saveButton');
-        if (saveButton) {
-            saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
-            saveButton.disabled = true;
-        }
         
         const dateKey = this.currentDateKey;
         
-        const success = await window.dataManager.syncToGitHub(
-            'reports',
+        console.log('💾 Saving report to Firebase:', {
             dateKey,
+            version: reportData.version,
+            exportedItems: reportData.inventoryExports.length
+        });
+        
+        // 7. LƯU VÀO FIREBASE THÔNG QUA DATA MANAGER
+        const success = await window.dataManager.saveLocal(
+            'reports',
+            `${dateKey}.json`,
             reportData,
-            `Báo cáo ngày ${this.currentDate}${this.inventoryExports.length > 0 ? ` - Xuất ${this.inventoryExports.length} sản phẩm` : ''}`
+            `Báo cáo ngày ${this.currentDate} - Xuất ${exportedItems.length} sản phẩm`
         );
         
         if (success) {
-            // Cập nhật dữ liệu local
-            window.dataManager.data.reports[dateKey] = reportData;
-            window.dataManager.saveToLocalStorage();
+            // 8. RESET DỮ LIỆU SAU KHI LƯU THÀNH CÔNG
+            this.resetAfterSave();
             
-            // Cập nhật currentReport
+            
+            
+            // 10. Cập nhật currentReport
             this.currentReport = reportData;
             
-            // **QUAN TRỌNG: RESET DANH SÁCH CHỜ XUẤT SAU KHI LƯU**
-            if (this.inventoryExports.length > 0) {
-                console.log(`🔄 Resetting ${this.inventoryExports.length} pending exports`);
-                this.inventoryExports = []; // Reset danh sách chờ xuất
-            }
+            // 11. Hiển thị thông báo
+            window.showToast(`✅ Đã lưu báo cáo ngày ${this.currentDate}`, 'success');
             
-            // Cập nhật UI
-            this.updateInventoryUI();
+            // 12. TẠO BÁO CÁO ZALO TỰ ĐỘNG
+            setTimeout(() => {
+                this.sendToZalo();
+            }, 1000);
             
-            window.showToast(`✅ Đã lưu báo cáo ngày ${this.currentDate}${exportSuccess && this.inventoryExports.length > 0 ? ' và xuất kho' : ''}`, 'success');
-            
-            // Render lại để hiển thị trạng thái mới
+            // 13. RENDER LẠI UI
             await this.render();
         } else {
-            window.showToast('Lưu cục bộ thành công, chưa đồng bộ GitHub', 'warning');
-            
-            // Vẫn lưu cục bộ ngay cả khi GitHub lỗi
-            window.dataManager.data.reports[dateKey] = reportData;
-            window.dataManager.saveToLocalStorage();
-            
-            // Cập nhật currentReport
-            this.currentReport = reportData;
-            
-            // Reset danh sách chờ xuất
-            if (this.inventoryExports.length > 0) {
-                this.inventoryExports = [];
-                this.updateInventoryUI();
-            }
-            
-            await this.render();
+            window.showToast('❌ Lỗi khi lưu báo cáo', 'error');
         }
         
     } catch (error) {
-        console.error('Error saving report:', error);
-        window.showToast('Lỗi khi lưu báo cáo', 'error');
-        
-    } finally {
-        const saveButton = document.getElementById('saveButton');
-        if (saveButton) {
-            saveButton.innerHTML = `<i class="fas fa-save"></i> 💾 ${this.currentReport?.savedAt ? 'CẬP NHẬT' : 'LƯU'} BÁO CÁO NGÀY ${this.currentDate}`;
-            saveButton.disabled = false;
-        }
+        console.error('❌ Error saving report:', error);
+        window.showToast(`Lỗi khi lưu báo cáo: ${error.message}`, 'error');
     }
 }
 updateInventoryCount() {
@@ -1236,10 +1493,72 @@ updateInventoryCount() {
         }
     });
 }
+// THÊM PHƯƠNG THỨC resetAfterSave()
+resetAfterSave() {
+    console.log('🔄 Resetting data after save...');
+    
+    // 1. Reset inventory exports (QUAN TRỌNG: phải reset sau khi lưu)
+    this.inventoryExports = [];
+    
+    // 2. Reset expenses và transfers cho ngày hiện tại
+    this.expenses = [];
+    this.transfers = [];
+    
+    // 3. Cập nhật UI ngay lập tức
+    this.updateInventoryUI();
+    
+    console.log('✅ Data reset completed');
+}
+
+// CẬP NHẬT updateInventoryUI()
+updateInventoryUI() {
+    // Cập nhật số lượng chờ xuất
+    const inventoryCount = document.getElementById('inventoryCount');
+    if (inventoryCount) {
+        inventoryCount.textContent = `${this.inventoryExports.length} sản phẩm`;
+    }
+    
+    // Cập nhật pending exports
+    const pendingExports = document.getElementById('pendingExports');
+    if (pendingExports) {
+        pendingExports.textContent = this.inventoryExports.length;
+    }
+    
+    // Cập nhật export details
+    const exportDetails = document.getElementById('exportDetails');
+    if (exportDetails && document.getElementById('inventorySection')?.style.display !== 'none') {
+        if (this.inventoryExports.length === 0) {
+            exportDetails.innerHTML = `
+                <div class="empty-state small">
+                    <p>Chưa có sản phẩm nào chờ xuất</p>
+                </div>
+            `;
+        } else {
+            exportDetails.innerHTML = this.inventoryExports.map((item, index) => `
+                <div class="export-item">
+                    <i class="fas fa-clock"></i>
+                    <span>${item.time} - ${item.product} - ${item.quantity} ${item.unit}</span>
+                    <button class="btn-icon small" onclick="window.reportsModule.removeExport(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+    }
+    
+    // Reset counter trong product list
+    const products = window.dataManager.getInventoryProducts();
+    products.forEach((product, index) => {
+        const qtySpan = document.getElementById(`exportQty${index}`);
+        if (qtySpan) {
+            qtySpan.textContent = '0';
+        }
+    });
+}
+
 async processInventoryExports() {
     try {
         if (this.inventoryExports.length === 0) {
-            //console.log('Không có sản phẩm cần xuất kho');
             return true;
         }
         
@@ -1250,14 +1569,13 @@ async processInventoryExports() {
         const updatedProducts = [...products];
         let hasChanges = false;
         
-        //console.log(`📦 Processing ${this.inventoryExports.length} inventory exports`);
+        console.log(`📦 Processing ${this.inventoryExports.length} inventory exports`);
         
         // Kiểm tra và trừ tồn kho
         for (const exportItem of this.inventoryExports) {
             const productIndex = updatedProducts.findIndex(p => p.id === exportItem.productId);
             
             if (productIndex === -1) {
-                console.error(`❌ Không tìm thấy sản phẩm: ${exportItem.product} (ID: ${exportItem.productId})`);
                 window.showToast(`Không tìm thấy sản phẩm: ${exportItem.product}`, 'error');
                 return false;
             }
@@ -1265,7 +1583,7 @@ async processInventoryExports() {
             const product = updatedProducts[productIndex];
             
             if (product.quantity < exportItem.quantity) {
-                window.showToast(`❌ Không đủ hàng tồn kho cho ${product.name} (Cần: ${exportItem.quantity}, Có: ${product.quantity})`, 'error');
+                window.showToast(`❌ Không đủ hàng tồn kho cho ${product.name}`, 'error');
                 return false;
             }
             
@@ -1296,34 +1614,25 @@ async processInventoryExports() {
             exportItem.productCode = product.code || product.productCode || '';
             exportItem.processed = true;
             exportItem.processedAt = new Date().toISOString();
-            
-            //console.log(`✅ Đã xuất ${exportItem.quantity} ${exportItem.unit} ${exportItem.product} (Còn lại: ${newQuantity})`);
         }
         
         if (hasChanges) {
-            // Lưu dữ liệu kho mới
-            window.dataManager.data.inventory = window.dataManager.data.inventory || {};
+            // Cập nhật dữ liệu trong DataManager
             window.dataManager.data.inventory.products = updatedProducts;
             
-            // Lưu localStorage
-            window.dataManager.saveToLocalStorage();
+            // LƯU KHO VÀO FIREBASE THÔNG QUA DATA MANAGER
+            const inventoryData = { products: updatedProducts };
+            await window.dataManager.saveLocal(
+                'inventory',
+                'products.json',
+                inventoryData,
+                `Xuất kho ngày ${this.currentDate} - ${this.inventoryExports.length} sản phẩm`
+            );
             
             // **CẬP NHẬT UI NGAY LẬP TỨC**
             this.updateInventoryCount();
             
-            // Đồng bộ lên GitHub
-            const syncResult = await window.dataManager.syncToGitHub(
-                'inventory',
-                'products',
-                { products: updatedProducts },
-                `Xuất kho ngày ${this.currentDate} - ${this.inventoryExports.length} sản phẩm`
-            );
-            
-            if (!syncResult) {
-                window.showToast('Lưu kho thành công nhưng đồng bộ GitHub thất bại', 'warning');
-            }
-            
-            //console.log(`✅ Đã xuất kho ${this.inventoryExports.length} sản phẩm`);
+            console.log(`✅ Đã xuất kho ${this.inventoryExports.length} sản phẩm`);
             return true;
         }
         
@@ -1335,7 +1644,153 @@ async processInventoryExports() {
         return false;
     }
 }
+    async deleteReportFirebase(date) {
+    if (!confirm(`Bạn có chắc muốn xóa báo cáo ngày ${date}?\n\n⚠️ Cảnh báo: Hàng hóa đã xuất sẽ được hoàn trả vào kho!`)) return;
     
+    try {
+        console.log(`🗑️ Deleting report for date: ${date}`);
+        
+        // 1. Tìm report trong dataManager
+        const displayDate = date; // date đã là dd/mm/yyyy
+        const dateKey = this.formatDateForFirebase(date);
+        
+        console.log(`🔍 Looking for report: ${displayDate} (key: ${dateKey})`);
+        
+        // Tìm trong dataManager
+        const report = window.dataManager.data.reports?.[displayDate];
+        
+        if (!report) {
+            // Thử tìm trong getReports()
+            const allReports = window.dataManager.getReports();
+            const foundReport = allReports.find(r => r.date === displayDate);
+            
+            if (!foundReport) {
+                window.showToast('Không tìm thấy báo cáo', 'error');
+                console.error('Report not found in data:', window.dataManager.data.reports);
+                return;
+            }
+            
+            report = foundReport;
+        }
+        
+        console.log('📊 Found report to delete:', report);
+        
+        // 2. Hoàn trả hàng hóa vào kho nếu có xuất kho
+        if (report.inventoryExports && report.inventoryExports.length > 0) {
+            console.log(`🔄 Restoring ${report.inventoryExports.length} items to inventory`);
+            
+            const restoreSuccess = await this.restoreInventoryFromReportFirebase(report);
+            if (!restoreSuccess) {
+                window.showToast('Không thể hoàn trả hàng hóa', 'error');
+                return;
+            }
+            
+            window.showToast(`↩️ Đã hoàn trả ${report.inventoryExports.length} sản phẩm vào kho`, 'info');
+        }
+        
+        // 3. Xóa report khỏi DataManager
+        delete window.dataManager.data.reports[displayDate];
+        
+        // Lưu local data ngay lập tức
+        window.dataManager.saveLocalData();
+        
+        // 4. Thêm vào queue để xóa từ Firebase (gửi null để xóa)
+        await window.dataManager.saveLocal(
+            'reports',
+            `${dateKey}.json`,
+            null, // gửi null để xóa
+            `Xóa báo cáo ngày ${date}`
+        );
+        
+        window.showToast(`✅ Đã xóa báo cáo ngày ${date}`, 'success');
+        
+        // 5. Refresh UI nếu đang xem report đó
+        if (this.currentDate === date) {
+            console.log(`🔄 Current report deleted, resetting view...`);
+            this.currentReport = null;
+            this.expenses = [];
+            this.transfers = [];
+            this.inventoryExports = [];
+            await this.render();
+        }
+        
+        // 6. Refresh lịch sử
+        this.renderHistorySection();
+        
+    } catch (error) {
+        console.error('❌ Error deleting report:', error);
+        window.showToast('Lỗi khi xóa báo cáo', 'error');
+    }
+}
+async restoreInventoryFromReportFirebase(report) {
+    try {
+        if (!report.inventoryExports || report.inventoryExports.length === 0) {
+            return true;
+        }
+        
+        console.log(`🔄 Restoring ${report.inventoryExports.length} items from report ${report.date}`);
+        
+        const products = window.dataManager.getInventoryProducts();
+        const updatedProducts = [...products];
+        let restoredCount = 0;
+        
+        // Cộng hàng trở lại kho
+        for (const exportItem of report.inventoryExports) {
+            const productIndex = updatedProducts.findIndex(p => 
+                p.id === exportItem.productId || 
+                p.name.toLowerCase() === exportItem.product.toLowerCase()
+            );
+            
+            if (productIndex !== -1) {
+                const oldQuantity = updatedProducts[productIndex].quantity;
+                updatedProducts[productIndex] = {
+                    ...updatedProducts[productIndex],
+                    quantity: updatedProducts[productIndex].quantity + exportItem.quantity,
+                    lastUpdated: new Date().toISOString(),
+                    history: [
+                        ...(updatedProducts[productIndex].history || []),
+                        {
+                            type: 'restore',
+                            date: new Date().toISOString().split('T')[0],
+                            quantity: exportItem.quantity,
+                            note: `Hoàn trả từ xóa báo cáo ngày ${report.date}`,
+                            timestamp: new Date().toISOString()
+                        }
+                    ]
+                };
+                
+                console.log(`↩️ Restored ${exportItem.quantity} ${exportItem.product} (${oldQuantity} → ${updatedProducts[productIndex].quantity})`);
+                restoredCount++;
+            } else {
+                console.warn(`⚠️ Product not found for restore: ${exportItem.product}`);
+            }
+        }
+        
+        if (restoredCount > 0) {
+            // Lưu kho mới vào Firebase
+            const inventoryData = { 
+                products: updatedProducts,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            await window.dataManager.saveLocal(
+                'inventory',
+                'products.json',
+                inventoryData,
+                `Hoàn trả hàng từ xóa báo cáo ngày ${report.date} (${restoredCount} sản phẩm)`
+            );
+            
+            console.log(`✅ Restored ${restoredCount} items to inventory`);
+            return true;
+        }
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error restoring inventory:', error);
+        return false;
+    }
+}
     sendToZalo() {
     const openingBalance = this.getCurrencyValue('openingBalance');
     const actualReceived = this.getCurrencyValue('actualReceived');

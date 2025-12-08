@@ -1,13 +1,38 @@
 // inventory.js - Module kho hàng sử dụng DataManager giống Reports
 class InventoryModule {
     constructor() {
-        this.currentDate = this.formatDateForStorage(new Date());
-        this.currentDateDisplay = this.formatDateForDisplay(new Date());
-        this.isLoading = false;
-        this.cache = {
-            inventoryByDate: {}
-        };
-    }
+    this.currentDate = this.formatDateForStorage(new Date());
+    this.currentDateDisplay = this.formatDateForDisplay(new Date());
+    this.isLoading = false;
+    this.cache = {
+        inventoryByDate: {}
+    };
+    
+    // Thêm listener để debug đồng bộ
+    window.addEventListener('dataUpdated', (event) => {
+        if (event.detail.module === 'inventory') {
+            console.log('🔄 Inventory data updated from Firebase:', event.detail);
+            this.debugInventorySync();
+        }
+    });
+    
+    window.addEventListener('syncStatusChanged', (event) => {
+        console.log('📡 Sync status changed:', event.detail);
+    });
+}
+
+// Thêm hàm debug
+async debugInventorySync() {
+    console.log('🔍 DEBUG INVENTORY SYNC STATUS:');
+    console.log('1. Local inventory data:', window.dataManager.data.inventory);
+    console.log('2. Products count:', window.dataManager.getInventoryProducts().length);
+    console.log('3. Purchases count:', Object.keys(window.dataManager.data.inventory?.purchases || {}).length);
+    console.log('4. Services count:', Object.keys(window.dataManager.data.inventory?.services || {}).length);
+    
+    // Kiểm tra Firebase sync status
+    const syncStats = window.dataManager.getSyncStats();
+    console.log('5. Sync stats:', syncStats);
+}
 
     formatDateForStorage(date) {
         const d = new Date(date);
@@ -26,17 +51,25 @@ class InventoryModule {
     }
 
     async render() {
-        if (this.isLoading) return;
+    if (this.isLoading) return;
+    
+    this.isLoading = true;
+    const mainContent = document.getElementById('mainContent');
+    
+    try {
+        // **DEBUG: Log dữ liệu inventory**
+        console.log('🔄 Rendering inventory with data:');
+        console.log('- Products:', window.dataManager.getInventoryProducts().length);
+        console.log('- Purchases:', Object.keys(window.dataManager.data.inventory?.purchases || {}));
+        console.log('- Services:', Object.keys(window.dataManager.data.inventory?.services || {}));
         
-        this.isLoading = true;
-        const mainContent = document.getElementById('mainContent');
+        const products = window.dataManager.getInventoryProducts();
+        const inventoryData = this.getInventoryForCurrentDate();
         
-        try {
-            // **LẤY DỮ LIỆU TỪ DATAMANAGER - KHÔNG GỌI GITHUB**
-            const products = window.dataManager.getInventoryProducts();
-            const inventoryData = this.getInventoryForCurrentDate();
-            
-            const totalValue = products.reduce((sum, p) => sum + (p.totalValue || 0), 0);
+        console.log('- Current date purchases:', inventoryData.purchases.length);
+        console.log('- Current date services:', inventoryData.services.length);
+        
+        const totalValue = products.reduce((sum, p) => sum + (p.totalValue || 0), 0);
             
             mainContent.innerHTML = `
                 <div class="inventory-container">
@@ -54,14 +87,17 @@ class InventoryModule {
                         <small>(${products.length} sản phẩm)</small>
                     </div>
                     
-                    <div class="action-buttons">
-                        <button class="btn-primary" onclick="window.inventoryModule.showPurchaseModal()">
-                            <i class="fas fa-shopping-cart"></i> MUA HÀNG HÓA
-                        </button>
-                        <button class="btn-secondary" onclick="window.inventoryModule.showServiceModal()">
-                            <i class="fas fa-concierge-bell"></i> DỊCH VỤ/CHI PHÍ
-                        </button>
-                    </div>
+<div class="action-buttons">
+    <button class="btn-primary" onclick="window.inventoryModule.showPurchaseModal()">
+        <i class="fas fa-shopping-cart"></i> MUA HÀNG HÓA
+    </button>
+    <button class="btn-secondary" onclick="window.inventoryModule.showServiceModal()">
+        <i class="fas fa-concierge-bell"></i> DỊCH VỤ/CHI PHÍ
+    </button>
+    <button class="btn-sync" onclick="window.inventoryModule.forceSync()" title="Đồng bộ dữ liệu">
+        <i class="fas fa-sync-alt"></i> ĐỒNG BỘ
+    </button>
+</div>
                     
                     <div class="inventory-list">
                         <div class="list-header">
@@ -134,32 +170,100 @@ class InventoryModule {
             `;
             
         } catch (error) {
-            console.error('Error rendering inventory:', error);
-            mainContent.innerHTML = `
-                <div class="error">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <p>Lỗi khi tải dữ liệu kho: ${error.message}</p>
-                    <button onclick="window.inventoryModule.render()">Thử lại</button>
+        console.error('❌ Error rendering inventory:', error);
+        mainContent.innerHTML = `
+            <div class="error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Lỗi khi tải dữ liệu kho: ${error.message}</p>
+                <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                    <p>Debug info:</p>
+                    <p>Products: ${window.dataManager.getInventoryProducts().length}</p>
+                    <p>Data loaded: ${window.dataManager.initialized ? 'Yes' : 'No'}</p>
                 </div>
-            `;
-        } finally {
-            this.isLoading = false;
-        }
+                <button onclick="window.inventoryModule.render()">Thử lại</button>
+            </div>
+        `;
+    } finally {
+        this.isLoading = false;
     }
-
-    // **LẤY INVENTORY THEO NGÀY TỪ DATAMANAGER - GIỐNG NHƯ REPORTS**
-    getInventoryForCurrentDate() {
-        const dateKey = this.currentDate;
+}
+async forceSync() {
+    try {
+        window.showToast('🔄 Đang đồng bộ dữ liệu kho...', 'info');
         
-        // Trả về dữ liệu từ DataManager nếu có
-        const purchases = window.dataManager.data?.inventory?.purchases?.[dateKey] || [];
-        const services = window.dataManager.data?.inventory?.services?.[dateKey] || [];
+        // Force reload từ Firebase
+        await window.dataManager.loadFromFirebase();
+        
+        // Render lại UI
+        await this.render();
+        
+        window.showToast('✅ Đã đồng bộ dữ liệu kho', 'success');
+        
+        // Debug
+        this.debugInventorySync();
+        
+    } catch (error) {
+        console.error('Error force syncing inventory:', error);
+        window.showToast('Lỗi đồng bộ', 'error');
+    }
+}
+async debugFirebaseStructure() {
+    try {
+        console.log('🔍 DEBUG FIREBASE INVENTORY STRUCTURE');
+        
+        // Lấy dữ liệu trực tiếp từ Firebase để kiểm tra
+        const firebaseData = await window.githubManager.getData('inventory');
+        console.log('📦 Firebase inventory structure:', firebaseData);
+        
+        if (firebaseData) {
+            console.log('📦 Products type:', typeof firebaseData.products, 'Is array?', Array.isArray(firebaseData.products));
+            console.log('📦 Purchases keys:', Object.keys(firebaseData.purchases || {}));
+            console.log('📦 Services keys:', Object.keys(firebaseData.services || {}));
+            
+            // Kiểm tra chi tiết purchases
+            Object.entries(firebaseData.purchases || {}).forEach(([dateKey, data]) => {
+                console.log(`📦 Purchases ${dateKey}:`, data);
+                console.log(`📦 Type: ${typeof data}, Is array? ${Array.isArray(data)}`);
+            });
+        }
+        
+        // Kiểm tra local data
+        console.log('📦 Local inventory data:', window.dataManager.data.inventory);
+        
+    } catch (error) {
+        console.error('Error debugging Firebase structure:', error);
+    }
+}
+
+
+    getInventoryForCurrentDate() {
+    try {
+        const dateKey = this.currentDate;
+        const displayDateKey = this.formatDateFromFirebase(dateKey);
+        
+        console.log(`🔍 Getting inventory for date: ${dateKey} (display: ${displayDateKey})`);
+        
+        // Đảm bảo data tồn tại
+        if (!window.dataManager.data.inventory) {
+            console.warn('⚠️ No inventory data found in DataManager');
+            return { purchases: [], services: [] };
+        }
+        
+        const purchases = window.dataManager.data.inventory.purchases?.[displayDateKey] || [];
+        const services = window.dataManager.data.inventory.services?.[displayDateKey] || [];
+        
+        console.log(`📊 Found ${purchases.length} purchases, ${services.length} services`);
         
         return {
-            purchases,
-            services
+            purchases: Array.isArray(purchases) ? purchases : [],
+            services: Array.isArray(services) ? services : []
         };
+        
+    } catch (error) {
+        console.error('Error getting inventory for current date:', error);
+        return { purchases: [], services: [] };
     }
+}
 
     // **THAY ĐỔI NGÀY - CHỈ ĐỔI DỮ LIỆU TRONG BỘ NHỚ, KHÔNG GỌI API**
     async changeDate() {
@@ -240,63 +344,88 @@ class InventoryModule {
         window.showModal(modalContent);
     }
 
-    // **LƯU PURCHASE MỚI - GIỐNG NHƯ REPORT SAVE**
-    async savePurchase() {
-        try {
-            const type = document.getElementById('purchaseType').value;
-            const name = document.getElementById('purchaseName').value.trim();
-            const quantity = parseFloat(document.getElementById('purchaseQuantity').value) || 0;
-            const unit = document.getElementById('purchaseUnit').value;
-            const total = this.getCurrencyValue('purchaseTotal');
-            
-            // Validation
-            if (!name) {
-                window.showToast('Vui lòng nhập tên hàng hóa', 'warning');
-                document.getElementById('purchaseName').focus();
-                return;
-            }
-            
-            if (quantity <= 0) {
-                window.showToast('Số lượng phải lớn hơn 0', 'warning');
-                document.getElementById('purchaseQuantity').focus();
-                return;
-            }
-            
-            if (total <= 0) {
-                window.showToast('Thành tiền phải lớn hơn 0', 'warning');
-                document.getElementById('purchaseTotal').focus();
-                return;
-            }
-            
-            const purchaseData = {
-                id: Date.now(),
-                date: this.currentDateDisplay,
-                type,
-                name,
-                quantity,
-                unit,
-                total,
-                unitPrice: total / quantity,
-                addedAt: new Date().toISOString()
-            };
-            
-            // 1. CẬP NHẬT LOCAL DATA NGAY LẬP TỨC
-            this.updateLocalInventoryData(purchaseData);
-            
-            // 2. LƯU LÊN GITHUB THÔNG QUA DATAMANAGER (TRONG NỀN)
-            await this.saveInventoryToGitHub();
-            
+   async savePurchase() {
+    try {
+        const type = document.getElementById('purchaseType').value;
+        const name = document.getElementById('purchaseName').value.trim();
+        const quantity = parseFloat(document.getElementById('purchaseQuantity').value) || 0;
+        const unit = document.getElementById('purchaseUnit').value;
+        const total = this.getCurrencyValue('purchaseTotal');
+        
+        // Validation
+        if (!name) {
+            window.showToast('Vui lòng nhập tên hàng hóa', 'warning');
+            document.getElementById('purchaseName').focus();
+            return;
+        }
+        
+        if (quantity <= 0) {
+            window.showToast('Số lượng phải lớn hơn 0', 'warning');
+            document.getElementById('purchaseQuantity').focus();
+            return;
+        }
+        
+        if (total <= 0) {
+            window.showToast('Thành tiền phải lớn hơn 0', 'warning');
+            document.getElementById('purchaseTotal').focus();
+            return;
+        }
+        
+        const purchaseData = {
+            id: Date.now(),
+            date: this.currentDateDisplay,
+            type,
+            name,
+            quantity,
+            unit,
+            total,
+            unitPrice: total / quantity,
+            addedAt: new Date().toISOString()
+        };
+        
+        // 1. CẬP NHẬT LOCAL DATA
+        const dateKey = this.currentDate;
+        const displayDateKey = this.formatDateFromFirebase(dateKey);
+        
+        // Khởi tạo purchases nếu chưa có
+        if (!window.dataManager.data.inventory.purchases[displayDateKey]) {
+            window.dataManager.data.inventory.purchases[displayDateKey] = [];
+        }
+        
+        // Thêm purchase mới
+        window.dataManager.data.inventory.purchases[displayDateKey].push(purchaseData);
+        
+        // Cập nhật sản phẩm tồn kho
+        this.updateInventoryProduct(purchaseData);
+        
+        // Lưu vào localStorage
+        window.dataManager.saveLocalData();
+        
+        // 2. LƯU LÊN FIREBASE - ĐÚNG CẤU TRÚC
+        const purchasesForDate = window.dataManager.data.inventory.purchases[displayDateKey];
+        const purchaseDataToSave = {
+            purchases: purchasesForDate,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        const success = await window.dataManager.saveLocal(
+            'inventory',
+            `purchases_${dateKey}.json`,
+            purchaseDataToSave,
+            `Mua hàng ngày ${this.currentDateDisplay} - ${name}`
+        );
+        
+        if (success) {
             window.showToast('✅ Đã lưu và cập nhật kho thành công', 'success');
             closeModal();
-            
-            // Render lại UI
             await this.render();
-            
-        } catch (error) {
-            console.error('Error saving purchase:', error);
-            window.showToast('Lỗi khi lưu dữ liệu', 'error');
         }
+        
+    } catch (error) {
+        console.error('Error saving purchase:', error);
+        window.showToast('Lỗi khi lưu dữ liệu', 'error');
     }
+}
 
     // **CẬP NHẬT DỮ LIỆU LOCAL - GIỐNG NHƯ REPORTS**
     updateLocalInventoryData(purchaseData) {
@@ -326,78 +455,192 @@ class InventoryModule {
         window.dataManager.saveToLocalStorage();
     }
 
-    // **CẬP NHẬT SẢN PHẨM TỒN KHO**
-    updateInventoryProduct(purchaseData) {
-        try {
-            const products = window.dataManager.getInventoryProducts();
-            const existingIndex = products.findIndex(p => 
-                p.name.toLowerCase() === purchaseData.name.toLowerCase() && 
-                p.unit === purchaseData.unit
-            );
-            
-            if (existingIndex >= 0) {
-                // Cập nhật sản phẩm đã có
-                products[existingIndex].quantity += purchaseData.quantity;
-                products[existingIndex].totalValue += purchaseData.total;
-                products[existingIndex].lastUpdated = new Date().toISOString();
-            } else {
-                // Thêm sản phẩm mới
-                products.push({
-                    id: Date.now(),
-                    name: purchaseData.name,
-                    unit: purchaseData.unit,
-                    quantity: purchaseData.quantity,
-                    totalValue: purchaseData.total,
-                    type: purchaseData.type,
-                    addedAt: new Date().toISOString(),
-                    lastUpdated: new Date().toISOString()
-                });
-            }
-            
-            // Lưu lại products
-            window.dataManager.data.inventory.products = products;
-            
-        } catch (error) {
-            console.error('Error updating inventory product:', error);
-        }
-    }
-
-    // **LƯU LÊN GITHUB THÔNG QUA DATAMANAGER - GIỐNG REPORTS**
-    async saveInventoryToGitHub() {
-        try {
-            const dateKey = this.currentDate;
-            const purchases = window.dataManager.data.inventory.purchases[dateKey] || [];
-            const services = window.dataManager.data.inventory.services[dateKey] || [];
-            
-            const inventoryData = {
+    async updateInventoryProduct(purchaseData) {
+    try {
+        const products = window.dataManager.getInventoryProducts();
+        const existingIndex = products.findIndex(p => 
+            p.name.toLowerCase() === purchaseData.name.toLowerCase() && 
+            p.unit === purchaseData.unit
+        );
+        
+        if (existingIndex >= 0) {
+            // Cập nhật sản phẩm đã có
+            products[existingIndex].quantity += purchaseData.quantity;
+            products[existingIndex].totalValue += purchaseData.total;
+            products[existingIndex].lastUpdated = new Date().toISOString();
+            products[existingIndex].history = products[existingIndex].history || [];
+            products[existingIndex].history.push({
+                type: 'purchase',
                 date: this.currentDateDisplay,
-                purchases: purchases,
-                services: services,
-                lastUpdated: new Date().toISOString()
-            };
-            
-            const dataToSave = {
-                type: 'inventory',
-                data: inventoryData
-            };
-            
-            const message = `Cập nhật inventory ngày ${this.currentDateDisplay} - ${purchases.length} purchases, ${services.length} services`;
-            
-            // Sử dụng dataManager để sync - sẽ tự động queue nếu offline
-            await window.dataManager.syncToGitHub(
-                'inventory',
-                dateKey,
-                dataToSave,
-                message
-            );
-            
-            console.log('✅ Inventory saved via DataManager');
-            
-        } catch (error) {
-            console.error('Error saving inventory to GitHub:', error);
-            throw error;
+                quantity: purchaseData.quantity,
+                total: purchaseData.total,
+                timestamp: new Date().toISOString()
+            });
+        } else {
+            // Thêm sản phẩm mới
+            products.push({
+                id: Date.now(),
+                name: purchaseData.name,
+                unit: purchaseData.unit,
+                quantity: purchaseData.quantity,
+                totalValue: purchaseData.total,
+                unitPrice: purchaseData.unitPrice,
+                type: purchaseData.type,
+                addedAt: new Date().toISOString(),
+                lastUpdated: new Date().toISOString(),
+                history: [{
+                    type: 'purchase',
+                    date: this.currentDateDisplay,
+                    quantity: purchaseData.quantity,
+                    total: purchaseData.total,
+                    timestamp: new Date().toISOString()
+                }]
+            });
         }
+        
+        // Lưu products vào Firebase - ĐÚNG CẤU TRÚC
+        const inventoryData = { 
+            products: products,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        await window.dataManager.saveLocal(
+            'inventory',
+            'products.json',
+            inventoryData,
+            `Cập nhật kho sau mua hàng - ${purchaseData.name}`
+        );
+        
+    } catch (error) {
+        console.error('Error updating inventory product:', error);
     }
+}
+async addProduct() {
+    const name = document.getElementById('productName').value.trim();
+    const unit = document.getElementById('productUnit').value;
+    const quantity = parseFloat(document.getElementById('productQuantity').value) || 0;
+    const value = this.getCurrencyValue('productValue');
+    
+    if (!name) {
+        window.showToast('Vui lòng nhập tên sản phẩm', 'warning');
+        return;
+    }
+    
+    if (quantity <= 0) {
+        window.showToast('Số lượng phải lớn hơn 0', 'warning');
+        return;
+    }
+    
+    if (value <= 0) {
+        window.showToast('Giá trị phải lớn hơn 0', 'warning');
+        return;
+    }
+    
+    const products = window.dataManager.getInventoryProducts();
+    const existingIndex = products.findIndex(p => 
+        p.name.toLowerCase() === name.toLowerCase() && p.unit === unit
+    );
+    
+    if (existingIndex >= 0) {
+        // Cập nhật sản phẩm đã có
+        products[existingIndex].quantity += quantity;
+        products[existingIndex].totalValue += value;
+        products[existingIndex].lastUpdated = new Date().toISOString();
+    } else {
+        // Thêm sản phẩm mới
+        products.push({
+            id: Date.now(),
+            name,
+            unit,
+            quantity,
+            totalValue: value,
+            addedAt: new Date().toISOString(),
+            lastUpdated: new Date().toISOString()
+        });
+    }
+    
+    // Lưu vào Firebase thông qua DataManager
+    const inventoryData = { products: products };
+    await window.dataManager.saveLocal(
+        'inventory',
+        'products.json',
+        inventoryData,
+        `Thêm sản phẩm mới - ${name}`
+    );
+    
+    window.showToast('✅ Đã thêm sản phẩm vào kho', 'success');
+    closeModal();
+    this.render();
+}
+async updateProduct(index) {
+    const products = window.dataManager.getInventoryProducts();
+    if (index >= products.length) return;
+    
+    const name = document.getElementById('editProductName').value.trim();
+    const unit = document.getElementById('editProductUnit').value;
+    const quantity = parseFloat(document.getElementById('editProductQuantity').value) || 0;
+    const value = this.getCurrencyValue('editProductValue');
+    
+    if (!name) {
+        window.showToast('Vui lòng nhập tên sản phẩm', 'warning');
+        return;
+    }
+    
+    if (quantity < 0) {
+        window.showToast('Số lượng không hợp lệ', 'warning');
+        return;
+    }
+    
+    if (value < 0) {
+        window.showToast('Giá trị không hợp lệ', 'warning');
+        return;
+    }
+    
+    products[index] = {
+        ...products[index],
+        name,
+        unit,
+        quantity,
+        totalValue: value,
+        lastUpdated: new Date().toISOString()
+    };
+    
+    // Lưu vào Firebase thông qua DataManager
+    const inventoryData = { products: products };
+    await window.dataManager.saveLocal(
+        'inventory',
+        'products.json',
+        inventoryData,
+        `Cập nhật sản phẩm - ${name}`
+    );
+    
+    window.showToast('✅ Đã cập nhật sản phẩm', 'success');
+    closeModal();
+    this.render();
+}
+async deleteProduct(index) {
+    if (!confirm('Xóa sản phẩm này?')) return;
+    
+    const products = window.dataManager.getInventoryProducts();
+    if (index >= products.length) return;
+    
+    const productName = products[index].name;
+    products.splice(index, 1);
+    
+    // Lưu vào Firebase thông qua DataManager
+    const inventoryData = { products: products };
+    await window.dataManager.saveLocal(
+        'inventory',
+        'products.json',
+        inventoryData,
+        `Xóa sản phẩm - ${productName}`
+    );
+    
+    window.showToast('✅ Đã xóa sản phẩm', 'success');
+    closeModal();
+    this.render();
+}
+   
 
     // **CÁC HÀM UI HỖ TRỢ**
     formatCurrency(input) {
@@ -430,42 +673,41 @@ class InventoryModule {
             toggleIcon.className = 'fas fa-chevron-down';
         }
     }
-    
     renderPurchasesSection() {
-        const section = document.getElementById('purchasesSection');
-        if (!section) return;
-        
-        const inventoryData = this.getInventoryForCurrentDate();
-        const purchases = inventoryData.purchases;
-        
-        section.innerHTML = `
-            <div class="purchases-list">
-                <h4>🛒 MUA HÀNG NGÀY ${this.currentDateDisplay}</h4>
-                
-                ${purchases.length > 0 ? purchases.map(purchase => `
-                    <div class="purchase-item">
-                        <div class="purchase-info">
-                            <div class="purchase-name">${purchase.name}</div>
-                            <div class="purchase-details">${purchase.quantity} ${purchase.unit} • ${purchase.type}</div>
-                        </div>
-                        <div class="purchase-amount">${purchase.total.toLocaleString()} ₫</div>
+    const section = document.getElementById('purchasesSection');
+    if (!section) return;
+    
+    const inventoryData = this.getInventoryForCurrentDate();
+    const purchases = inventoryData.purchases;
+    
+    section.innerHTML = `
+        <div class="purchases-list">
+            <h4>🛒 MUA HÀNG NGÀY ${this.currentDateDisplay}</h4>
+            
+            ${purchases.length > 0 ? purchases.map(purchase => `
+                <div class="purchase-item">
+                    <div class="purchase-info">
+                        <div class="purchase-name">${purchase.name}</div>
+                        <div class="purchase-details">${purchase.quantity} ${purchase.unit} • ${purchase.type} • ${(purchase.unitPrice || 0).toLocaleString()} ₫/${purchase.unit}</div>
                     </div>
-                `).join('') : `
-                    <div class="empty-state">
-                        <i class="fas fa-receipt"></i>
-                        <p>Chưa có mua hàng nào trong ngày</p>
-                    </div>
-                `}
-                
-                ${purchases.length > 0 ? `
-                    <div class="purchases-total">
-                        <strong>Tổng mua hàng:</strong>
-                        <span>${purchases.reduce((sum, p) => sum + (p.total || 0), 0).toLocaleString()} ₫</span>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
+                    <div class="purchase-amount">${purchase.total.toLocaleString()} ₫</div>
+                </div>
+            `).join('') : `
+                <div class="empty-state">
+                    <i class="fas fa-receipt"></i>
+                    <p>Chưa có mua hàng nào trong ngày</p>
+                </div>
+            `}
+            
+            ${purchases.length > 0 ? `
+                <div class="purchases-total">
+                    <strong>Tổng mua hàng:</strong>
+                    <span>${purchases.reduce((sum, p) => sum + (p.total || 0), 0).toLocaleString()} ₫</span>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
     
     // **TOGGLE SERVICES SECTION**
     toggleServices() {
@@ -483,40 +725,40 @@ class InventoryModule {
     }
     
     renderServicesSection() {
-        const section = document.getElementById('servicesSection');
-        if (!section) return;
-        
-        const inventoryData = this.getInventoryForCurrentDate();
-        const services = inventoryData.services;
-        
-        section.innerHTML = `
-            <div class="services-list">
-                <h4>📝 DỊCH VỤ NGÀY ${this.currentDateDisplay}</h4>
-                
-                ${services.length > 0 ? services.map(service => `
-                    <div class="service-item">
-                        <div class="service-info">
-                            <div class="service-name">${service.name}</div>
-                            ${service.note ? `<div class="service-note">${service.note}</div>` : ''}
-                        </div>
-                        <div class="service-amount">${service.amount.toLocaleString()} ₫</div>
+    const section = document.getElementById('servicesSection');
+    if (!section) return;
+    
+    const inventoryData = this.getInventoryForCurrentDate();
+    const services = inventoryData.services;
+    
+    section.innerHTML = `
+        <div class="services-list">
+            <h4>📝 DỊCH VỤ NGÀY ${this.currentDateDisplay}</h4>
+            
+            ${services.length > 0 ? services.map(service => `
+                <div class="service-item">
+                    <div class="service-info">
+                        <div class="service-name">${service.name}</div>
+                        ${service.note ? `<div class="service-note">${service.note}</div>` : ''}
                     </div>
-                `).join('') : `
-                    <div class="empty-state">
-                        <i class="fas fa-concierge-bell"></i>
-                        <p>Chưa có dịch vụ nào trong ngày</p>
-                    </div>
-                `}
-                
-                ${services.length > 0 ? `
-                    <div class="services-total">
-                        <strong>Tổng dịch vụ:</strong>
-                        <span>${services.reduce((sum, s) => sum + (s.amount || 0), 0).toLocaleString()} ₫</span>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
+                    <div class="service-amount">${service.amount.toLocaleString()} ₫</div>
+                </div>
+            `).join('') : `
+                <div class="empty-state">
+                    <i class="fas fa-concierge-bell"></i>
+                    <p>Chưa có dịch vụ nào trong ngày</p>
+                </div>
+            `}
+            
+            ${services.length > 0 ? `
+                <div class="services-total">
+                    <strong>Tổng dịch vụ:</strong>
+                    <span>${services.reduce((sum, s) => sum + (s.amount || 0), 0).toLocaleString()} ₫</span>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
     
     // **TOGGLE STATS SECTION**
     toggleStats() {
@@ -829,82 +1071,186 @@ class InventoryModule {
         this.render();
     }
     
-    showProductHistory(index) {
-        const products = window.dataManager.getInventoryProducts();
-        if (index >= products.length) return;
-        
-        const product = products[index];
-        
-        // Tìm tất cả purchases có chứa sản phẩm này
-        const allPurchases = [];
-        if (window.dataManager.data.inventory.purchases) {
-            Object.values(window.dataManager.data.inventory.purchases).forEach(purchaseList => {
-                if (Array.isArray(purchaseList)) {
-                    purchaseList.forEach(purchase => {
-                        if (purchase.name.toLowerCase() === product.name.toLowerCase() && 
-                            purchase.unit === product.unit) {
-                            allPurchases.push(purchase);
-                        }
+    async showProductHistory(index) {
+    const products = window.dataManager.getInventoryProducts();
+    if (index >= products.length) return;
+    
+    const product = products[index];
+    
+    // Tìm tất cả purchases (nhập hàng) có chứa sản phẩm này
+    const allPurchases = [];
+    if (window.dataManager.data.inventory.purchases) {
+        Object.entries(window.dataManager.data.inventory.purchases).forEach(([date, purchaseList]) => {
+            if (Array.isArray(purchaseList)) {
+                purchaseList.forEach(purchase => {
+                    if (purchase.name.toLowerCase() === product.name.toLowerCase() && 
+                        purchase.unit === product.unit) {
+                        allPurchases.push({
+                            ...purchase,
+                            date: date // thêm date từ key
+                        });
+                    }
+                });
+            }
+        });
+    }
+    
+    // Tìm tất cả exports (xuất hàng) từ báo cáo
+    const allExports = [];
+    const allReports = window.dataManager.getReports();
+    
+    allReports.forEach(report => {
+        if (report.inventoryExports && Array.isArray(report.inventoryExports)) {
+            report.inventoryExports.forEach(exportItem => {
+                if (exportItem.productId === product.id || 
+                    exportItem.product.toLowerCase() === product.name.toLowerCase()) {
+                    allExports.push({
+                        ...exportItem,
+                        date: report.date,
+                        reportDate: report.date
                     });
                 }
             });
         }
-        
-        const modalContent = `
-            <div class="modal-header">
-                <h2><i class="fas fa-history"></i> LỊCH SỬ: ${product.name}</h2>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="product-info">
-                    <div><strong>Đơn vị:</strong> ${product.unit}</div>
-                    <div><strong>Hiện có:</strong> ${product.quantity}</div>
-                    <div><strong>Tổng giá trị:</strong> ${(product.totalValue || 0).toLocaleString()} ₫</div>
-                </div>
-                
-                <div class="history-section">
-                    <h3><i class="fas fa-download" style="color: #10B981;"></i> LỊCH SỬ NHẬP HÀNG (${allPurchases.length} lần)</h3>
-                    
-                    ${allPurchases.length > 0 ? `
-                        <div class="history-header">
-                            <span>NGÀY</span>
-                            <span>SỐ LƯỢNG</span>
-                            <span>THÀNH TIỀN</span>
-                            <span>ĐƠN GIÁ</span>
-                        </div>
-                        
-                        ${allPurchases.map(purchase => `
-                            <div class="history-item">
-                                <span class="history-date">${purchase.date || 'N/A'}</span>
-                                <span class="history-detail">${purchase.quantity} ${purchase.unit}</span>
-                                <span class="history-amount">${purchase.total.toLocaleString()} ₫</span>
-                                <span class="history-unit">${(purchase.unitPrice || purchase.total / purchase.quantity).toLocaleString()} ₫/${purchase.unit}</span>
-                            </div>
-                        `).join('')}
-                    ` : `
-                        <div class="empty-state">
-                            <i class="fas fa-inbox"></i>
-                            <p>Chưa có lịch sử nhập hàng</p>
-                        </div>
-                    `}
-                </div>
-                
-                ${allPurchases.length > 0 ? `
-                    <div class="history-summary">
-                        <div><strong>Tổng số lần nhập:</strong> ${allPurchases.length}</div>
-                        <div><strong>Tổng nhập:</strong> ${allPurchases.reduce((sum, p) => sum + p.quantity, 0)} ${product.unit}</div>
-                        <div><strong>Tổng tiền nhập:</strong> ${allPurchases.reduce((sum, p) => sum + p.total, 0).toLocaleString()} ₫</div>
+    });
+    
+    // Sắp xếp theo thời gian
+    allPurchases.sort((a, b) => new Date(b.date || b.addedAt) - new Date(a.date || a.addedAt));
+    allExports.sort((a, b) => new Date(b.date || b.timestamp) - new Date(a.date || b.timestamp));
+    
+    const modalContent = `
+        <div class="modal-header">
+            <h2><i class="fas fa-history"></i> LỊCH SỬ: ${product.name}</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body product-history-modal">
+            <div class="product-summary">
+                <div class="summary-item">
+                    <i class="fas fa-box"></i>
+                    <div>
+                        <small>Tồn hiện tại</small>
+                        <strong>${product.quantity} ${product.unit}</strong>
                     </div>
-                ` : ''}
-                
-                <button class="btn-secondary" onclick="closeModal()">
-                    <i class="fas fa-times"></i> ĐÓNG
+                </div>
+                <div class="summary-item">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <div>
+                        <small>Giá trị</small>
+                        <strong>${(product.totalValue || 0).toLocaleString()} ₫</strong>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <div>
+                        <small>Cập nhật</small>
+                        <strong>${product.lastUpdated ? new Date(product.lastUpdated).toLocaleDateString('vi-VN') : 'N/A'}</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="history-tabs">
+                <button class="tab-btn active" onclick="window.inventoryModule.switchProductHistoryTab('import')">
+                    <i class="fas fa-download"></i> NHẬP HÀNG (${allPurchases.length})
+                </button>
+                <button class="tab-btn" onclick="window.inventoryModule.switchProductHistoryTab('export')">
+                    <i class="fas fa-upload"></i> XUẤT HÀNG (${allExports.length})
                 </button>
             </div>
-        `;
-        
-        window.showModal(modalContent);
+            
+            <div class="tab-content" id="importHistoryTab">
+                <h3><i class="fas fa-download" style="color: #10B981;"></i> LỊCH SỬ NHẬP HÀNG</h3>
+                
+                ${allPurchases.length > 0 ? `
+                    <div class="history-header">
+                        <span>NGÀY</span>
+                        <span>SỐ LƯỢNG</span>
+                        <span>THÀNH TIỀN</span>
+                        <span>ĐƠN GIÁ</span>
+                    </div>
+                    
+                    ${allPurchases.map(purchase => `
+                        <div class="history-item import-item">
+                            <span class="history-date">${purchase.date || 'N/A'}</span>
+                            <span class="history-detail">${purchase.quantity} ${purchase.unit}</span>
+                            <span class="history-amount">${purchase.total.toLocaleString()} ₫</span>
+                            <span class="history-unit">${(purchase.unitPrice || purchase.total / purchase.quantity).toLocaleString()} ₫/${purchase.unit}</span>
+                        </div>
+                    `).join('')}
+                    
+                    <div class="history-total">
+                        <strong>Tổng nhập:</strong>
+                        <span>${allPurchases.reduce((sum, p) => sum + p.quantity, 0)} ${product.unit}</span>
+                        <span>${allPurchases.reduce((sum, p) => sum + p.total, 0).toLocaleString()} ₫</span>
+                    </div>
+                ` : `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>Chưa có lịch sử nhập hàng</p>
+                    </div>
+                `}
+            </div>
+            
+            <div class="tab-content" id="exportHistoryTab" style="display: none;">
+                <h3><i class="fas fa-upload" style="color: #EF4444;"></i> LỊCH SỬ XUẤT HÀNG</h3>
+                
+                ${allExports.length > 0 ? `
+                    <div class="history-header">
+                        <span>NGÀY XUẤT</span>
+                        <span>SỐ LƯỢNG</span>
+                        <span>BÁO CÁO</span>
+                    </div>
+                    
+                    ${allExports.map(exportItem => `
+                        <div class="history-item export-item">
+                            <span class="history-date">${exportItem.date || 'N/A'}</span>
+                            <span class="history-detail">${exportItem.quantity} ${exportItem.unit || product.unit}</span>
+                            <span class="history-report">
+                                <button class="btn-small" onclick="window.reportsModule.loadReport('${exportItem.reportDate}')">
+                                    <i class="fas fa-external-link-alt"></i> Xem BC
+                                </button>
+                            </span>
+                        </div>
+                    `).join('')}
+                    
+                    <div class="history-total">
+                        <strong>Tổng xuất:</strong>
+                        <span>${allExports.reduce((sum, e) => sum + e.quantity, 0)} ${product.unit}</span>
+                    </div>
+                ` : `
+                    <div class="empty-state">
+                        <i class="fas fa-outbox"></i>
+                        <p>Chưa có lịch sử xuất hàng</p>
+                    </div>
+                `}
+            </div>
+            
+            <button class="btn-secondary" onclick="closeModal()">
+                <i class="fas fa-times"></i> ĐÓNG
+            </button>
+        </div>
+    `;
+    
+    window.showModal(modalContent);
+}
+
+// Thêm hàm chuyển tab
+switchProductHistoryTab(tab) {
+    const importTab = document.getElementById('importHistoryTab');
+    const exportTab = document.getElementById('exportHistoryTab');
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    
+    if (tab === 'import') {
+        importTab.style.display = 'block';
+        exportTab.style.display = 'none';
+        tabButtons[0].classList.add('active');
+        tabButtons[1].classList.remove('active');
+    } else {
+        importTab.style.display = 'none';
+        exportTab.style.display = 'block';
+        tabButtons[0].classList.remove('active');
+        tabButtons[1].classList.add('active');
     }
+}
     
     // **SERVICE FUNCTIONS**
     showServiceModal() {
@@ -948,57 +1294,94 @@ class InventoryModule {
     }
     
     async saveService() {
-        try {
-            const name = document.getElementById('serviceName').value.trim();
-            const note = document.getElementById('serviceNote').value.trim();
-            const amount = this.getCurrencyValue('serviceAmount');
-            
-            if (!name) {
-                window.showToast('Vui lòng nhập tên dịch vụ', 'warning');
-                document.getElementById('serviceName').focus();
-                return;
-            }
-            
-            if (amount <= 0) {
-                window.showToast('Số tiền phải lớn hơn 0', 'warning');
-                document.getElementById('serviceAmount').focus();
-                return;
-            }
-            
-            const serviceData = {
-                id: Date.now(),
-                date: this.currentDateDisplay,
-                name,
-                note,
-                amount,
-                addedAt: new Date().toISOString()
-            };
-            
-            // 1. Cập nhật local data
-            const dateKey = this.currentDate;
-            
-            if (!window.dataManager.data.inventory.services[dateKey]) {
-                window.dataManager.data.inventory.services[dateKey] = [];
-            }
-            
-            window.dataManager.data.inventory.services[dateKey].push(serviceData);
-            window.dataManager.saveToLocalStorage();
-            
-            // 2. Lưu lên GitHub
-            await this.saveInventoryToGitHub();
-            
-            window.showToast('✅ Đã lưu dịch vụ', 'success');
-            closeModal();
-            
-            // Render lại UI
-            await this.render();
-            
-        } catch (error) {
-            console.error('Error saving service:', error);
-            window.showToast('Lỗi khi lưu dịch vụ', 'error');
+    try {
+        const name = document.getElementById('serviceName').value.trim();
+        const note = document.getElementById('serviceNote').value.trim();
+        const amount = this.getCurrencyValue('serviceAmount');
+        
+        if (!name) {
+            window.showToast('Vui lòng nhập tên dịch vụ', 'warning');
+            document.getElementById('serviceName').focus();
+            return;
         }
+        
+        if (amount <= 0) {
+            window.showToast('Số tiền phải lớn hơn 0', 'warning');
+            document.getElementById('serviceAmount').focus();
+            return;
+        }
+        
+        const serviceData = {
+            id: Date.now(),
+            date: this.currentDateDisplay,
+            name,
+            note,
+            amount,
+            addedAt: new Date().toISOString()
+        };
+        
+        // 1. Cập nhật local data
+        const dateKey = this.currentDate;
+        const displayDateKey = this.formatDateFromFirebase(dateKey);
+        
+        if (!window.dataManager.data.inventory.services[displayDateKey]) {
+            window.dataManager.data.inventory.services[displayDateKey] = [];
+        }
+        
+        window.dataManager.data.inventory.services[displayDateKey].push(serviceData);
+        window.dataManager.saveLocalData();
+        
+        // 2. Lưu lên Firebase thông qua DataManager
+        const servicesData = {
+            services: window.dataManager.data.inventory.services[displayDateKey],
+            lastUpdated: new Date().toISOString()
+        };
+        
+        await window.dataManager.saveLocal(
+            'inventory',
+            `services_${dateKey}.json`,
+            servicesData,
+            `Dịch vụ ngày ${this.currentDateDisplay} - ${name}`
+        );
+        
+        window.showToast('✅ Đã lưu dịch vụ', 'success');
+        closeModal();
+        
+        // Render lại UI
+        await this.render();
+        
+    } catch (error) {
+        console.error('Error saving service:', error);
+        window.showToast('Lỗi khi lưu dịch vụ', 'error');
     }
 }
-
+formatDateFromFirebase(dateKey) {
+    try {
+        // Chuyển từ yyyy-mm-dd thành dd/mm/yyyy
+        if (!dateKey) return '';
+        
+        // Nếu đã là định dạng dd/mm/yyyy thì trả về luôn
+        if (dateKey.includes('/')) {
+            return dateKey;
+        }
+        
+        // Xử lý yyyy-mm-dd
+        const [year, month, day] = dateKey.split('-');
+        
+        if (!year || !month || !day) {
+            console.warn(`⚠️ Invalid date format: ${dateKey}`);
+            return dateKey;
+        }
+        
+        return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+        
+    } catch (error) {
+        console.error('❌ Error formatting date from Firebase:', error, 'Input:', dateKey);
+        return dateKey;
+    }
+}
+}
 // Khởi tạo module
 window.inventoryModule = new InventoryModule();
+// Gọi hàm debug từ console
+window.debugInventory = () => window.inventoryModule.debugFirebaseStructure();

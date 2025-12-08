@@ -6,9 +6,99 @@
     <title>Milano Management System</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase Scripts -->
+    <script type="module">
+        // Import Firebase modules - FIXED v10 API
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getDatabase, ref, set, get, update, remove, onValue, onChildAdded, onChildChanged, onChildRemoved, query, orderByChild, equalTo, limitToFirst, startAt, endAt } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js';
+        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+        
+        // Firebase config - FIXED storage bucket
+        const firebaseConfig = {
+            apiKey: "AIzaSyAKPaTK5565yymhgdg7SW_-k5lx4-r3BfE",
+            authDomain: "milano-2a686.firebaseapp.com",
+            projectId: "milano-2a686",
+            storageBucket: "milano-2a686.appspot.com", // FIXED: Đúng domain
+            messagingSenderId: "1060141074286",
+            appId: "1:1060141074286:web:ec528fc13ac8fd2afbe37f",
+            measurementId: "G-TK1GC0FT8Y",
+            databaseURL: "https://milano-2a686-default-rtdb.firebaseio.com"
+        };
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const auth = getAuth(app);
+        
+        // Anonymous sign-in với graceful fallback
+        signInAnonymously(auth).then(() => {
+            console.log('✅ Signed in anonymously to Firebase');
+        }).catch(error => {
+            console.warn('⚠️ Firebase auth warning (Anonymous might be disabled):', error.code);
+            // Không chặn app, chỉ hiển thị warning
+        });
+        
+        // Expose to window với cấu trúc CHUẨN - FIXED structure
+        window.firebaseApp = {
+            app,
+            db,
+            auth,
+            // Các hàm database riêng lẻ
+            database: {
+                ref,
+                set,
+                get,
+                update,
+                remove,
+                onValue,
+                onChildAdded,
+                onChildChanged,
+                onChildRemoved,
+                query,
+                orderByChild,
+                equalTo,
+                limitToFirst,
+                startAt,
+                endAt
+            }
+        };
+        
+        console.log('✅ Firebase initialized successfully');
+        
+        // Khởi tạo sớm để các module khác có thể sử dụng
+        window.firebaseReady = true;
+        window.dispatchEvent(new CustomEvent('firebaseReady'));
+    </script>
+    
+    <style>
+        /* Thêm loading animation */
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        .loading i {
+            font-size: 40px;
+            margin-bottom: 20px;
+            color: #4CAF50;
+        }
+        .loading p {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .loading small {
+            display: block;
+            margin-top: 10px;
+            color: #888;
+            font-size: 14px;
+        }
+        .loading small.error {
+            color: #f44336;
+        }
+    </style>
 </head>
 <body>
-    <!-- Header với tabs navigation -->
     <header class="header">
         <div class="tabs">
             <button class="tab-btn active" data-tab="reports">
@@ -27,69 +117,212 @@
                 <i class="fas fa-tachometer-alt"></i>
                 <span>Tổng quan</span>
             </button>
-            <button class="tab-btn" data-tab="settings">
-                <i class="fas fa-cog"></i>
-                <span>Cài đặt</span>
-            </button>
-
-        <div class="sync-status" id="syncStatus">
-            <i class="fas fa-sync-alt"></i>
+           
+        <div class="tab-btn" id="syncStatus">
+            <i class="fas fa-circle offline" id="syncIcon"></i>
+            <span id="syncText">Offline</span>
+            <span class="badge" id="syncBadge" style="display: none">0</span>
         </div>
     </header>
 
-    <!-- Main content container (sẽ được render bằng JS) -->
     <main class="main-content" id="mainContent">
-        <div class="loading">
+        <div class="loading" id="initialLoading">
             <i class="fas fa-spinner fa-spin"></i>
-            <p>Đang tải dữ liệu...</p>
+            <p>Đang khởi tạo hệ thống...</p>
+            <small id="loadingDetail">Đang kết nối Firebase</small>
         </div>
     </main>
 
-    <!-- Toast notification -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Modal container (dùng chung) -->
     <div class="modal-overlay" id="modalOverlay"></div>
     <div class="modal-container" id="modalContainer"></div>
 
-    <!-- Import tất cả JS -->
-    <script src="github.js"></script>
+    <!-- Load các module SAU khi Firebase đã sẵn sàng -->
+    <script src="firebase-manager-simple.js"></script>
     <script src="data.js"></script>
     <script src="reports.js"></script>
     <script src="inventory.js"></script>
     <script src="employees.js"></script>
     <script src="dashboard.js"></script>
-    <script src="settings.js"></script>
     
-    <!-- Main app initialization -->
     <script>
-        // Khởi tạo app khi DOM ready
-        document.addEventListener('DOMContentLoaded', async () => {
-            console.log('Milano System - Initializing...');
+        // Khởi tạo app
+        async function initializeApp() {
+            console.log('🚀 Milano App Starting...');
             
-            // Kiểm tra GitHub token
-            const token = localStorage.getItem('github_token');
-            if (!token) {
-                // Chuyển đến tab settings nếu chưa có token
-                showTab('settings');
-                showToast('Vui lòng nhập GitHub token để bắt đầu', 'warning');
-            } else {
-                // Load dữ liệu ban đầu
+            // Update loading status
+            updateLoadingDetail('Đang kết nối Firebase...');
+            
+            try {
+                // Đợi Firebase khởi tạo
+                await waitForFirebase();
+                
+                // Initialize data manager
+                updateLoadingDetail('Tải dữ liệu...');
                 await window.dataManager.init();
-                showTab('reports');
+                
+                // Ẩn loading
+                setTimeout(() => {
+                    document.getElementById('initialLoading').style.display = 'none';
+                    showTab('reports');
+                    
+                    // Start sync
+                    startBackgroundSync();
+                    
+                    console.log('🎉 App initialized successfully');
+                    window.showToast?.('Hệ thống đã sẵn sàng', 'success');
+                }, 800);
+                
+            } catch (error) {
+                console.error('❌ App initialization failed:', error);
+                updateLoadingDetail('Lỗi khởi tạo', true);
+                
+                // Hiển thị fallback UI
+                setTimeout(() => {
+                    document.getElementById('initialLoading').innerHTML = `
+                        <div style="color: #f44336; padding: 20px;">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 40px; margin-bottom: 20px;"></i>
+                            <p>Không thể kết nối đến máy chủ</p>
+                            <small>Ứng dụng sẽ chạy ở chế độ offline</small>
+                            <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px;">
+                                <i class="fas fa-redo"></i> Thử lại
+                            </button>
+                        </div>
+                    `;
+                    // Vẫn hiển thị app ở chế độ offline
+                    setTimeout(() => {
+                        document.getElementById('initialLoading').style.display = 'none';
+                        showTab('reports');
+                    }, 2000);
+                }, 1000);
+            }
+        }
+        
+        // Đợi Firebase khởi tạo
+        function waitForFirebase() {
+            return new Promise((resolve, reject) => {
+                const startTime = Date.now();
+                const maxWait = 8000; // 8 seconds max
+                
+                // Kiểm tra xem Firebase đã sẵn sàng chưa
+                if (window.firebaseApp && window.firebaseApp.db) {
+                    resolve(true);
+                    return;
+                }
+                
+                // Nếu chưa, đợi sự kiện firebaseReady
+                const onFirebaseReady = () => {
+                    if (window.firebaseApp && window.firebaseApp.db) {
+                        clearTimeout(timeoutId);
+                        window.removeEventListener('firebaseReady', onFirebaseReady);
+                        resolve(true);
+                    }
+                };
+                
+                const checkInterval = setInterval(() => {
+                    if (window.firebaseApp && window.firebaseApp.db) {
+                        clearInterval(checkInterval);
+                        resolve(true);
+                    } else if (Date.now() - startTime > maxWait) {
+                        clearInterval(checkInterval);
+                        window.removeEventListener('firebaseReady', onFirebaseReady);
+                        reject(new Error('Firebase timeout - Vui lòng kiểm tra kết nối internet'));
+                    }
+                }, 200);
+                
+                const timeoutId = setTimeout(() => {
+                    clearInterval(checkInterval);
+                    window.removeEventListener('firebaseReady', onFirebaseReady);
+                    reject(new Error('Firebase timeout'));
+                }, maxWait);
+                
+                window.addEventListener('firebaseReady', onFirebaseReady);
+            });
+        }
+        
+        // Start background sync
+        function startBackgroundSync() {
+            // Auto sync mỗi 30 giây nếu online
+            setInterval(() => {
+                if (navigator.onLine) {
+                    window.dataManager?.startBackgroundSync();
+                }
+            }, 30000);
+            
+            // Sync khi online
+            window.addEventListener('online', () => {
+                console.log('🌐 Online - Starting sync');
+                window.dataManager?.startBackgroundSync();
+            });
+        }
+        
+        // Update loading detail
+        function updateLoadingDetail(message, isError = false) {
+            const detail = document.getElementById('loadingDetail');
+            if (detail) {
+                detail.textContent = message;
+                detail.className = isError ? 'error' : '';
+            }
+        }
+        
+        // Update sync status UI
+        function updateSyncStatusUI(status, pendingCount = 0) {
+            const icon = document.getElementById('syncIcon');
+            const text = document.getElementById('syncText');
+            const badge = document.getElementById('syncBadge');
+            
+            if (!icon || !text) return;
+            
+            // Update icon and text
+            icon.className = 'fas';
+            text.textContent = status;
+            
+            switch(status) {
+                case 'online':
+                    icon.classList.add('fa-circle', 'online');
+                    break;
+                case 'offline':
+                    icon.classList.add('fa-circle', 'offline');
+                    break;
+                case 'syncing':
+                    icon.classList.add('fa-sync-alt', 'fa-spin', 'syncing');
+                    text.textContent = 'Đang đồng bộ...';
+                    break;
+                case 'success':
+                    icon.classList.add('fa-check-circle', 'success');
+                    text.textContent = 'Đã đồng bộ';
+                    // Auto reset sau 2 giây
+                    setTimeout(() => {
+                        if (text.textContent === 'Đã đồng bộ') {
+                            updateSyncStatusUI(navigator.onLine ? 'online' : 'offline', pendingCount);
+                        }
+                    }, 2000);
+                    break;
+                case 'error':
+                    icon.classList.add('fa-exclamation-circle', 'error');
+                    text.textContent = 'Lỗi đồng bộ';
+                    // Auto reset sau 3 giây
+                    setTimeout(() => {
+                        if (text.textContent === 'Lỗi đồng bộ') {
+                            updateSyncStatusUI(navigator.onLine ? 'online' : 'offline', pendingCount);
+                        }
+                    }, 3000);
+                    break;
+                default:
+                    // 'ready' state
+                    icon.classList.add('fa-circle', navigator.onLine ? 'online' : 'offline');
+                    text.textContent = navigator.onLine ? 'Online' : 'Offline';
             }
             
-            // Xử lý click tab
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const tab = btn.getAttribute('data-tab');
-                    showTab(tab);
-                });
-            });
-            
-            // Ẩn loading
-            document.querySelector('.loading').style.display = 'none';
-        });
+            // Update badge
+            if (pendingCount > 0) {
+                badge.textContent = pendingCount;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
         
         // Hàm hiển thị tab
         function showTab(tabName) {
@@ -106,44 +339,65 @@
             
             switch(tabName) {
                 case 'reports':
-                    window.reportsModule.render();
+                    if (window.reportsModule) {
+                        window.reportsModule.render();
+                    } else {
+                        mainContent.innerHTML = '<div class="error">Module báo cáo chưa sẵn sàng</div>';
+                    }
                     break;
                 case 'inventory':
-                    window.inventoryModule.render();
+                    if (window.inventoryModule) {
+                        window.inventoryModule.render();
+                    } else {
+                        mainContent.innerHTML = '<div class="error">Module kho chưa sẵn sàng</div>';
+                    }
                     break;
                 case 'employees':
-                    window.employeesModule.render();
+                    if (window.employeesModule) {
+                        window.employeesModule.render();
+                    } else {
+                        mainContent.innerHTML = '<div class="error">Module nhân viên chưa sẵn sàng</div>';
+                    }
                     break;
                 case 'dashboard':
-                    window.dashboardModule.render();
+                    if (window.dashboardModule) {
+                        window.dashboardModule.render();
+                    } else {
+                        mainContent.innerHTML = '<div class="error">Module tổng quan chưa sẵn sàng</div>';
+                    }
                     break;
-                case 'settings':
-                    window.settingsModule.render();
-                    break;
+                
                 default:
                     mainContent.innerHTML = '<div class="error">Tab không tồn tại</div>';
             }
         }
         
         // Hàm hiển thị toast
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
-            toast.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-                <span>${message}</span>
-            `;
-            
-            container.appendChild(toast);
-            
-            // Auto remove after 3 seconds
-            setTimeout(() => {
-                toast.classList.add('fade-out');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-        
+        function showToast(message, type = 'info', duration = 3000) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    // Kiểm tra nếu message chứa HTML
+    if (message.includes('<') && message.includes('>')) {
+        toast.innerHTML = message;
+    } else {
+        toast.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+            <span>${message}</span>
+        `;
+    }
+    
+    container.appendChild(toast);
+    
+    // Auto remove
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
         // Hàm hiển thị modal
         function showModal(content, onClose = null) {
             const overlay = document.getElementById('modalOverlay');
@@ -155,15 +409,16 @@
             container.classList.add('active');
             
             // Close modal khi click overlay
-            overlay.onclick = () => closeModal();
+            overlay.onclick = () => closeModal(onClose);
             
             // Close modal với Escape key
-            document.addEventListener('keydown', function escHandler(e) {
+            const escHandler = (e) => {
                 if (e.key === 'Escape') {
-                    closeModal();
+                    closeModal(onClose);
                     document.removeEventListener('keydown', escHandler);
                 }
-            });
+            };
+            document.addEventListener('keydown', escHandler);
             
             return {
                 close: () => closeModal(onClose)
@@ -182,11 +437,47 @@
             }
         }
         
+        // Tab click handlers
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.getAttribute('data-tab');
+                showTab(tab);
+            });
+        });
+        
+        // Xử lý online/offline
+        window.addEventListener('online', () => {
+            updateSyncStatusUI('online');
+            window.showToast?.('Đã kết nối lại internet', 'success');
+        });
+        
+        window.addEventListener('offline', () => {
+            updateSyncStatusUI('offline');
+            window.showToast?.('Mất kết nối internet - Chuyển sang chế độ offline', 'warning');
+        });
+        
+        // Lắng nghe sync events từ dataManager
+        window.addEventListener('syncStatusChanged', (event) => {
+            const { status, pendingChanges } = event.detail;
+            updateSyncStatusUI(status, pendingChanges);
+        });
+        
         // Expose functions to window
         window.showToast = showToast;
         window.showModal = showModal;
         window.closeModal = closeModal;
         window.showTab = showTab;
+        window.updateSyncStatusUI = updateSyncStatusUI;
+        
+        // Start app khi DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+        
+        // Initial sync status
+        updateSyncStatusUI(navigator.onLine ? 'online' : 'offline');
     </script>
 </body>
 </html>

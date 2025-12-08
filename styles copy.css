@@ -1,0 +1,2167 @@
+/* styles.css - Tổng hợp CSS cho toàn bộ hệ thống */
+
+/* Reset & Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: #f5f5f7;
+    color: #1d1d1f;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+/* Header */
+.header {
+    background: white;
+    padding: 12px 16px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 3px solid #10B981;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: bold;
+    color: #10B981;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.tabs {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+}
+
+.tab-btn {
+    flex: 1;
+    background: #f8f9fa;
+    border: none;
+    padding: 10px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.tab-btn i {
+    font-size: 16px;
+    margin-bottom: 2px;
+}
+
+.tab-btn.active {
+    background: #10B981;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.tab-btn:hover:not(.active) {
+    background: #e5e7eb;
+}
+
+.sync-status {
+    margin-top: 10px;
+    padding: 8px;
+    background: #e5e7eb;
+    border-radius: 8px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #6b7280;
+}
+
+.sync-status.syncing {
+    background: #fef3c7;
+    color: #f59e0b;
+}
+
+/* Main Content */
+.main-content {
+    padding: 16px;
+    min-height: calc(100vh - 140px);
+}
+
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: #6b7280;
+}
+
+.loading i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: #10B981;
+}
+
+/* Common Card Styles */
+.report-card,
+.action-card,
+.summary-card,
+.employee-card,
+.list-item,
+.stats-card {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s ease;
+}
+
+.report-card:hover,
+.action-card:hover,
+.employee-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Input Styles */
+.input-group {
+    position: relative;
+    margin-top: 8px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: right;
+    background: white;
+    transition: border-color 0.3s ease;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: #10B981;
+}
+
+.currency {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #10B981;
+    font-weight: 600;
+}
+
+/* Button Styles */
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-outline,
+.btn-small,
+.btn-icon {
+    border: none;
+    border-radius: 12px;
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #10B981, #059669);
+    color: white;
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    width: 100%;
+}
+
+.btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+    width: 100%;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid #10B981;
+    color: #10B981;
+}
+
+.btn-small {
+    padding: 8px 16px;
+    font-size: 14px;
+    background: #f3f4f6;
+}
+
+.btn-icon {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: transparent;
+    color: #6b7280;
+}
+
+.btn-icon:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.modal-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    background: white;
+    border-radius: 24px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 1001;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.modal-container.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background: white;
+    border-radius: 24px 24px 0 0;
+    z-index: 1;
+}
+
+.modal-header h2 {
+    font-size: 20px;
+    color: #1d1d1f;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.modal-close:hover {
+    background: #f3f4f6;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #374151;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #10B981;
+}
+
+.form-row {
+    display: flex;
+    gap: 12px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+/* List Styles */
+.list-header,
+.file-header,
+.stats-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    padding: 12px 16px;
+    background: #f9fafb;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 8px;
+}
+
+.list-item,
+.file-item,
+.stats-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    padding: 12px 16px;
+    align-items: center;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.list-item:last-child,
+.file-item:last-child {
+    border-bottom: none;
+}
+
+.item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.item-name {
+    font-weight: 600;
+    color: #1d1d1f;
+}
+
+.item-amount {
+    color: #10B981;
+    font-weight: 600;
+}
+
+.item-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* Summary Cards */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.summary-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+}
+
+.summary-card i {
+    font-size: 24px;
+    color: #10B981;
+    background: #d1fae5;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.summary-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.summary-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1d1d1f;
+}
+
+/* Calendar */
+.calendar {
+    background: #f9fafb;
+    border-radius: 16px;
+    padding: 16px;
+    margin: 16px 0;
+}
+
+.week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.day.normal {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.day.off {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.day.overtime {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.day:hover {
+    transform: scale(1.1);
+}
+
+.day.empty {
+    background: transparent;
+    cursor: default;
+}
+
+/* Toast */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+.toast {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 300px;
+    animation: slideIn 0.3s ease;
+}
+
+.toast i {
+    font-size: 20px;
+}
+
+.toast-success i { color: #10B981; }
+.toast-error i { color: #ef4444; }
+.toast-warning i { color: #f59e0b; }
+.toast-info i { color: #3b82f6; }
+
+.toast.fade-out {
+    animation: fadeOut 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Collapsible Sections */
+.collapsible-section {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    margin: 12px 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Inventory Controls */
+.products-list {
+    margin: 16px 0;
+}
+
+.product-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.product-info {
+    flex: 1;
+}
+
+.product-quantity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.qty-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid #10B981;
+    background: white;
+    color: #10B981;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qty-btn:hover {
+    background: #10B981;
+    color: white;
+}
+
+/* Employee Calendar Legend */
+.calendar-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+}
+
+.legend-color.normal {
+    background: #d1fae5;
+}
+
+.legend-color.off {
+    background: #fee2e2;
+}
+
+.legend-color.overtime {
+    background: #fef3c7;
+}
+
+/* Settings */
+.settings-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.settings-section {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.setting-item {
+    margin-bottom: 20px;
+}
+
+.input-with-button {
+    display: flex;
+    gap: 8px
+}
+/* ===============================
+   FIXED POPUP/Modal STYLES
+   =============================== */
+
+/* Modal cố định - không scroll body khi mở modal */
+body.modal-open {
+    overflow: hidden;
+}
+
+/* Modal overlay cố định */
+.modal-overlay.fixed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 9998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+/* Modal container cố định */
+.modal-container.fixed {
+    position: relative;
+    background: white;
+    border-radius: 24px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 85vh;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideUp 0.3s ease-out;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Modal header cố định */
+.modal-header.fixed {
+    padding: 20px;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+/* Modal body cố định với scroll */
+.modal-body.fixed {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Modal footer cố định */
+.modal-footer.fixed {
+    padding: 20px;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+/* Animation cho modal */
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes modalSlideDown {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+}
+
+/* Modal đang đóng */
+.modal-container.fixed.closing {
+    animation: modalSlideDown 0.3s ease-in forwards;
+}
+
+/* Scrollbar styling cho modal body */
+.modal-body.fixed::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body.fixed::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.modal-body.fixed::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.modal-body.fixed::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Popup nhỏ (alert, confirm) */
+.small-popup {
+    max-width: 400px;
+    max-height: 400px;
+}
+
+.medium-popup {
+    max-width: 500px;
+    max-height: 600px;
+}
+
+.large-popup {
+    max-width: 600px;
+    max-height: 700px;
+}
+
+.fullscreen-popup {
+    max-width: 95vw;
+    max-height: 95vh;
+    width: 95vw;
+    height: 95vh;
+}
+
+/* Popup với form dài */
+.form-popup .modal-body.fixed {
+    padding-bottom: 100px; /* Tạo khoảng trống cho footer */
+}
+
+/* Popup không có footer */
+.no-footer .modal-body.fixed {
+    padding-bottom: 30px;
+}
+
+/* Nút đóng modal cố định */
+.modal-close.fixed {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #f3f4f6;
+    border: none;
+    font-size: 18px;
+    color: #6b7280;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 11;
+    transition: all 0.2s ease;
+}
+
+.modal-close.fixed:hover {
+    background: #e5e7eb;
+    color: #374151;
+    transform: rotate(90deg);
+}
+
+/* Modal backdrop click để đóng */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9997;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Responsive cho mobile */
+@media (max-width: 640px) {
+    .modal-overlay.fixed {
+        padding: 10px;
+    }
+    
+    .modal-container.fixed {
+        max-height: 90vh;
+        border-radius: 20px;
+    }
+    
+    .modal-header.fixed {
+        padding: 16px;
+    }
+    
+    .modal-body.fixed {
+        padding: 16px;
+    }
+    
+    .modal-footer.fixed {
+        padding: 16px;
+    }
+    
+    .modal-close.fixed {
+        top: 12px;
+        right: 12px;
+        width: 32px;
+        height: 32px;
+    }
+    
+    .fullscreen-popup {
+        max-width: 100vw;
+        max-height: 100vh;
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .modal-container.fixed {
+        background: #1f2937;
+        color: #f9fafb;
+    }
+    
+    .modal-header.fixed {
+        background: #1f2937;
+        border-bottom-color: #374151;
+    }
+    
+    .modal-footer.fixed {
+        background: #111827;
+        border-top-color: #374151;
+    }
+    
+    .modal-close.fixed {
+        background: #374151;
+        color: #d1d5db;
+    }
+    
+    .modal-close.fixed:hover {
+        background: #4b5563;
+        color: #f9fafb;
+    }
+    
+    .modal-body.fixed::-webkit-scrollbar-track {
+        background: #374151;
+    }
+    
+    .modal-body.fixed::-webkit-scrollbar-thumb {
+        background: #6b7280;
+    }
+    
+    .modal-body.fixed::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af;
+    }
+}
+
+/* Utility classes cho modal */
+.modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+    padding-right: 40px; /* Để tránh đè lên nút đóng */
+}
+
+.modal-subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.modal-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 16px;
+}
+
+.modal-icon.success {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.modal-icon.warning {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.modal-icon.error {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.modal-icon.info {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+/* Loading overlay trong modal */
+.modal-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    border-radius: 24px;
+}
+
+.modal-loading.dark {
+    background: rgba(31, 41, 55, 0.9);
+}
+
+/* Modal với tabs */
+.modal-tabs {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    margin: -20px -20px 20px -20px;
+    padding: 0 20px;
+    background: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.modal-tab {
+    padding: 16px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #6b7280;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modal-tab.active {
+    color: #10B981;
+    border-bottom-color: #10B981;
+}
+
+.modal-tab:hover:not(.active) {
+    color: #374151;
+}
+
+/* Modal với steps (wizard) */
+.modal-steps {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.modal-steps::before {
+    content: '';
+    position: absolute;
+    top: 16px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #e5e7eb;
+    z-index: 1;
+}
+
+.modal-step {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.step-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+}
+
+.step-number.active {
+    background: #10B981;
+    color: white;
+}
+
+.step-number.completed {
+    background: #10B981;
+    color: white;
+}
+
+.step-label {
+    font-size: 12px;
+    color: #6b7280;
+    text-align: center;
+}
+
+.step-label.active {
+    color: #10B981;
+    font-weight: 600;
+}
+
+/* Modal divider */
+.modal-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 20px -20px;
+}
+
+/* Modal section */
+.modal-section {
+    margin-bottom: 24px;
+}
+
+.modal-section:last-child {
+    margin-bottom: 0;
+}
+
+.modal-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Modal với grid layout */
+.modal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+@media (max-width: 640px) {
+    .modal-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Modal với list items có avatar */
+.modal-list-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-radius: 12px;
+    transition: background 0.2s ease;
+    cursor: pointer;
+}
+
+.modal-list-item:hover {
+    background: #f9fafb;
+}
+
+.modal-list-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.modal-list-content {
+    flex: 1;
+}
+
+.modal-list-title {
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 2px;
+}
+
+.modal-list-subtitle {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+/* Modal action buttons layout */
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.modal-actions .btn-primary,
+.modal-actions .btn-secondary {
+    flex: 1;
+}
+
+/* Modal với form validation */
+.modal-error {
+    background: #fee2e2;
+    color: #dc2626;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-success {
+    background: #d1fae5;
+    color: #059669;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Print styles cho modal */
+@media print {
+    .modal-overlay.fixed,
+    .modal-backdrop,
+    .modal-close.fixed {
+        display: none;
+    }
+    
+    .modal-container.fixed {
+        position: static;
+        box-shadow: none;
+        max-height: none;
+        border-radius: 0;
+    }
+}
+
+/* Lịch sử báo cáo */
+.history-item {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.history-date {
+    font-weight: bold;
+    font-size: 16px;
+    color: #2c3e50;
+}
+
+.history-version {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.history-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-small {
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-small:hover {
+    opacity: 0.9;
+}
+
+.btn-danger {
+    background: #ffebee;
+    color: #c62828;
+}
+
+/* Summary */
+.history-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.summary-item {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.summary-item i {
+    font-size: 18px;
+    color: #666;
+}
+
+.summary-item small {
+    display: block;
+    color: #666;
+    font-size: 11px;
+}
+
+.summary-item strong {
+    font-size: 14px;
+    color: #333;
+}
+
+.positive {
+    color: #2e7d32;
+}
+
+.negative {
+    color: #c62828;
+}
+
+/* Xuất kho */
+.inventory-summary {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+}
+
+.inventory-summary h4 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: #333;
+}
+
+.inventory-details {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+}
+
+.export-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+}
+
+.export-detail:last-child {
+    border-bottom: none;
+}
+
+.inventory-total {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+    font-weight: bold;
+}
+
+/* Phiên bản */
+.history-versions {
+    text-align: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #ddd;
+}
+
+.versions-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.version-item {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.version-item.latest {
+    border-left: 4px solid #4caf50;
+}
+
+.version-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.version-header strong {
+    color: #333;
+}
+
+.version-header small {
+    color: #666;
+    font-size: 11px;
+    display: block;
+}
+
+.badge {
+    background: #4caf50;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+}
+
+.version-details {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5px;
+    font-size: 12px;
+    color: #666;
+}
+
+/* Loading */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading i {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.history-time {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+}
+
+.history-footer {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+    text-align: center;
+    color: #666;
+    font-size: 11px;
+}
+
+.more-items {
+    text-align: center;
+    padding: 5px;
+    color: #666;
+    font-size: 12px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    margin-top: 5px;
+}
+
+/* Trạng thái chờ xuất */
+.export-item.processed {
+    opacity: 0.6;
+    background: #f0f9ff;
+}
+
+.export-item.processed i {
+    color: #10B981 !important;
+}
+
+.export-status {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 5px;
+}
+
+.status-pending {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.status-processed {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.action-buttons {
+    display: flex; /* Kích hoạt Flexbox để sắp xếp các mục con */
+    gap: 10px; /* Tạo khoảng cách giữa các nút */
+    padding: 10px; /* Thêm padding xung quanh (tùy chọn) */
+    width: 100%; /* Đảm bảo div chiếm toàn bộ chiều rộng có thể */
+    box-sizing: border-box; /* Quan trọng để padding không làm tăng chiều rộng tổng */
+}
+
+.action-buttons button {
+    flex-grow: 1; /* Quan trọng: Các nút sẽ tự động co dãn để lấp đầy không gian */
+    flex-shrink: 1; /* Cho phép các nút co lại khi không gian hẹp */
+    flex-basis: 0; /* Đảm bảo các nút chia đều không gian ban đầu */
+    white-space: nowrap; /* Ngăn không cho chữ trong nút bị xuống dòng */
+    /* Thêm các style khác cho nút nếu cần, ví dụ: */
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+/* Container chứa các nút, sử dụng Flexbox để sắp xếp cùng hàng và co giãn */
+.button-radio-group {
+    display: flex;
+    gap: 10px; /* Khoảng cách giữa các nút */
+    width: 100%;
+}
+
+/* Label bao quanh input và span, quan trọng để kích hoạt Flexbox cho các nút con */
+.radio-button-label {
+    display: flex;
+    flex-grow: 1; /* Quan trọng: Cho phép nút co dãn để chiếm đều không gian */
+    cursor: pointer;
+}
+
+/* Ẩn radio button mặc định */
+.radio-button-label input[type="radio"] {
+    display: none;
+}
+
+/* Tạo kiểu cho nút bấm (span) */
+.button-radio {
+    display: block;
+    width: 100%; /* Chiếm hết chiều rộng của label cha */
+    padding: 10px 15px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f8f8f8;
+    color: #333;
+    transition: all 0.2s ease;
+}
+
+/* Màu nền và viền khi nút được chọn */
+.radio-button-label input[type="radio"]:checked + .button-radio {
+    color: #fff;
+    font-weight: bold;
+    border-color: transparent;
+}
+
+/* Màu khi Thưởng được chọn */
+.radio-button-label input[type="radio"]:checked + .button-radio.reward {
+    background-color: #5cb85c; /* Xanh lá cây */
+}
+
+/* Màu khi Phạt được chọn */
+.radio-button-label input[type="radio"]:checked + .button-radio.penalty {
+    background-color: #d9534f; /* Đỏ */
+}
+
+/* Màu viền mặc định cho nút Thưởng (tùy chọn) */
+.button-radio.reward {
+    border-color: #5cb85c;
+    color: #5cb85c;
+}
+
+/* Màu viền mặc định cho nút Phạt (tùy chọn) */
+.button-radio.penalty {
+    border-color: #d9534f;
+    color: #d9534f;
+}
+
+/* DASHBOARD ENHANCEMENTS */
+
+/* Header actions */
+.header-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* Filter section */
+.filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.filter-info {
+    font-size: 13px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.filter-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.filter-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 12px 8px;
+    background: #f8f9fa;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    color: #374151;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+    background: #e5e7eb;
+}
+
+.filter-btn.active {
+    background: #10B981;
+    color: white;
+    border-color: #10B981;
+}
+
+.filter-btn i {
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.view-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 15px 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.view-toggle select {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+}
+
+.filter-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f1f5f9;
+    border-radius: 10px;
+    margin-top: 15px;
+}
+
+.stat-item {
+    font-size: 13px;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stat-item strong {
+    color: #1e293b;
+}
+
+.refresh-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.refresh-btn:hover {
+    background: #2563eb;
+}
+
+/* Section containers */
+.section-container {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.section-header h2 {
+    font-size: 18px;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Summary cards enhancements */
+.summary-card {
+    position: relative;
+}
+
+.summary-card.clickable {
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.summary-card.clickable:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+.card-actions {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 5px;
+}
+
+.btn-icon.small {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #e5e7eb;
+}
+
+.summary-trend {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+    display: block;
+}
+
+/* Detail views */
+.detail-placeholder {
+    margin-top: 20px;
+}
+
+.detail-view {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #e5e7eb;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.detail-header h3 {
+    font-size: 16px;
+    color: #374151;
+}
+
+/* Tables */
+.detail-table {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+}
+
+.table-header {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    background: #f3f4f6;
+    padding: 12px 15px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 13px;
+}
+
+.table-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    padding: 10px 15px;
+    border-bottom: 1px solid #e5e7eb;
+    align-items: center;
+    transition: background 0.2s ease;
+}
+
+.table-row.clickable {
+    cursor: pointer;
+}
+
+.table-row.clickable:hover {
+    background: #f8fafc;
+}
+
+.table-row:last-child {
+    border-bottom: none;
+}
+
+.table-cell {
+    font-size: 13px;
+    color: #4b5563;
+}
+
+.table-cell.positive {
+    color: #10B981;
+    font-weight: 500;
+}
+
+.table-cell.negative {
+    color: #ef4444;
+    font-weight: 500;
+}
+
+/* Grouped lists */
+.grouped-section {
+    margin-bottom: 20px;
+}
+
+.grouped-section h4 {
+    font-size: 15px;
+    color: #374151;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #e5e7eb;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.grouped-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 13px;
+}
+
+.list-item:hover {
+    background: #f8fafc;
+}
+
+.item-date {
+    color: #6b7280;
+    font-size: 12px;
+    min-width: 80px;
+}
+
+.item-name {
+    flex: 1;
+    color: #374151;
+    margin: 0 10px;
+}
+
+.item-detail {
+    color: #6b7280;
+    font-size: 12px;
+    margin-right: 10px;
+}
+
+.item-amount {
+    color: #10B981;
+    font-weight: 500;
+    min-width: 100px;
+    text-align: right;
+}
+
+.item-note {
+    color: #9ca3af;
+    font-size: 11px;
+    font-style: italic;
+    margin: 0 10px;
+    flex: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .filter-buttons {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .filter-stats {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .table-header,
+    .table-row {
+        grid-template-columns: repeat(3, 1fr);
+        font-size: 12px;
+    }
+    
+    .list-item {
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    
+    .item-date,
+    .item-name,
+    .item-detail,
+    .item-amount {
+        flex: 1 1 45%;
+    }
+}
+
+/* Thêm vào file styles.css hoặc style tag */
+.export-detail {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    font-size: 13px;
+}
+
+.export-product {
+    flex: 1;
+    font-weight: 500;
+    color: #333;
+}
+
+.export-quantity {
+    background: #4CAF50;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.inventory-details {
+    margin-top: 8px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.more-items {
+    text-align: center;
+    padding: 6px;
+    color: #666;
+    font-style: italic;
+    background: #f8f8f8;
+    border-radius: 4px;
+}
+
+/* THÊM: CSS cho suggestion dropdown */
+.suggestion-wrapper {
+    position: relative;
+}
+
+.suggestions-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.suggestion-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.suggestion-item:hover {
+    background-color: #f5f5f5;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-empty {
+    padding: 8px 12px;
+    color: #888;
+    font-style: italic;
+}
+
+/* THÊM: CSS cho category view trong dashboard */
+.section-header-with-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.section-total-badge {
+    background: #f8f9fa;
+    padding: 8px 15px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.section-total-badge strong {
+    font-size: 16px;
+    color: #10B981;
+    margin-left: 5px;
+}
+
+.category-list {
+    margin-bottom: 20px;
+}
+
+.category-item {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.category-name small {
+    display: block;
+    color: #6c757d;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.category-total {
+    font-weight: bold;
+    color: #10B981;
+    font-size: 16px;
+}
+
+.category-details {
+    padding: 15px;
+    background: white;
+}
+
+.category-items {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.category-item-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.category-item-detail:last-child {
+    border-bottom: none;
+}
+
+.item-date {
+    color: #6c757d;
+    font-size: 12px;
+    min-width: 80px;
+}
+
+.item-name {
+    flex: 1;
+    padding: 0 10px;
+}
+
+.item-amount {
+    font-weight: 500;
+    min-width: 100px;
+    text-align: right;
+}
+
+.more-items {
+    text-align: center;
+    padding: 10px;
+    color: #6c757d;
+    font-style: italic;
+    background: #f8f9fa;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+.summary-table th,
+.summary-table td {
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    text-align: left;
+}
+
+.summary-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.summary-table tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
