@@ -1577,3 +1577,562 @@ body.modal-open {
     border-color: #d9534f;
     color: #d9534f;
 }
+
+/* ===============================
+   SIMPLE INVENTORY SELECTION UI
+   =============================== */
+
+.inventory-controls-simple {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 10px;
+}
+
+.inventory-header-simple {
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.inventory-header-simple h4 {
+    font-size: 16px;
+    color: #1f2937;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.inventory-header-simple .subtitle {
+    font-size: 12px;
+    color: #6b7280;
+    display: block;
+}
+
+/* Simple table */
+.inventory-table-simple {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.table-header-simple {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 0.5fr;
+    background: #f9fafb;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    font-weight: 600;
+    font-size: 12px;
+    color: #374151;
+    text-align: center;
+}
+
+.table-body-simple {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.table-body-simple::-webkit-scrollbar {
+    width: 4px;
+}
+
+.table-body-simple::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.table-body-simple::-webkit-scrollbar-thumb {
+    background: #10B981;
+    border-radius: 2px;
+}
+
+.table-row-simple {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 0.5fr;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    align-items: center;
+    transition: background 0.2s ease;
+}
+
+.table-row-simple:last-child {
+    border-bottom: none;
+}
+
+.table-row-simple:hover {
+    background: #f9fafb;
+}
+
+/* Cells */
+.cell {
+    padding: 4px;
+    text-align: center;
+}
+
+.cell.name {
+    text-align: left;
+    min-width: 0;
+}
+
+.product-name {
+    font-weight: 500;
+    color: #1f2937;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+.product-unit {
+    font-size: 11px;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 8px;
+    display: inline-block;
+    margin-top: 2px;
+}
+
+.stock-value {
+    font-weight: 600;
+    color: #374151;
+    font-size: 14px;
+}
+
+/* Export button */
+.export-controls {
+    display: flex;
+    justify-content: center;
+}
+
+.export-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    border: 2px solid #e5e7eb;
+    background: white;
+    color: #6b7280;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.export-btn:hover:not(:disabled) {
+    border-color: #10B981;
+    color: #10B981;
+    transform: translateY(-2px);
+}
+
+.export-btn.active {
+    background: #10B981;
+    color: white;
+    border-color: #10B981;
+}
+
+.export-btn:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: not-allowed;
+    border-color: #e5e7eb;
+}
+
+/* Decrease button */
+.decrease-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid #ef4444;
+    background: white;
+    color: #ef4444;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.decrease-btn:hover:not(:disabled) {
+    background: #ef4444;
+    color: white;
+    transform: scale(1.1);
+}
+
+.decrease-btn:disabled {
+    border-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    background: #f3f4f6;
+}
+
+/* Export stats */
+.export-stats-simple {
+    background: #f0fdf4;
+    border: 1px solid #10B981;
+    border-radius: 10px;
+    padding: 16px;
+}
+
+.stats-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.stats-row:last-child {
+    margin-bottom: 0;
+}
+
+.stats-label {
+    font-size: 14px;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stats-label i {
+    color: #10B981;
+    font-size: 16px;
+}
+
+.stats-value {
+    font-weight: 700;
+    font-size: 16px;
+    color: #10B981;
+}
+
+.btn-clear-simple {
+    width: 100%;
+    padding: 12px;
+    background: white;
+    color: #ef4444;
+    border: 1px solid #ef4444;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+    transition: all 0.2s ease;
+}
+
+.btn-clear-simple:hover {
+    background: #ef4444;
+    color: white;
+    transform: translateY(-2px);
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .inventory-controls-simple {
+        padding: 12px;
+        margin: -12px -12px 12px -12px;
+        border-radius: 0;
+    }
+    
+    .table-header-simple {
+        padding: 10px 12px;
+        font-size: 11px;
+        grid-template-columns: 1.5fr 0.8fr 0.8fr 0.5fr;
+    }
+    
+    .table-row-simple {
+        padding: 10px 12px;
+        grid-template-columns: 1.5fr 0.8fr 0.8fr 0.5fr;
+    }
+    
+    .product-name {
+        font-size: 13px;
+    }
+    
+    .product-unit {
+        font-size: 10px;
+        padding: 1px 4px;
+    }
+    
+    .stock-value {
+        font-size: 13px;
+    }
+    
+    .export-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    
+    .decrease-btn {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .stats-label {
+        font-size: 13px;
+    }
+    
+    .stats-value {
+        font-size: 14px;
+    }
+    
+    .btn-clear-simple {
+        padding: 10px;
+        font-size: 13px;
+        min-height: 44px;
+    }
+}
+
+/* Touch optimizations */
+.export-btn,
+.decrease-btn,
+.btn-clear-simple {
+    min-height: 44px;
+}
+
+/* For very small screens */
+@media (max-width: 320px) {
+    .table-header-simple {
+        grid-template-columns: 1.2fr 0.7fr 0.7fr 0.4fr;
+    }
+    
+    .table-row-simple {
+        grid-template-columns: 1.2fr 0.7fr 0.7fr 0.4fr;
+    }
+    
+    .product-name {
+        font-size: 12px;
+    }
+    
+    .export-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 13px;
+    }
+}
+
+/* Row clickable */
+.clickable-row {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clickable-row:hover {
+    background: #f0fdf4 !important;
+}
+
+.clickable-row:hover .stock-value,
+.clickable-row:hover .export-display {
+    color: #10B981;
+    font-weight: 600;
+}
+
+.clickable-cell {
+    cursor: pointer;
+}
+
+/* Export display */
+.export-display {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    border: 2px solid #e5e7eb;
+    background: white;
+    color: #6b7280;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    transition: all 0.2s ease;
+}
+
+.export-display.active {
+    background: #10B981;
+    color: white;
+    border-color: #10B981;
+}
+
+/* Stock value highlight */
+.stock-value {
+    font-weight: 600;
+    color: #374151;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+/* Decrease button with hover effects */
+.decrease-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid #ef4444;
+    background: white;
+    color: #ef4444;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.decrease-btn:hover:not(:disabled) {
+    background: #ef4444;
+    color: white;
+    transform: scale(1.1);
+}
+
+.decrease-btn:disabled {
+    border-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    background: #f3f4f6;
+}
+
+/* Row hover effect for touch feedback */
+.table-row-simple:active {
+    background: #e5f7e9 !important;
+    transform: scale(0.99);
+}
+
+/* Toast Container - HIỂN THỊ TRÊN HEADER */
+.toast-container {
+    position: fixed;
+    top: 70px; /* Ngay dưới header */
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    pointer-events: none;
+}
+
+/* Toast Item */
+.toast {
+    min-width: 300px;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    border-radius: 8px;
+    padding: 16px 20px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-left: 4px solid #3498db;
+    opacity: 0;
+    transform: translateX(100px);
+    transition: all 0.3s ease;
+    pointer-events: auto;
+    animation: slideIn 0.3s ease forwards;
+}
+
+/* Toast Icon */
+.toast i {
+    font-size: 20px;
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+}
+
+/* Toast Message */
+.toast span {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #2d3748;
+}
+
+/* Toast Types với màu sắc Milano */
+.toast-success {
+    border-left-color: #10B981;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(255, 255, 255, 0.98) 100%);
+}
+
+.toast-success i {
+    color: #10B981;
+}
+
+.toast-error {
+    border-left-color: #EF4444;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(255, 255, 255, 0.98) 100%);
+}
+
+.toast-error i {
+    color: #EF4444;
+}
+
+.toast-warning {
+    border-left-color: #F59E0B;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(255, 255, 255, 0.98) 100%);
+}
+
+.toast-warning i {
+    color: #F59E0B;
+}
+
+.toast-info {
+    border-left-color: #3B82F6;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(255, 255, 255, 0.98) 100%);
+}
+
+.toast-info i {
+    color: #3B82F6;
+}
+
+/* Animations */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+}
+
+.toast.hiding {
+    animation: slideOut 0.3s ease forwards;
+}
+
+/* Responsive cho mobile */
+@media (max-width: 768px) {
+    .toast-container {
+        top: 60px;
+        right: 10px;
+        left: 10px;
+        align-items: stretch;
+    }
+    
+    .toast {
+        min-width: auto;
+        max-width: 100%;
+    }
+}
+
+
+

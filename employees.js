@@ -1,33 +1,37 @@
-// employees.js - Module nhân viên với local-first và background sync
 class EmployeesModule {
     constructor() {
-    const now = new Date();
-    this.currentMonth = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
-    this.currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    this.selectedEmployee = null;
-    this.isLoading = false;
-    
-    // Cache để tăng performance
-    this.cache = {
-        employees: null,
-        lastRender: null,
-        monthlyCalculations: {}
-    };
-    
-    // Flag để tránh render liên tục
-    this.isRendering = false;
-    
-    // Thêm event listener cho data updates
-    window.addEventListener('dataUpdated', (event) => {
-        if (event.detail.module === 'employees') {
-            console.log('🔄 Employees data updated, refreshing cache...');
-            this.cache.employees = null; // Xóa cache để tải lại
-            if (!this.isRendering) {
-                setTimeout(() => this.render(), 500); // Render lại sau 0.5s
+        const now = new Date();
+        this.currentMonth = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+        this.currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        this.selectedEmployee = null;
+        this.isLoading = false;
+        
+        // Cache để tăng performance
+        this.cache = {
+            employees: null,
+            lastRender: null,
+            monthlyCalculations: {}
+        };
+        
+        // Flag để tránh render liên tục
+        this.isRendering = false;
+        
+        // Thêm event listener cho data updates - SỬA LẠI
+        window.addEventListener('dataUpdated', (event) => {
+            if (event.detail.module === 'employees') {
+                console.log('🔄 Employees data updated, refreshing cache...');
+                this.cache.employees = null; // Xóa cache để tải lại
+                
+                // CHỈ RENDER KHI ĐANG Ở TAB NHÂN VIÊN
+                const activeTab = document.querySelector('.tab-btn.active');
+                if (activeTab && activeTab.getAttribute('data-tab') === 'employees') {
+                    if (!this.isRendering) {
+                        setTimeout(() => this.render(), 500);
+                    }
+                }
             }
-        }
-    });
-}
+        });
+    }
     
     // ========== LOCAL-FIRST DATA METHODS ==========
     
@@ -780,12 +784,12 @@ formatCurrency(input) {
         const modalContent = `
             <div class="modal-header">
                 <h2><i class="fas fa-user"></i> ${this.selectedEmployee.name.toUpperCase()}</h2>
-                <div class="employee-phone">
+                <div class="btn-secondary">
                     <i class="fas fa-phone"></i> ${this.selectedEmployee.phone || 'Chưa có SĐT'}
                 </div>
-                <button class="btn-icon danger" onclick="window.employeesModule.deleteCurrentEmployee()">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <button class="btn-secondary" onclick="window.employeesModule.showEditModal()">
+                        <i class="fas fa-edit"></i>
+                    </button>
                 <button class="modal-close" onclick="closeModal()">&times;</button>
             </div>
             
@@ -823,10 +827,8 @@ formatCurrency(input) {
                     <button class="btn-primary" onclick="window.employeesModule.showPenaltyModal()">
                         <i class="fas fa-balance-scale"></i> CHẾ TÀI
                     </button>
-                    <button class="btn-secondary" onclick="window.employeesModule.showEditModal()">
-                        <i class="fas fa-edit"></i> SỬA
-                    </button>
-                    <button class="btn-outline" onclick="closeModal()">
+                    
+                    <button class="btn-primary" onclick="closeModal()">
                         ĐÓNG
                     </button>
                 </div>
@@ -835,9 +837,7 @@ formatCurrency(input) {
                     <h3>LƯƠNG THÁNG ${this.currentMonth}</h3>
                     <div class="salary-details">
                         <div><span>Lương cơ bản:</span> <span>${salary.base.toLocaleString()} ₫</span></div>
-                        <div><span>Lương ngày:</span> <span>${Math.round(salary.base / 30).toLocaleString()} ₫/ngày</span></div>
-                        <div><span>Ngày bình thường:</span> <span>${salary.normalDays} ngày</span></div>
-                        <div><span>Ngày OFF:</span> <span>${salary.off} ngày</span></div>
+                       <div><span>Ngày OFF:</span> <span>${salary.off} ngày</span></div>
                         <div><span>Ngày tăng ca:</span> <span>${salary.overtime} ngày</span></div>
                         <div><span>Thưởng/Phạt:</span> <span>${this.getPenaltiesTotal(penalties).toLocaleString()} ₫</span></div>
                     </div>
@@ -1068,7 +1068,9 @@ formatCurrency(input) {
                 <button class="btn-primary" onclick="window.employeesModule.updateEmployeeFromModal()">
                     <i class="fas fa-save"></i> CẬP NHẬT
                 </button>
-                
+                <button class="btn-primary" onclick="window.employeesModule.deleteCurrentEmployee()">
+                    <i class="fas fa-trash"></i> XÓA NHÂN VIÊN
+                </button>
                 <button class="btn-secondary" onclick="closeModal()">
                     HỦY
                 </button>
@@ -1161,17 +1163,9 @@ formatCurrency(input) {
         window.showModal(modalContent);
     }
     
-    // ========== INITIALIZATION ==========
     
-    async init() {
-        await this.loadEmployees();
-    }
 }
 
 // Khởi tạo module
 window.employeesModule = new EmployeesModule();
 
-// Tự động init khi trang load
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => window.employeesModule.init(), 100);
-});

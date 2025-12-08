@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Milano Management System</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="reports.css">
+    <link rel="stylesheet" href="employees.css">
+    <link rel="stylesheet" href="inventory.css">
+    <link rel="stylesheet" href="dashboard.css">
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Firebase Scripts -->
@@ -149,56 +154,57 @@
     <script>
         // Khởi tạo app
         async function initializeApp() {
-            console.log('🚀 Milano App Starting...');
-            
-            // Update loading status
-            updateLoadingDetail('Đang kết nối Firebase...');
-            
-            try {
-                // Đợi Firebase khởi tạo
-                await waitForFirebase();
-                
-                // Initialize data manager
-                updateLoadingDetail('Tải dữ liệu...');
-                await window.dataManager.init();
-                
-                // Ẩn loading
-                setTimeout(() => {
-                    document.getElementById('initialLoading').style.display = 'none';
-                    showTab('reports');
-                    
-                    // Start sync
-                    startBackgroundSync();
-                    
-                    console.log('🎉 App initialized successfully');
-                    window.showToast?.('Hệ thống đã sẵn sàng', 'success');
-                }, 800);
-                
-            } catch (error) {
-                console.error('❌ App initialization failed:', error);
-                updateLoadingDetail('Lỗi khởi tạo', true);
-                
-                // Hiển thị fallback UI
-                setTimeout(() => {
-                    document.getElementById('initialLoading').innerHTML = `
-                        <div style="color: #f44336; padding: 20px;">
-                            <i class="fas fa-exclamation-triangle" style="font-size: 40px; margin-bottom: 20px;"></i>
-                            <p>Không thể kết nối đến máy chủ</p>
-                            <small>Ứng dụng sẽ chạy ở chế độ offline</small>
-                            <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px;">
-                                <i class="fas fa-redo"></i> Thử lại
-                            </button>
-                        </div>
-                    `;
-                    // Vẫn hiển thị app ở chế độ offline
-                    setTimeout(() => {
-                        document.getElementById('initialLoading').style.display = 'none';
-                        showTab('reports');
-                    }, 2000);
-                }, 1000);
-            }
-        }
+    console.log('🚀 Milano App Starting...');
+    
+    // Update loading status
+    updateLoadingDetail('Đang kết nối Firebase...');
+    
+    try {
+        // Đợi Firebase khởi tạo
+        await waitForFirebase();
         
+        // Initialize data manager
+        updateLoadingDetail('Tải dữ liệu...');
+        await window.dataManager.init();
+        
+        // Ẩn loading - QUAN TRỌNG: KHÔNG tự động mở tab nhân viên
+        setTimeout(() => {
+            document.getElementById('initialLoading').style.display = 'none';
+            
+            // MỞ TAB BÁO CÁO MẶC ĐỊNH
+            showTab('reports'); // <-- ĐẢM BẢO ĐÂY LÀ 'reports'
+            
+            // Start sync
+            startBackgroundSync();
+            
+            console.log('🎉 App initialized successfully');
+            window.showToast?.('Hệ thống đã sẵn sàng', 'success');
+        }, 800);
+        
+    } catch (error) {
+        console.error('❌ App initialization failed:', error);
+        updateLoadingDetail('Lỗi khởi tạo', true);
+        
+        // Hiển thị fallback UI
+        setTimeout(() => {
+            document.getElementById('initialLoading').innerHTML = `
+                <div style="color: #f44336; padding: 20px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 40px; margin-bottom: 20px;"></i>
+                    <p>Không thể kết nối đến máy chủ</p>
+                    <small>Ứng dụng sẽ chạy ở chế độ offline</small>
+                    <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px;">
+                        <i class="fas fa-redo"></i> Thử lại
+                    </button>
+                </div>
+            `;
+            // Vẫn hiển thị app ở chế độ offline
+            setTimeout(() => {
+                document.getElementById('initialLoading').style.display = 'none';
+                showTab('reports'); // <-- MỞ TAB BÁO CÁO
+            }, 2000);
+        }, 1000);
+    }
+}
         // Đợi Firebase khởi tạo
         function waitForFirebase() {
             return new Promise((resolve, reject) => {

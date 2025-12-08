@@ -41,7 +41,45 @@ async debugInventorySync() {
         const day = String(d.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
-
+// Thêm hàm này vào class InventoryModule
+async handleDateChange(event) {
+    const newDate = event.target.value;
+    
+    if (!newDate) return;
+    
+    if (newDate !== this.currentDate) {
+        // Update dates
+        this.currentDate = newDate;
+        const [year, month, day] = newDate.split('-');
+        this.currentDateDisplay = `${day}/${month}/${year}`;
+        
+        // Show loading
+        const mainContent = document.getElementById('mainContent');
+        if (mainContent) {
+            const originalHTML = mainContent.innerHTML;
+            mainContent.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Đang tải dữ liệu ngày ${this.currentDateDisplay}...</p>
+                </div>
+            `;
+            
+            // Render lại với dữ liệu mới
+            await this.render();
+            
+            // Nếu lỗi, restore lại HTML cũ
+            if (mainContent.innerHTML.includes('loading')) {
+                setTimeout(() => {
+                    mainContent.innerHTML = originalHTML;
+                    document.getElementById('inventoryDate').value = this.currentDate;
+                }, 1000);
+            }
+        }
+        
+        // Show toast notification
+        window.showToast(`📅 Đã chuyển sang ngày ${this.currentDateDisplay}`, 'info');
+    }
+}
     formatDateForDisplay(date) {
         const d = new Date(date);
         const day = String(d.getDate()).padStart(2, '0');
@@ -57,89 +95,74 @@ async debugInventorySync() {
     const mainContent = document.getElementById('mainContent');
     
     try {
-        // **DEBUG: Log dữ liệu inventory**
-        console.log('🔄 Rendering inventory with data:');
-        console.log('- Products:', window.dataManager.getInventoryProducts().length);
-        console.log('- Purchases:', Object.keys(window.dataManager.data.inventory?.purchases || {}));
-        console.log('- Services:', Object.keys(window.dataManager.data.inventory?.services || {}));
-        
         const products = window.dataManager.getInventoryProducts();
-        const inventoryData = this.getInventoryForCurrentDate();
         
-        console.log('- Current date purchases:', inventoryData.purchases.length);
-        console.log('- Current date services:', inventoryData.services.length);
-        
-        const totalValue = products.reduce((sum, p) => sum + (p.totalValue || 0), 0);
-            
-            mainContent.innerHTML = `
-                <div class="inventory-container">
-                    <div class="inventory-header">
-                        <h1><i class="fas fa-boxes"></i> TỒN KHO</h1>
-                        <div class="date-picker">
-                            <input type="date" id="inventoryDate" value="${this.currentDate}">
-                            <button onclick="window.inventoryModule.changeDate()"><i class="fas fa-calendar-alt"></i></button>
-                        </div>
+        mainContent.innerHTML = `
+            <div class="inventory-container">
+                <!-- Header với date picker -->
+                <div class="inventory-header">
+                    <h3><i class="fas fa-boxes"></i> Kho hàng</h3>
+                    <div class="date-picker-compact">
+                        <input type="date" id="inventoryDate" 
+                               value="${this.currentDate}" 
+                               onchange="window.inventoryModule.handleDateChange(event)">
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="inventory-actions">
+                    <button class="btn-primary" onclick="window.inventoryModule.showPurchaseModal()">
+                        <i class="fas fa-shopping-cart"></i> MUA HÀNG
+                    </button>
+                    <button class="btn-primary" onclick="window.inventoryModule.showServiceModal()">
+                        <i class="fas fa-concierge-bell"></i> DỊCH VỤ
+                    </button>
+                </div>
+                
+                <!-- Inventory List -->
+                <div class="inventory-list">
+                    <div class="inventory-list-header">
+                        <span>TÊN SẢN PHẨM</span>
+                        <span>SỐ LƯỢNG</span>
+                        <span>GIÁ TRỊ</span>
+                        <span>          THAO TÁC</span>
+                        <span></span>
                     </div>
                     
-                    <div class="inventory-total-card">
-                        <div class="total-label">Tổng giá trị tồn kho</div>
-                        <div class="total-value">${totalValue.toLocaleString()} ₫</div>
-                        <small>(${products.length} sản phẩm)</small>
-                    </div>
-                    
-<div class="action-buttons">
-    <button class="btn-primary" onclick="window.inventoryModule.showPurchaseModal()">
-        <i class="fas fa-shopping-cart"></i> MUA HÀNG HÓA
-    </button>
-    <button class="btn-secondary" onclick="window.inventoryModule.showServiceModal()">
-        <i class="fas fa-concierge-bell"></i> DỊCH VỤ/CHI PHÍ
-    </button>
-    <button class="btn-sync" onclick="window.inventoryModule.forceSync()" title="Đồng bộ dữ liệu">
-        <i class="fas fa-sync-alt"></i> ĐỒNG BỘ
-    </button>
+                    <div class="inventory-list-items">
+                        ${products.length > 0 ? products.map((product, index) => `
+                            <div class="inventory-item" onclick="window.inventoryModule.showProductDetail(${index})">
+    <div class="product-info">
+        <span class="product-name">${product.name}</span>
+    </div>
+    <div class="product-quantity">${product.quantity}</div>
+    <div class="product-value">${(product.totalValue || 0).toLocaleString()} ₫</div>
+    <div class="product-actions" onclick="event.stopPropagation()">
+        <button class="btn-icon-small history" onclick="window.inventoryModule.showProductHistory(${index})">
+            <i class="fas fa-history"></i>
+        </button>
+        <button class="btn-icon-small edit" onclick="window.inventoryModule.editProduct(${index})">
+            <i class="fas fa-edit"></i>
+        </button>
+    </div>
 </div>
-                    
-                    <div class="inventory-list">
-                        <div class="list-header">
-                            <span># TÊN SẢN PHẨM</span>
-                            <span>SL</span>
-                            <span>THÀNH TIỀN</span>
-                            <span>THAO TÁC</span>
-                        </div>
-                        
-                        ${products.map((product, index) => `
-                            <div class="list-item">
-                                <div class="item-product">
-                                    <strong>${product.name}</strong>
-                                    <small>${product.unit}</small>
-                                </div>
-                                <div class="item-quantity">${product.quantity}</div>
-                                <div class="item-value">${(product.totalValue || 0).toLocaleString()} ₫</div>
-                                <div class="item-actions">
-                                    <button class="btn-icon" onclick="window.inventoryModule.showProductHistory(${index})">
-                                        <i class="fas fa-history"></i>
-                                    </button>
-                                    <button class="btn-icon" onclick="window.inventoryModule.editProduct(${index})">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
-                        
-                        ${products.length === 0 ? `
-                            <div class="empty-state">
+                        `).join('') : `
+                            <div class="inventory-empty">
                                 <i class="fas fa-box-open"></i>
                                 <p>Chưa có sản phẩm trong kho</p>
-                                <button class="btn-secondary" onclick="window.inventoryModule.showAddProductModal()">
+                                <button class="btn-primary" onclick="window.inventoryModule.showAddProductModal()">
                                     <i class="fas fa-plus"></i> Thêm sản phẩm đầu tiên
                                 </button>
                             </div>
-                        ` : ''}
+                        `}
                     </div>
-                    
+                </div>
+                
+                <!-- Collapsible Sections -->
+                <div class="inventory-section">
                     <div class="action-card" onclick="window.inventoryModule.togglePurchases()">
-                        <i class="fas fa-history"></i>
-                        <span>📜 MUA HÀNG NGÀY ${this.currentDateDisplay}</span>
+                        <i class="fas fa-receipt"></i>
+                        <span>MUA HÀNG NGÀY ${this.currentDateDisplay}</span>
                         <i class="fas fa-chevron-down" id="purchasesToggle"></i>
                     </div>
                     
@@ -148,44 +171,122 @@ async debugInventorySync() {
                     </div>
                     
                     <div class="action-card" onclick="window.inventoryModule.toggleServices()">
-                        <i class="fas fa-history"></i>
-                        <span>📝 DỊCH VỤ NGÀY ${this.currentDateDisplay}</span>
+                        <i class="fas fa-concierge-bell"></i>
+                        <span>DỊCH VỤ NGÀY ${this.currentDateDisplay}</span>
                         <i class="fas fa-chevron-down" id="servicesToggle"></i>
                     </div>
                     
                     <div id="servicesSection" class="collapsible-section" style="display: none;">
                         <!-- Services sẽ được render riêng -->
                     </div>
-                    
-                    <div class="action-card" onclick="window.inventoryModule.toggleStats()">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>📈 THỐNG KÊ XUẤT NHẬP</span>
-                        <i class="fas fa-chevron-down" id="statsToggle"></i>
-                    </div>
-                    
-                    <div id="statsSection" class="collapsible-section" style="display: none;">
-                        <!-- Thống kê sẽ được render riêng -->
-                    </div>
                 </div>
-            `;
+            </div>
+        `;
+        
+        // Update UI cho collapsible sections nếu có dữ liệu
+        const inventoryData = this.getInventoryForCurrentDate();
+        if (inventoryData.purchases.length > 0 || inventoryData.services.length > 0) {
+            // Hiển thị badge số lượng
+            const purchaseCard = document.querySelector('.action-card:first-child');
+            const serviceCard = document.querySelector('.action-card:last-child');
             
-        } catch (error) {
+            if (purchaseCard && inventoryData.purchases.length > 0) {
+                const purchaseBadge = document.createElement('span');
+                purchaseBadge.className = 'badge-count';
+                purchaseBadge.textContent = inventoryData.purchases.length;
+                purchaseBadge.style.cssText = `
+                    background: #10B981;
+                    color: white;
+                    font-size: 10px;
+                    padding: 2px 6px;
+                    border-radius: 10px;
+                    margin-left: 8px;
+                `;
+                purchaseCard.querySelector('span').appendChild(purchaseBadge);
+            }
+            
+            if (serviceCard && inventoryData.services.length > 0) {
+                const serviceBadge = document.createElement('span');
+                serviceBadge.className = 'badge-count';
+                serviceBadge.textContent = inventoryData.services.length;
+                serviceBadge.style.cssText = `
+                    background: #F59E0B;
+                    color: white;
+                    font-size: 10px;
+                    padding: 2px 6px;
+                    border-radius: 10px;
+                    margin-left: 8px;
+                `;
+                serviceCard.querySelector('span').appendChild(serviceBadge);
+            }
+        }
+        
+    } catch (error) {
         console.error('❌ Error rendering inventory:', error);
         mainContent.innerHTML = `
             <div class="error">
                 <i class="fas fa-exclamation-triangle"></i>
-                <p>Lỗi khi tải dữ liệu kho: ${error.message}</p>
-                <div style="margin-top: 10px; font-size: 12px; color: #666;">
-                    <p>Debug info:</p>
-                    <p>Products: ${window.dataManager.getInventoryProducts().length}</p>
-                    <p>Data loaded: ${window.dataManager.initialized ? 'Yes' : 'No'}</p>
-                </div>
+                <p>Lỗi khi tải dữ liệu kho</p>
                 <button onclick="window.inventoryModule.render()">Thử lại</button>
             </div>
         `;
     } finally {
         this.isLoading = false;
     }
+}
+
+// Thêm hàm showProductDetail
+showProductDetail(index) {
+    const products = window.dataManager.getInventoryProducts();
+    if (index >= products.length) return;
+    
+    const product = products[index];
+    
+    const modalContent = `
+        <div class="modal-header">
+            <h2><i class="fas fa-box"></i> ${product.name}</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="product-detail-summary">
+                <div class="detail-item">
+                    <i class="fas fa-balance-scale"></i>
+                    <div>
+                        <small>Tồn kho</small>
+                        <strong>${product.quantity} ${product.unit}</strong>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <div>
+                        <small>Giá trị</small>
+                        <strong>${(product.totalValue || 0).toLocaleString()} ₫</strong>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <div>
+                        <small>Cập nhật</small>
+                        <strong>${product.lastUpdated ? new Date(product.lastUpdated).toLocaleDateString('vi-VN') : 'N/A'}</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="btn-primary" onclick="window.inventoryModule.showProductHistory(${index})">
+                    <i class="fas fa-history"></i> LỊCH SỬ
+                </button>
+                <button class="btn-secondary" onclick="window.inventoryModule.editProduct(${index})">
+                    <i class="fas fa-edit"></i> CHỈNH SỬA
+                </button>
+                <button class="btn-outline" onclick="closeModal()">
+                    ĐÓNG
+                </button>
+            </div>
+        </div>
+    `;
+    
+    window.showModal(modalContent);
 }
 async forceSync() {
     try {
@@ -265,22 +366,7 @@ async debugFirebaseStructure() {
     }
 }
 
-    // **THAY ĐỔI NGÀY - CHỈ ĐỔI DỮ LIỆU TRONG BỘ NHỚ, KHÔNG GỌI API**
-    async changeDate() {
-        const dateInput = document.getElementById('inventoryDate');
-        const newDate = dateInput.value;
-        
-        if (newDate !== this.currentDate) {
-            this.currentDate = newDate;
-            
-            // Format display date
-            const [year, month, day] = newDate.split('-');
-            this.currentDateDisplay = `${day}/${month}/${year}`;
-            
-            // Render lại ngay lập tức với dữ liệu mới
-            await this.render();
-        }
-    }
+   
 
     // **HIỂN THỊ MODAL MUA HÀNG**
     showPurchaseModal() {
@@ -296,8 +382,6 @@ async debugFirebaseStructure() {
                     <label>Loại:</label>
                     <select id="purchaseType">
                         <option value="material">Nguyên liệu</option>
-                        <option value="goods">Hàng hóa</option>
-                        <option value="other">Khác</option>
                     </select>
                 </div>
                 
@@ -315,10 +399,13 @@ async debugFirebaseStructure() {
                         <label>Đơn vị:</label>
                         <select id="purchaseUnit">
                             <option value="kg">kg</option>
+                            <option value="hộp">hộp</option>
                             <option value="gói">gói</option>
                             <option value="lít">lít</option>
                             <option value="cái">cái</option>
                             <option value="thùng">thùng</option>
+                            <option value="bịch">bịch</option>
+                            <option value="bao">bao</option>
                         </select>
                     </div>
                 </div>
@@ -1077,7 +1164,7 @@ async deleteProduct(index) {
     
     const product = products[index];
     
-    // Tìm tất cả purchases (nhập hàng) có chứa sản phẩm này
+    // Tìm tất cả purchases (nhập hàng)
     const allPurchases = [];
     if (window.dataManager.data.inventory.purchases) {
         Object.entries(window.dataManager.data.inventory.purchases).forEach(([date, purchaseList]) => {
@@ -1087,7 +1174,7 @@ async deleteProduct(index) {
                         purchase.unit === product.unit) {
                         allPurchases.push({
                             ...purchase,
-                            date: date // thêm date từ key
+                            date: date
                         });
                     }
                 });
@@ -1095,7 +1182,7 @@ async deleteProduct(index) {
         });
     }
     
-    // Tìm tất cả exports (xuất hàng) từ báo cáo
+    // Tìm tất cả exports (xuất hàng)
     const allExports = [];
     const allReports = window.dataManager.getReports();
     
@@ -1119,118 +1206,147 @@ async deleteProduct(index) {
     allExports.sort((a, b) => new Date(b.date || b.timestamp) - new Date(a.date || b.timestamp));
     
     const modalContent = `
-        <div class="modal-header">
-            <h2><i class="fas fa-history"></i> LỊCH SỬ: ${product.name}</h2>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
-        </div>
-        <div class="modal-body product-history-modal">
-            <div class="product-summary">
-                <div class="summary-item">
+        <div class="product-history-modal">
+            <!-- Header -->
+            <div class="product-history-header">
+                <h2>
+                    <i class="fas fa-history"></i>
+                    LỊCH SỬ: ${product.name}
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                </h2>
+            </div>
+            
+            <!-- Summary -->
+            <div class="product-summary-compact">
+                <div class="summary-item-compact">
                     <i class="fas fa-box"></i>
-                    <div>
-                        <small>Tồn hiện tại</small>
-                        <strong>${product.quantity} ${product.unit}</strong>
-                    </div>
+                    <small>Tồn hiện tại</small>
+                    <strong>${product.quantity} ${product.unit}</strong>
                 </div>
-                <div class="summary-item">
+                <div class="summary-item-compact">
                     <i class="fas fa-money-bill-wave"></i>
-                    <div>
-                        <small>Giá trị</small>
-                        <strong>${(product.totalValue || 0).toLocaleString()} ₫</strong>
-                    </div>
+                    <small>Giá trị</small>
+                    <strong>${(product.totalValue || 0).toLocaleString()} ₫</strong>
                 </div>
-                <div class="summary-item">
+                <div class="summary-item-compact">
                     <i class="fas fa-calendar-alt"></i>
-                    <div>
-                        <small>Cập nhật</small>
-                        <strong>${product.lastUpdated ? new Date(product.lastUpdated).toLocaleDateString('vi-VN') : 'N/A'}</strong>
-                    </div>
+                    <small>Cập nhật</small>
+                    <strong>${product.lastUpdated ? new Date(product.lastUpdated).toLocaleDateString('vi-VN') : 'N/A'}</strong>
                 </div>
             </div>
             
-            <div class="history-tabs">
-                <button class="tab-btn active" onclick="window.inventoryModule.switchProductHistoryTab('import')">
-                    <i class="fas fa-download"></i> NHẬP HÀNG (${allPurchases.length})
+            <!-- Tabs -->
+            <div class="history-tabs-compact">
+                <button class="history-tab-btn active" onclick="window.inventoryModule.switchHistoryTab('import')">
+                    <i class="fas fa-download"></i> NHẬP (${allPurchases.length})
                 </button>
-                <button class="tab-btn" onclick="window.inventoryModule.switchProductHistoryTab('export')">
-                    <i class="fas fa-upload"></i> XUẤT HÀNG (${allExports.length})
+                <button class="history-tab-btn" onclick="window.inventoryModule.switchHistoryTab('export')">
+                    <i class="fas fa-upload"></i> XUẤT (${allExports.length})
                 </button>
             </div>
             
-            <div class="tab-content" id="importHistoryTab">
+            <!-- Import Tab -->
+            <div class="tab-content-compact" id="importTab">
                 <h3><i class="fas fa-download" style="color: #10B981;"></i> LỊCH SỬ NHẬP HÀNG</h3>
                 
                 ${allPurchases.length > 0 ? `
-                    <div class="history-header">
-                        <span>NGÀY</span>
-                        <span>SỐ LƯỢNG</span>
-                        <span>THÀNH TIỀN</span>
-                        <span>ĐƠN GIÁ</span>
+                    <div class="compact-history-table">
+                        <div class="compact-table-header">
+                            <span>NGÀY</span>
+                            <span>SỐ LƯỢNG</span>
+                            <span>THÀNH TIỀN</span>
+                            <span>ĐƠN GIÁ</span>
+                        </div>
+                        
+                        ${allPurchases.map(purchase => `
+                            <div class="compact-table-row">
+                                <span class="history-date-compact">${purchase.date || 'N/A'}</span>
+                                <span class="history-quantity">${purchase.quantity} ${purchase.unit}</span>
+                                <span class="history-amount-compact">${purchase.total.toLocaleString()} ₫</span>
+                                <span class="history-unit-price">${(purchase.unitPrice || purchase.total / purchase.quantity).toLocaleString()} ₫/${purchase.unit}</span>
+                            </div>
+                        `).join('')}
                     </div>
                     
-                    ${allPurchases.map(purchase => `
-                        <div class="history-item import-item">
-                            <span class="history-date">${purchase.date || 'N/A'}</span>
-                            <span class="history-detail">${purchase.quantity} ${purchase.unit}</span>
-                            <span class="history-amount">${purchase.total.toLocaleString()} ₫</span>
-                            <span class="history-unit">${(purchase.unitPrice || purchase.total / purchase.quantity).toLocaleString()} ₫/${purchase.unit}</span>
-                        </div>
-                    `).join('')}
-                    
-                    <div class="history-total">
-                        <strong>Tổng nhập:</strong>
+                    <div class="history-total-compact">
+                        <span>Tổng nhập:</span>
                         <span>${allPurchases.reduce((sum, p) => sum + p.quantity, 0)} ${product.unit}</span>
                         <span>${allPurchases.reduce((sum, p) => sum + p.total, 0).toLocaleString()} ₫</span>
                     </div>
                 ` : `
-                    <div class="empty-state">
+                    <div class="empty-state-compact">
                         <i class="fas fa-inbox"></i>
                         <p>Chưa có lịch sử nhập hàng</p>
                     </div>
                 `}
             </div>
             
-            <div class="tab-content" id="exportHistoryTab" style="display: none;">
+            <!-- Export Tab -->
+            <div class="tab-content-compact" id="exportTab" style="display: none;">
                 <h3><i class="fas fa-upload" style="color: #EF4444;"></i> LỊCH SỬ XUẤT HÀNG</h3>
                 
                 ${allExports.length > 0 ? `
-                    <div class="history-header">
-                        <span>NGÀY XUẤT</span>
-                        <span>SỐ LƯỢNG</span>
-                        <span>BÁO CÁO</span>
+                    <div class="export-history-compact">
+                        <div class="export-table-header">
+                            <span>NGÀY XUẤT</span>
+                            <span>SỐ LƯỢNG</span>
+                            <span>BÁO CÁO</span>
+                        </div>
+                        
+                        ${allExports.map(exportItem => `
+                            <div class="export-table-row">
+                                <span class="history-date-compact">${exportItem.date || 'N/A'}</span>
+                                <span class="history-quantity">${exportItem.quantity} ${exportItem.unit || product.unit}</span>
+                                <span>
+                                    <button class="btn-view-report" onclick="window.reportsModule.loadReport('${exportItem.reportDate}')">
+                                        <i class="fas fa-external-link-alt"></i> Xem
+                                    </button>
+                                </span>
+                            </div>
+                        `).join('')}
                     </div>
                     
-                    ${allExports.map(exportItem => `
-                        <div class="history-item export-item">
-                            <span class="history-date">${exportItem.date || 'N/A'}</span>
-                            <span class="history-detail">${exportItem.quantity} ${exportItem.unit || product.unit}</span>
-                            <span class="history-report">
-                                <button class="btn-small" onclick="window.reportsModule.loadReport('${exportItem.reportDate}')">
-                                    <i class="fas fa-external-link-alt"></i> Xem BC
-                                </button>
-                            </span>
-                        </div>
-                    `).join('')}
-                    
-                    <div class="history-total">
-                        <strong>Tổng xuất:</strong>
+                    <div class="history-total-compact" style="grid-template-columns: 1fr 0.8fr;">
+                        <span>Tổng xuất:</span>
                         <span>${allExports.reduce((sum, e) => sum + e.quantity, 0)} ${product.unit}</span>
                     </div>
                 ` : `
-                    <div class="empty-state">
+                    <div class="empty-state-compact">
                         <i class="fas fa-outbox"></i>
                         <p>Chưa có lịch sử xuất hàng</p>
                     </div>
                 `}
             </div>
             
-            <button class="btn-secondary" onclick="closeModal()">
-                <i class="fas fa-times"></i> ĐÓNG
-            </button>
+            <!-- Footer -->
+            <div class="history-footer-btn">
+                <button class="btn-close-compact" onclick="closeModal()">
+                    <i class="fas fa-times"></i> ĐÓNG
+                </button>
+            </div>
         </div>
     `;
     
     window.showModal(modalContent);
+}
+
+// Thêm hàm switch tab
+switchHistoryTab(tab) {
+    const importTab = document.getElementById('importTab');
+    const exportTab = document.getElementById('exportTab');
+    const tabButtons = document.querySelectorAll('.history-tab-btn');
+    
+    if (tab === 'import') {
+        importTab.style.display = 'block';
+        exportTab.style.display = 'none';
+        tabButtons[0].classList.add('active');
+        tabButtons[1].classList.remove('active');
+    } else {
+        importTab.style.display = 'none';
+        exportTab.style.display = 'block';
+        tabButtons[0].classList.remove('active');
+        tabButtons[1].classList.add('active');
+    }
 }
 
 // Thêm hàm chuyển tab
@@ -1267,10 +1383,6 @@ switchProductHistoryTab(tab) {
                     <input type="text" id="serviceName" placeholder="Tiền điện, vệ sinh...">
                 </div>
                 
-                <div class="form-group">
-                    <label>Ghi chú:</label>
-                    <textarea id="serviceNote" placeholder="Ghi chú thêm..." rows="2"></textarea>
-                </div>
                 
                 <div class="form-group">
                     <label>Số tiền:</label>

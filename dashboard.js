@@ -136,11 +136,7 @@ class DashboardModule {
             <div class="dashboard-container">
                 <div class="dashboard-header">
                     <h1><i class="fas fa-tachometer-alt"></i> TỔNG QUAN HỆ THỐNG</h1>
-                    <div class="header-actions">
-                        <button class="btn-small" onclick="window.dashboardModule.exportAll()">
-                            <i class="fas fa-file-export"></i> Xuất tất cả
-                        </button>
-                    </div>
+                    
                 </div>
                 
                 ${this.renderFilterSection()}
@@ -227,95 +223,323 @@ updateValue(elementId, value) {
         element.textContent = value;
     }
 }
-    // ========== FILTER SECTION ==========
-    renderFilterSection() {
-        return `
-            <div class="filter-section">
-                <div class="filter-header">
-                    <h3><i class="fas fa-filter"></i> BỘ LỌC THỐNG KÊ</h3>
-                    <span class="filter-info">
-                        <i class="fas fa-info-circle"></i>
-                        Lọc áp dụng cho toàn bộ thống kê bên dưới
-                    </span>
-                </div>
-                
-                <div class="quick-filters">
-                    <div class="filter-buttons">
-                        <button class="filter-btn ${this.selectedQuickFilter === 'today' ? 'active' : ''}" 
-                                onclick="window.dashboardModule.applyFilter('today')">
-                            <i class="fas fa-calendar-day"></i> Hôm nay
-                        </button>
-                        <button class="filter-btn ${this.selectedQuickFilter === 'yesterday' ? 'active' : ''}" 
-                                onclick="window.dashboardModule.applyFilter('yesterday')">
-                            <i class="fas fa-history"></i> Hôm qua
-                        </button>
-                        <button class="filter-btn ${this.selectedQuickFilter === 'last7' ? 'active' : ''}" 
-                                onclick="window.dashboardModule.applyFilter('last7')">
-                            <i class="fas fa-calendar-week"></i> 7 ngày
-                        </button>
-                        <button class="filter-btn ${this.selectedQuickFilter === 'last30' ? 'active' : ''}" 
-                                onclick="window.dashboardModule.applyFilter('last30')">
-                            <i class="fas fa-calendar-alt"></i> 30 ngày
-                        </button>
-                        <button class="filter-btn ${this.selectedQuickFilter === 'thisMonth' ? 'active' : ''}" 
-                                onclick="window.dashboardModule.applyFilter('thisMonth')">
-                            <i class="fas fa-calendar"></i> Tháng này
-                        </button>
-                        <button class="filter-btn ${this.selectedQuickFilter === 'lastMonth' ? 'active' : ''}" 
-                                onclick="window.dashboardModule.applyFilter('lastMonth')">
-                            <i class="fas fa-calendar-minus"></i> Tháng trước
-                        </button>
-                        <button class="filter-btn ${this.selectedQuickFilter === 'custom' ? 'active' : ''}" 
-                                onclick="window.dashboardModule.toggleCustomFilter()">
-                            <i class="fas fa-cog"></i> Tùy chỉnh
-                        </button>
-                    </div>
-                    
-                    <div id="customFilterSection" class="custom-filter" style="display: ${this.selectedQuickFilter === 'custom' ? 'block' : 'none'}">
-                        <div class="date-inputs">
-                            <div class="input-group">
-                                <label>Từ ngày:</label>
-                                <input type="date" id="customStartDate" 
-                                       value="${this.getInputDateValue(this.startDate)}">
-                            </div>
-                            <div class="input-group">
-                                <label>Đến ngày:</label>
-                                <input type="date" id="customEndDate" 
-                                       value="${this.getInputDateValue(this.endDate)}">
-                            </div>
-                            <button class="btn-small apply-btn" onclick="window.dashboardModule.applyCustomFilter()">
-                                <i class="fas fa-check"></i> Áp dụng
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="view-toggle">
-                        <span>Hiển thị:</span>
-                        <select id="viewModeSelect" onchange="window.dashboardModule.changeViewMode()">
-                            <option value="day" ${this.viewMode === 'day' ? 'selected' : ''}>Theo ngày</option>
-                            <option value="grouped" ${this.viewMode === 'grouped' ? 'selected' : ''}>Gộp chung</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="filter-stats">
-                    <span class="stat-item">
-                        <i class="fas fa-calendar"></i>
-                        Khoảng thời gian: <strong>${this.getDateRangeText()}</strong>
-                    </span>
-                    <span class="stat-item">
-                        <i class="fas fa-database"></i>
-                        Dữ liệu: <strong id="dataCount">Đang tải...</strong>
-                    </span>
-                    <button class="btn-small refresh-btn" onclick="window.dashboardModule.refreshData()">
-                        <i class="fas fa-sync-alt"></i> Làm mới
+
+// ========== FILTER SECTION ==========
+renderFilterSection() {
+    return `
+        <div class="filter-section-compact">
+            <div class="filter-header-compact">
+                <h3><i class="fas fa-filter"></i> BỘ LỌC THỐNG KÊ</h3>
+            </div>
+            
+            <!-- Quick Filters - Single line -->
+            <div class="quick-filters-compact">
+                <div class="filter-buttons-compact">
+                    <button class="filter-btn-compact ${this.selectedQuickFilter === 'today' ? 'active' : ''}" 
+                            onclick="window.dashboardModule.applyFilter('today')">
+                        <i class="fas fa-calendar-day"></i>
+                        <span>Hôm nay</span>
                     </button>
+                    <button class="filter-btn-compact ${this.selectedQuickFilter === 'yesterday' ? 'active' : ''}" 
+                            onclick="window.dashboardModule.applyFilter('yesterday')">
+                        <i class="fas fa-history"></i>
+                        <span>Hôm qua</span>
+                    </button>
+                    <button class="filter-btn-compact ${this.selectedQuickFilter === 'last7' ? 'active' : ''}" 
+                            onclick="window.dashboardModule.applyFilter('last7')">
+                        <i class="fas fa-calendar-week"></i>
+                        <span>7 ngày</span>
+                    </button>
+                    <button class="filter-btn-compact ${this.selectedQuickFilter === 'last30' ? 'active' : ''}" 
+                            onclick="window.dashboardModule.applyFilter('last30')">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>30 ngày</span>
+                    </button>
+                    <button class="filter-btn-compact ${this.selectedQuickFilter === 'custom' ? 'active' : ''}" 
+                            onclick="window.dashboardModule.toggleCustomFilter()">
+                        <i class="fas fa-cog"></i>
+                        <span>Tùy chỉnh</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Date Range - Single line -->
+            <div class="date-range-row">
+                <div class="date-range-label">
+                    <i class="fas fa-calendar"></i>
+                    <span>Khoảng thời gian:</span>
+                </div>
+                <div class="date-range-value">${this.getDateRangeText()}</div>
+            </div>
+            
+            <!-- Stats and Refresh - Single line -->
+            <div class="stats-row-compact">
+                <div class="data-stats">
+                    <i class="fas fa-database"></i>
+                    <span id="dataCount">Đang tải...</span>
+                </div>
+                <button class="refresh-btn-compact" onclick="window.dashboardModule.refreshData()">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>Làm mới</span>
+                </button>
+            </div>
+            
+            <!-- Custom Filter -->
+            <div id="customFilterSection" class="custom-filter-compact" style="display: ${this.selectedQuickFilter === 'custom' ? 'block' : 'none'}">
+                <div class="custom-date-inputs">
+                    <div class="custom-input-group">
+                        <label>Từ ngày:</label>
+                        <input type="date" id="customStartDate" 
+                               value="${this.getInputDateValue(this.startDate)}">
+                    </div>
+                    <div class="custom-input-group">
+                        <label>Đến ngày:</label>
+                        <input type="date" id="customEndDate" 
+                               value="${this.getInputDateValue(this.endDate)}">
+                    </div>
+                    <button class="apply-btn-compact" onclick="window.dashboardModule.applyCustomFilter()">
+                        <i class="fas fa-check"></i>
+                        <span>Áp dụng</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Thêm phương thức cập nhật stats
+updateDataStats(counts) {
+    const dataCountElement = document.getElementById('dataCount');
+    if (dataCountElement && counts) {
+        const { reports = 0, products = 0, employees = 0 } = counts;
+        dataCountElement.innerHTML = `
+            ${reports} báo cáo • ${products} sản phẩm • ${employees} nhân viên
+        `;
+    }
+}
+
+// Cập nhật hàm loadFilteredData để gọi updateDataStats
+async loadFilteredData() {
+    try {
+        console.log(`📥 Loading data for: ${this.startDate} - ${this.endDate}`);
+        
+        const dataCountElement = document.getElementById('dataCount');
+        if (dataCountElement) {
+            dataCountElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tải...';
+        }
+        
+        if (!window.dataManager || !window.dataManager.isReady()) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        const startDate = this.parseDisplayDate(this.startDate);
+        const endDate = this.parseDisplayDate(this.endDate);
+        
+        await this.loadAllData(startDate, endDate);
+        
+        // Cập nhật stats
+        if (this.filteredData) {
+            this.updateDataStats({
+                reports: this.filteredData.reports?.length || 0,
+                products: this.filteredData.inventory?.productCount || 0,
+                employees: this.filteredData.employees?.employeeCount || 0
+            });
+        }
+        
+    } catch (error) {
+        console.error('❌ Error loading filtered data:', error);
+        
+        const dataCountElement = document.getElementById('dataCount');
+        if (dataCountElement) {
+            dataCountElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Lỗi tải dữ liệu';
+        }
+        
+        this.filteredData = {
+            reports: [],
+            inventory: this.getDefaultInventoryStats(),
+            employees: this.getDefaultEmployeeStats()
+        };
+        
+        this.updateUI();
+    }
+}
+
+// Cập nhật hàm toggleCustomFilter
+toggleCustomFilter() {
+    if (this.selectedQuickFilter === 'custom') {
+        this.selectedQuickFilter = 'last7';
+        this.applyFilter('last7');
+    } else {
+        this.selectedQuickFilter = 'custom';
+        const customSection = document.getElementById('customFilterSection');
+        if (customSection) {
+            customSection.style.display = 'block';
+        }
+    }
+}
+    
+// ========== EMPLOYEE DETAIL VIEWS ==========
+
+renderEmployeeByDay(employees, type) {
+    console.log(`👥 Rendering employee by day for type: ${type}`);
+    
+    const { employeeCount, totalSalary, totalOffDays, totalOvertime, employees: employeeList } = employees;
+    
+    let html = '';
+    
+    if (type === 'employees' || type === 'all') {
+        html += `
+            <div class="detail-table">
+                <h4><i class="fas fa-user-friends"></i> DANH SÁCH NHÂN VIÊN</h4>
+                <div class="table-header">
+                    <div class="header-cell">TÊN</div>
+                    <div class="header-cell">CHỨC VỤ</div>
+                    <div class="header-cell">LƯƠNG CƠ BẢN</div>
+                    <div class="header-cell">THỰC LÃNH</div>
+                </div>
+                ${employeeList.map(employee => {
+                    const salary = window.employeesModule?.calculateEmployeeSalary(employee) || { 
+                        actual: employee.baseSalary || 0, 
+                        base: employee.baseSalary || 0 
+                    };
+                    return `
+                        <div class="table-row">
+                            <div class="table-cell">${employee.name || 'Không có tên'}</div>
+                            <div class="table-cell">${employee.position || 'Nhân viên'}</div>
+                            <div class="table-cell">${(employee.baseSalary || 0).toLocaleString()} ₫</div>
+                            <div class="table-cell">${salary.actual.toLocaleString()} ₫</div>
+                        </div>
+                    `;
+                }).join('')}
+                <div class="table-total">
+                    <div class="total-cell"></div>
+                    <div class="total-cell"><strong>Tổng:</strong></div>
+                    <div class="total-cell"><strong>${employeeList.reduce((sum, e) => sum + (e.baseSalary || 0), 0).toLocaleString()} ₫</strong></div>
+                    <div class="total-cell"><strong>${employeeList.reduce((sum, e) => {
+                        const salary = window.employeesModule?.calculateEmployeeSalary(e);
+                        return sum + (salary?.actual || 0);
+                    }, 0).toLocaleString()} ₫</strong></div>
                 </div>
             </div>
         `;
     }
     
-    // HÀM SỬA - RENDER FINANCE SECTION VỚI LABEL DOANH THU
+    if (type === 'salary' || type === 'all') {
+        const totalBaseSalary = employeeList.reduce((sum, e) => sum + (e.baseSalary || 0), 0);
+        const totalActualSalary = employeeList.reduce((sum, e) => {
+            const salary = window.employeesModule?.calculateEmployeeSalary(e);
+            return sum + (salary?.actual || 0);
+        }, 0);
+        const salaryDifference = totalActualSalary - totalBaseSalary;
+        
+        html += `
+            <div class="detail-table">
+                <h4><i class="fas fa-money-bill-wave"></i> TỔNG HỢP LƯƠNG</h4>
+                <div class="table-header">
+                    <div class="header-cell">CHỈ SỐ</div>
+                    <div class="header-cell">GIÁ TRỊ</div>
+                </div>
+                <div class="table-row">
+                    <div class="table-cell">Tổng lương cơ bản</div>
+                    <div class="table-cell">${totalBaseSalary.toLocaleString()} ₫</div>
+                </div>
+                <div class="table-row">
+                    <div class="table-cell">Tổng thực lãnh</div>
+                    <div class="table-cell">${totalActualSalary.toLocaleString()} ₫</div>
+                </div>
+                <div class="table-row">
+                    <div class="table-cell">Chênh lệch</div>
+                    <div class="table-cell ${salaryDifference >= 0 ? 'positive' : 'negative'}">
+                        ${salaryDifference >= 0 ? '+' : ''}${salaryDifference.toLocaleString()} ₫
+                    </div>
+                </div>
+                <div class="table-row">
+                    <div class="table-cell">Số nhân viên</div>
+                    <div class="table-cell">${employeeCount}</div>
+                </div>
+                <div class="table-row">
+                    <div class="table-cell">Lương trung bình</div>
+                    <div class="table-cell">${Math.round(totalActualSalary / Math.max(employeeCount, 1)).toLocaleString()} ₫</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (type === 'off' || type === 'all') {
+        html += `
+            <div class="detail-table">
+                <h4><i class="fas fa-calendar-times"></i> NGÀY OFF</h4>
+                <div class="table-header">
+                    <div class="header-cell">NHÂN VIÊN</div>
+                    <div class="header-cell">SỐ NGÀY OFF</div>
+                    <div class="header-cell">GIẢM LƯƠNG</div>
+                </div>
+                ${employeeList.map(employee => {
+                    const stats = window.employeesModule?.getWorkStatsSync(employee) || { off: 0 };
+                    const dailySalary = Math.round((employee.baseSalary || 0) / 30);
+                    const salaryDeduction = stats.off * dailySalary;
+                    
+                    return `
+                        <div class="table-row">
+                            <div class="table-cell">${employee.name || 'Không có tên'}</div>
+                            <div class="table-cell">${stats.off} ngày</div>
+                            <div class="table-cell">${salaryDeduction.toLocaleString()} ₫</div>
+                        </div>
+                    `;
+                }).join('')}
+                <div class="table-total">
+                    <div class="total-cell"><strong>Tổng:</strong></div>
+                    <div class="total-cell"><strong>${totalOffDays} ngày</strong></div>
+                    <div class="total-cell"><strong>${(totalOffDays * (Math.round(totalSalary / Math.max(employeeCount * 30, 1)))).toLocaleString()} ₫</strong></div>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (type === 'overtime' || type === 'all') {
+        html += `
+            <div class="detail-table">
+                <h4><i class="fas fa-clock"></i> TĂNG CA</h4>
+                <div class="table-header">
+                    <div class="header-cell">NHÂN VIÊN</div>
+                    <div class="header-cell">SỐ NGÀY TĂNG CA</div>
+                    <div class="header-cell">THÊM LƯƠNG</div>
+                </div>
+                ${employeeList.map(employee => {
+                    const stats = window.employeesModule?.getWorkStatsSync(employee) || { overtime: 0 };
+                    const dailySalary = Math.round((employee.baseSalary || 0) / 30);
+                    const overtimeBonus = stats.overtime * dailySalary * 2; // Tăng ca tính x2
+                    
+                    return `
+                        <div class="table-row">
+                            <div class="table-cell">${employee.name || 'Không có tên'}</div>
+                            <div class="table-cell">${stats.overtime} ngày</div>
+                            <div class="table-cell">${overtimeBonus.toLocaleString()} ₫</div>
+                        </div>
+                    `;
+                }).join('')}
+                <div class="table-total">
+                    <div class="total-cell"><strong>Tổng:</strong></div>
+                    <div class="total-cell"><strong>${totalOvertime} ngày</strong></div>
+                    <div class="total-cell"><strong>${(totalOvertime * (Math.round(totalSalary / Math.max(employeeCount * 30, 1)) * 2)).toLocaleString()} ₫</strong></div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Nếu không có dữ liệu
+    if (html === '') {
+        html = `
+            <div class="empty-state">
+                <i class="fas fa-users"></i>
+                <p>Không có dữ liệu nhân viên trong khoảng thời gian này</p>
+            </div>
+        `;
+    }
+    
+    return html;
+}
+
 // HÀM SỬA - RENDER FINANCE SECTION VỚI HIỂN THỊ DOANH THU ĐÚNG
 renderFinanceSection() {
     return `
@@ -1242,14 +1466,6 @@ getFilterLabel(filterId) {
     return labels[filterId] || filterId;
 }
     
-    toggleCustomFilter() {
-        if (this.selectedQuickFilter === 'custom') {
-            this.selectedQuickFilter = 'last7';
-        } else {
-            this.selectedQuickFilter = 'custom';
-        }
-        this.render();
-    }
     
     applyCustomFilter() {
         const startInput = document.getElementById('customStartDate');
@@ -1288,55 +1504,7 @@ getFilterLabel(filterId) {
     }
     
     // HÀM CẦN SỬA - THAY THẾ BẰNG LOGIC MỚI
-async loadFilteredData() {
-    try {
-        console.log(`📥 Loading data for: ${this.startDate} - ${this.endDate}`);
-        
-        // KIỂM TRA ELEMENT TỒN TẠI TRƯỚC KHI THAO TÁC
-        const dataCountElement = document.getElementById('dataCount');
-        if (!dataCountElement) {
-            console.warn('⚠️ Dashboard not rendered yet, skipping loadFilteredData');
-            return;
-        }
-        
-        // Hiển thị loading
-        dataCountElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...';
-        
-        // Đảm bảo DataManager đã sẵn sàng
-        if (!window.dataManager || !window.dataManager.isReady()) {
-            console.warn('⚠️ DataManager not ready, waiting...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        
-        // Chuyển đổi ngày
-        const startDate = this.parseDisplayDate(this.startDate);
-        const endDate = this.parseDisplayDate(this.endDate);
-        
-        // Load dữ liệu từ DataManager
-        await this.loadAllData(startDate, endDate);
-        
-        // Cập nhật UI filter
-        this.updateFilterUI();
-        
-    } catch (error) {
-        console.error('❌ Error loading filtered data:', error);
-        
-        // Hiển thị lỗi nhưng không crash
-        const dataCountElement = document.getElementById('dataCount');
-        if (dataCountElement) {
-            dataCountElement.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: #EF4444;"></i> Lỗi: ${error.message}`;
-        }
-        
-        // Vẫn hiển thị app với dữ liệu mặc định
-        this.filteredData = {
-            reports: [],
-            inventory: this.getDefaultInventoryStats(),
-            employees: this.getDefaultEmployeeStats()
-        };
-        
-        this.updateUI();
-    }
-}
+
 // HÀM MỚI - CẬP NHẬT UI FILTER
 updateFilterUI() {
     // Cập nhật active filter buttons
@@ -2889,6 +3057,693 @@ async loadAllData(startDate, endDate) {
         
         return null;
     }
+}
+// ========== EXPORT/PRINT INVENTORY ==========
+
+exportInventoryExcel() {
+    if (!this.filteredData) {
+        window.showToast('Vui lòng chọn bộ lọc trước', 'warning');
+        return;
+    }
+    
+    const { inventory } = this.filteredData;
+    
+    // Tạo dữ liệu tổng hợp
+    const allData = [];
+    
+    // 1. Mua hàng
+    if (inventory.purchaseList && inventory.purchaseList.length > 0) {
+        inventory.purchaseList.forEach(item => {
+            allData.push({
+                'Loại': 'Mua hàng',
+                'Ngày': item.date,
+                'Tên sản phẩm': item.name,
+                'Số lượng': item.quantity,
+                'Đơn vị': item.unit,
+                'Đơn giá': item.unitPrice || 0,
+                'Thành tiền': item.total || 0,
+                'Ghi chú': item.note || ''
+            });
+        });
+    }
+    
+    // 2. Dịch vụ
+    if (inventory.serviceList && inventory.serviceList.length > 0) {
+        inventory.serviceList.forEach(item => {
+            allData.push({
+                'Loại': 'Dịch vụ',
+                'Ngày': item.date,
+                'Tên dịch vụ': item.name,
+                'Số lượng': 1,
+                'Đơn vị': 'lần',
+                'Đơn giá': item.amount || 0,
+                'Thành tiền': item.amount || 0,
+                'Ghi chú': item.note || ''
+            });
+        });
+    }
+    
+    // 3. Tồn kho
+    if (inventory.products && inventory.products.length > 0) {
+        inventory.products.forEach(product => {
+            allData.push({
+                'Loại': 'Tồn kho',
+                'Ngày': 'Hiện tại',
+                'Tên sản phẩm': product.name,
+                'Số lượng': product.quantity,
+                'Đơn vị': product.unit,
+                'Đơn giá': product.unitPrice || 0,
+                'Thành tiền': product.totalValue || 0,
+                'Ghi chú': product.note || ''
+            });
+        });
+    }
+    
+    if (allData.length === 0) {
+        window.showToast('Không có dữ liệu để xuất', 'warning');
+        return;
+    }
+    
+    this.exportToExcel(allData, 'HangHoaDichVu', 'Báo cáo Hàng hóa & Dịch vụ');
+}
+
+printInventory() {
+    if (!this.filteredData) {
+        window.showToast('Vui lòng chọn bộ lọc trước', 'warning');
+        return;
+    }
+    
+    const { inventory } = this.filteredData;
+    
+    const data = [
+        ...(inventory.purchaseList || []),
+        ...(inventory.serviceList || []),
+        ...(inventory.products || []).map(p => ({
+            ...p,
+            name: `[Tồn kho] ${p.name}`,
+            date: 'Hiện tại',
+            amount: p.totalValue || 0
+        }))
+    ];
+    
+    if (data.length === 0) {
+        window.showToast('Không có dữ liệu để in', 'warning');
+        return;
+    }
+    
+    this.printSimpleReport(data, 'HÀNG HÓA & DỊCH VỤ', 'total', 'Thành tiền');
+}
+
+exportPurchasesExcel() {
+    if (!this.filteredData) {
+        window.showToast('Vui lòng chọn bộ lọc trước', 'warning');
+        return;
+    }
+    
+    const { inventory } = this.filteredData;
+    this.exportToExcel(inventory.purchaseList, 'MuaHang', 'Báo cáo mua hàng');
+}
+
+exportServicesExcel() {
+    if (!this.filteredData) {
+        window.showToast('Vui lòng chọn bộ lọc trước', 'warning');
+        return;
+    }
+    
+    const { inventory } = this.filteredData;
+    this.exportToExcel(inventory.serviceList, 'DichVu', 'Báo cáo dịch vụ');
+}
+
+// ========== PRINT INVENTORY DETAILS ==========
+
+printPurchases() {
+    if (!this.filteredData) {
+        window.showToast('Vui lòng chọn bộ lọc trước', 'warning');
+        return;
+    }
+    
+    const { inventory } = this.filteredData;
+    
+    if (!inventory.purchaseList || inventory.purchaseList.length === 0) {
+        window.showToast('Không có dữ liệu mua hàng để in', 'warning');
+        return;
+    }
+    
+    this.printSimpleReport(inventory.purchaseList, 'MUA HÀNG', 'total', 'Thành tiền');
+}
+
+printServices() {
+    if (!this.filteredData) {
+        window.showToast('Vui lòng chọn bộ lọc trước', 'warning');
+        return;
+    }
+    
+    const { inventory } = this.filteredData;
+    
+    if (!inventory.serviceList || inventory.serviceList.length === 0) {
+        window.showToast('Không có dữ liệu dịch vụ để in', 'warning');
+        return;
+    }
+    
+    this.printSimpleReport(inventory.serviceList, 'DỊCH VỤ', 'amount', 'Số tiền');
+}
+
+// ========== EXPORT/PRINT FINANCE ==========
+
+exportFinanceExcel() {
+    if (!this.filteredData) {
+        window.showToast('Vui lòng chọn bộ lọc trước', 'warning');
+        return;
+    }
+    
+    const { reports } = this.filteredData;
+    const financeStats = this.calculateFinanceStats(reports);
+    
+    // Tạo dữ liệu tổng hợp
+    const allData = [];
+    
+    // 1. Thực nhận
+    reports.forEach(report => {
+        if (report.actualReceived) {
+            allData.push({
+                'Loại': 'Thực nhận',
+                'Ngày': report.date,
+                'Nội dung': 'Thực nhận tiền mặt',
+                'Số tiền': report.actualReceived,
+                'Số dư đầu': report.openingBalance || 0,
+                'Số dư cuối': report.closingBalance || 0
+            });
+        }
+    });
+    
+    // 2. Chuyển khoản
+    reports.forEach(report => {
+        if (report.transfers) {
+            report.transfers.forEach(transfer => {
+                allData.push({
+                    'Loại': 'Chuyển khoản',
+                    'Ngày': report.date,
+                    'Nội dung': transfer.content || '',
+                    'Số tiền': transfer.amount || 0,
+                    'Số dư đầu': report.openingBalance || 0,
+                    'Số dư cuối': report.closingBalance || 0
+                });
+            });
+        }
+    });
+    
+    // 3. Chi phí
+    reports.forEach(report => {
+        if (report.expenses) {
+            report.expenses.forEach(expense => {
+                allData.push({
+                    'Loại': 'Chi phí',
+                    'Ngày': report.date,
+                    'Nội dung': expense.name || '',
+                    'Số tiền': expense.amount || 0,
+                    'Số dư đầu': report.openingBalance || 0,
+                    'Số dư cuối': report.closingBalance || 0
+                });
+            });
+        }
+    });
+    
+    // 4. Tổng hợp
+    allData.push({
+        'Loại': 'TỔNG HỢP',
+        'Ngày': '',
+        'Nội dung': 'Tổng thực nhận',
+        'Số tiền': financeStats.totalActual,
+        'Số dư đầu': '',
+        'Số dư cuối': ''
+    });
+    
+    allData.push({
+        'Loại': 'TỔNG HỢP',
+        'Ngày': '',
+        'Nội dung': 'Tổng chuyển khoản',
+        'Số tiền': financeStats.totalTransfers,
+        'Số dư đầu': '',
+        'Số dư cuối': ''
+    });
+    
+    allData.push({
+        'Loại': 'TỔNG HỢP',
+        'Ngày': '',
+        'Nội dung': 'Tổng chi phí',
+        'Số tiền': financeStats.totalExpenses,
+        'Số dư đầu': '',
+        'Số dư cuối': ''
+    });
+    
+    allData.push({
+        'Loại': 'TỔNG HỢP',
+        'Ngày': '',
+        'Nội dung': 'Tổng doanh thu',
+        'Số tiền': financeStats.totalRevenue,
+        'Số dư đầu': '',
+        'Số dư cuối': ''
+    });
+    
+    if (allData.length === 0) {
+        window.showToast('Không có dữ liệu để xuất', 'warning');
+        return;
+    }
+    
+    this.exportToExcel(allData, 'TaiChinh', 'Báo cáo Tài chính');
+}
+
+printFinance() {
+    if (!this.filteredData) {
+        window.showToast('Vui lòng chọn bộ lọc trước', 'warning');
+        return;
+    }
+    
+    const { reports } = this.filteredData;
+    
+    if (reports.length === 0) {
+        window.showToast('Không có dữ liệu tài chính để in', 'warning');
+        return;
+    }
+    
+    // Tạo dữ liệu in
+    const printData = [];
+    
+    reports.forEach(report => {
+        // Thêm thực nhận
+        if (report.actualReceived) {
+            printData.push({
+                date: report.date,
+                name: 'Thực nhận tiền mặt',
+                amount: report.actualReceived
+            });
+        }
+        
+        // Thêm chuyển khoản
+        if (report.transfers) {
+            report.transfers.forEach(transfer => {
+                printData.push({
+                    date: report.date,
+                    name: `Chuyển khoản: ${transfer.content || ''}`,
+                    amount: transfer.amount || 0
+                });
+            });
+        }
+        
+        // Thêm chi phí
+        if (report.expenses) {
+            report.expenses.forEach(expense => {
+                printData.push({
+                    date: report.date,
+                    name: `Chi phí: ${expense.name || ''}`,
+                    amount: expense.amount || 0
+                });
+            });
+        }
+    });
+    
+    if (printData.length === 0) {
+        window.showToast('Không có dữ liệu để in', 'warning');
+        return;
+    }
+    
+    this.printSimpleReport(printData, 'TÀI CHÍNH', 'amount', 'Số tiền');
+}
+
+// ========== EXPORT CHI TIẾT ==========
+
+exportAll() {
+    if (!this.filteredData) {
+        window.showToast('Vui lòng chọn bộ lọc trước', 'warning');
+        return;
+    }
+    
+    // Tạo workbook với nhiều sheet
+    const wb = {
+        SheetNames: ['TaiChinh', 'HangHoa', 'NhanSu'],
+        Sheets: {}
+    };
+    
+    const { reports, inventory, employees } = this.filteredData;
+    const financeStats = this.calculateFinanceStats(reports);
+    
+    // Sheet 1: Tài chính
+    const financeData = [
+        ['BÁO CÁO TÀI CHÍNH'],
+        [`Khoảng thời gian: ${this.getDateRangeText()}`],
+        [`Ngày xuất: ${new Date().toLocaleString('vi-VN')}`],
+        [],
+        ['Chỉ số', 'Giá trị'],
+        ['Tổng thực nhận', financeStats.totalActual],
+        ['Tổng chuyển khoản', financeStats.totalTransfers],
+        ['Tổng chi phí', financeStats.totalExpenses],
+        ['Tổng doanh thu', financeStats.totalRevenue],
+        [],
+        ['Chi tiết theo ngày'],
+        ['Ngày', 'Thực nhận', 'Chuyển khoản', 'Chi phí']
+    ];
+    
+    reports.forEach(report => {
+        const transfersTotal = report.transfers ? 
+            report.transfers.reduce((sum, t) => sum + (t.amount || 0), 0) : 0;
+        const expensesTotal = report.expenses ? 
+            report.expenses.reduce((sum, e) => sum + (e.amount || 0), 0) : 0;
+        
+        financeData.push([
+            report.date,
+            report.actualReceived || 0,
+            transfersTotal,
+            expensesTotal
+        ]);
+    });
+    
+    // Tạo file ZIP với cả 3 sheet
+    this.createExcelWithMultipleSheets(wb, 'BaoCaoToanBo', 'Báo cáo tổng hợp');
+}
+
+createExcelWithMultipleSheets(wb, filename, title) {
+    try {
+        // Sử dụng SheetJS nếu có, hoặc fallback
+        if (window.XLSX) {
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+            
+            const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' });
+            const url = window.URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            link.click();
+            
+            window.URL.revokeObjectURL(url);
+            
+            window.showToast(`✅ Đã xuất file ${filename}.xlsx`, 'success');
+        } else {
+            // Fallback: Xuất CSV đơn giản
+            this.exportToExcel([], filename, title);
+        }
+    } catch (error) {
+        console.error('Error creating Excel file:', error);
+        window.showToast('Lỗi khi xuất file', 'error');
+    }
+}
+
+async s2ab(s) {
+    const buf = new ArrayBuffer(s.length);
+    const view = new Uint8Array(buf);
+    for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+    return buf;
+}
+
+// ========== EXPORT/PRINT EMPLOYEE ==========
+
+exportEmployeeExcel() {
+    if (!this.filteredData) {
+        window.showToast('Vui lòng chọn bộ lọc trước', 'warning');
+        return;
+    }
+    
+    const { employees } = this.filteredData;
+    
+    const allData = [];
+    
+    // Chi tiết từng nhân viên
+    employees.employees.forEach(employee => {
+        const stats = window.employeesModule?.getWorkStatsSync(employee) || { off: 0, overtime: 0 };
+        const salary = window.employeesModule?.calculateEmployeeSalary(employee) || { 
+            actual: 0, 
+            base: 0, 
+            off: 0, 
+            overtime: 0 
+        };
+        
+        allData.push({
+            'Mã NV': employee.id,
+            'Tên nhân viên': employee.name,
+            'Chức vụ': employee.position || 'Nhân viên',
+            'Số điện thoại': employee.phone || '',
+            'Lương cơ bản': employee.baseSalary || 0,
+            'Ngày OFF': stats.off,
+            'Ngày tăng ca': stats.overtime,
+            'Lương thực nhận': salary.actual,
+            'Chênh lệch': salary.actual - (employee.baseSalary || 0),
+            'Tháng tính lương': this.currentMonth
+        });
+    });
+    
+    // Tổng hợp
+    allData.push({});
+    allData.push({
+        'Tên nhân viên': 'TỔNG HỢP',
+        'Lương cơ bản': employees.employees.reduce((sum, e) => sum + (e.baseSalary || 0), 0),
+        'Ngày OFF': employees.totalOffDays,
+        'Ngày tăng ca': employees.totalOvertime,
+        'Lương thực nhận': employees.totalSalary
+    });
+    
+    if (allData.length === 0) {
+        window.showToast('Không có dữ liệu nhân sự để xuất', 'warning');
+        return;
+    }
+    
+    this.exportToExcel(allData, 'NhanSu', 'Báo cáo Nhân sự');
+}
+
+printEmployee() {
+    if (!this.filteredData) {
+        window.showToast('Vui lòng chọn bộ lọc trước', 'warning');
+        return;
+    }
+    
+    const { employees } = this.filteredData;
+    
+    if (!employees.employees || employees.employees.length === 0) {
+        window.showToast('Không có dữ liệu nhân sự để in', 'warning');
+        return;
+    }
+    
+    // Tạo dữ liệu in
+    const printData = employees.employees.map(employee => {
+        const stats = window.employeesModule?.getWorkStatsSync(employee) || { off: 0, overtime: 0 };
+        const salary = window.employeesModule?.calculateEmployeeSalary(employee) || { 
+            actual: 0, 
+            base: 0 
+        };
+        
+        return {
+            date: this.currentMonth,
+            name: employee.name,
+            content: `Lương: ${salary.actual.toLocaleString()} ₫ | OFF: ${stats.off} ngày | Tăng ca: ${stats.overtime} ngày`,
+            amount: salary.actual
+        };
+    });
+    
+    this.printSimpleReport(printData, 'NHÂN SỰ', 'amount', 'Lương thực nhận');
+}
+
+// ========== NHÓM VÀ PHÂN TÍCH NHÂN SỰ ==========
+
+renderEmployeeGrouped(employees, type) {
+    const { employeeCount, totalSalary, totalOffDays, totalOvertime, employees: employeeList } = employees;
+    
+    let html = '';
+    
+    if (type === 'employees' || type === 'all') {
+        html += `
+            <div class="grouped-section">
+                <h4><i class="fas fa-user-friends"></i> DANH SÁCH NHÂN VIÊN (${employeeCount} người)</h4>
+                <div class="grouped-list">
+                    ${employeeList.map(employee => {
+                        const stats = window.employeesModule?.getWorkStatsSync(employee) || { off: 0, overtime: 0 };
+                        const salary = window.employeesModule?.calculateEmployeeSalary(employee) || { actual: 0, base: 0 };
+                        
+                        return `
+                            <div class="list-item clickable" onclick="window.employeesModule.showEmployeeDetail(${employeeList.indexOf(employee)})">
+                                <div class="item-header">
+                                    <span class="item-name"><strong>${employee.name}</strong></span>
+                                    <span class="item-amount">${salary.actual.toLocaleString()} ₫</span>
+                                </div>
+                                <div class="item-body">
+                                    <span class="item-detail">${employee.position || 'Nhân viên'}</span>
+                                    <span class="item-stats">
+                                        <span class="badge-off">OFF: ${stats.off}</span>
+                                        <span class="badge-overtime">Tăng ca: ${stats.overtime}</span>
+                                    </span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (type === 'salary' || type === 'all') {
+        // Tính toán phân bố lương
+        const avgSalary = employeeCount > 0 ? Math.round(totalSalary / employeeCount) : 0;
+        const maxSalary = employeeList.length > 0 ? 
+            Math.max(...employeeList.map(e => {
+                const salary = window.employeesModule?.calculateEmployeeSalary(e);
+                return salary?.actual || 0;
+            })) : 0;
+        const minSalary = employeeList.length > 0 ? 
+            Math.min(...employeeList.map(e => {
+                const salary = window.employeesModule?.calculateEmployeeSalary(e);
+                return salary?.actual || 0;
+            })) : 0;
+        
+        html += `
+            <div class="grouped-section">
+                <h4><i class="fas fa-money-bill-wave"></i> PHÂN TÍCH LƯƠNG</h4>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Tổng lương tháng</div>
+                        <div class="stat-value">${totalSalary.toLocaleString()} ₫</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Lương trung bình</div>
+                        <div class="stat-value">${avgSalary.toLocaleString()} ₫</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Lương cao nhất</div>
+                        <div class="stat-value">${maxSalary.toLocaleString()} ₫</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Lương thấp nhất</div>
+                        <div class="stat-value">${minSalary.toLocaleString()} ₫</div>
+                    </div>
+                </div>
+                
+                <div class="salary-breakdown">
+                    <h5>Phân bố lương theo nhân viên</h5>
+                    <div class="breakdown-list">
+                        ${employeeList.map(employee => {
+                            const salary = window.employeesModule?.calculateEmployeeSalary(employee);
+                            const actualSalary = salary?.actual || 0;
+                            const percentage = totalSalary > 0 ? Math.round((actualSalary / totalSalary) * 100) : 0;
+                            
+                            return `
+                                <div class="breakdown-item">
+                                    <div class="breakdown-name">${employee.name}</div>
+                                    <div class="breakdown-bar">
+                                        <div class="bar-fill" style="width: ${percentage}%"></div>
+                                    </div>
+                                    <div class="breakdown-value">
+                                        ${actualSalary.toLocaleString()} ₫ (${percentage}%)
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (type === 'off' || type === 'all') {
+        html += `
+            <div class="grouped-section">
+                <h4><i class="fas fa-calendar-times"></i> PHÂN TÍCH NGÀY OFF</h4>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Tổng ngày OFF</div>
+                        <div class="stat-value">${totalOffDays}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">OFF trung bình/NV</div>
+                        <div class="stat-value">${employeeCount > 0 ? (totalOffDays / employeeCount).toFixed(1) : 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Tổng giảm lương</div>
+                        <div class="stat-value">${(totalOffDays * (Math.round(totalSalary / Math.max(employeeCount * 30, 1)))).toLocaleString()} ₫</div>
+                    </div>
+                </div>
+                
+                <div class="off-chart">
+                    <h5>Top nhân viên có nhiều ngày OFF</h5>
+                    <div class="chart-list">
+                        ${employeeList
+                            .map(employee => {
+                                const stats = window.employeesModule?.getWorkStatsSync(employee);
+                                return {
+                                    name: employee.name,
+                                    offDays: stats?.off || 0
+                                };
+                            })
+                            .sort((a, b) => b.offDays - a.offDays)
+                            .slice(0, 5)
+                            .map(item => `
+                                <div class="chart-item">
+                                    <div class="chart-name">${item.name}</div>
+                                    <div class="chart-bar">
+                                        <div class="bar-fill" style="width: ${(item.offDays / Math.max(totalOffDays, 1)) * 100}%"></div>
+                                    </div>
+                                    <div class="chart-value">${item.offDays} ngày</div>
+                                </div>
+                            `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (type === 'overtime' || type === 'all') {
+        html += `
+            <div class="grouped-section">
+                <h4><i class="fas fa-clock"></i> PHÂN TÍCH TĂNG CA</h4>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Tổng ngày tăng ca</div>
+                        <div class="stat-value">${totalOvertime}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Tăng ca trung bình/NV</div>
+                        <div class="stat-value">${employeeCount > 0 ? (totalOvertime / employeeCount).toFixed(1) : 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Tổng thêm lương</div>
+                        <div class="stat-value">${(totalOvertime * (Math.round(totalSalary / Math.max(employeeCount * 30, 1)) * 2)).toLocaleString()} ₫</div>
+                    </div>
+                </div>
+                
+                <div class="overtime-chart">
+                    <h5>Top nhân viên tăng ca nhiều nhất</h5>
+                    <div class="chart-list">
+                        ${employeeList
+                            .map(employee => {
+                                const stats = window.employeesModule?.getWorkStatsSync(employee);
+                                return {
+                                    name: employee.name,
+                                    overtime: stats?.overtime || 0
+                                };
+                            })
+                            .sort((a, b) => b.overtime - a.overtime)
+                            .slice(0, 5)
+                            .map(item => `
+                                <div class="chart-item">
+                                    <div class="chart-name">${item.name}</div>
+                                    <div class="chart-bar">
+                                        <div class="bar-fill" style="width: ${(item.overtime / Math.max(totalOvertime, 1)) * 100}%"></div>
+                                    </div>
+                                    <div class="chart-value">${item.overtime} ngày</div>
+                                </div>
+                            `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (html === '') {
+        html = `
+            <div class="empty-state">
+                <i class="fas fa-users"></i>
+                <p>Không có dữ liệu nhân sự</p>
+            </div>
+        `;
+    }
+    
+    return html;
 }
 }
 

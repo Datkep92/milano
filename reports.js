@@ -146,18 +146,29 @@ formatDateForFirebase(dateStr) {
         if (!this.currentReport || this.currentReport.date !== this.currentDate) {
             this.currentReport = await this.loadReportForDate(this.currentDateKey);
             
-            if (this.currentReport) {
-                console.log('📊 Current report loaded:', this.currentReport);
-                this.expenses = this.currentReport.expenses || [];
-                this.transfers = this.currentReport.transfers || [];
-                this.inventoryExports = this.currentReport.inventoryExports || [];
-            } else {
-                // Reset khi không có report
-                this.expenses = [];
-                this.transfers = [];
-                this.inventoryExports = [];
-                this.currentReport = null;
-            }
+            // reports.js (sau sửa)
+if (this.currentReport) {
+    console.log('📊 Current report loaded:', this.currentReport);
+    this.expenses = this.currentReport.expenses || [];
+    this.transfers = this.currentReport.transfers || [];
+    // SỬA: Đảm bảo danh sách chờ xuất (this.inventoryExports) luôn được reset khi tải báo cáo đã lưu,
+    // hoặc giữ lại dữ liệu đang có (để tránh mất dữ liệu nếu người dùng đã thêm nhưng chưa lưu).
+    // Vì resetAfterSave() đã gọi sau khi lưu, nên ở đây chỉ cần đảm bảo nó không bị gán lại bằng savedExports
+    
+    // Nếu bạn muốn luôn bắt đầu ngày mới với danh sách chờ rỗng:
+    this.inventoryExports = [];
+    
+    // Hoặc giữ nguyên giá trị pending (nếu có logic phức tạp hơn):
+    // Không gán gì cả, vì `inventoryExports` đã được reset trong `resetAfterSave()` sau lần lưu trước.
+    // Nếu bạn đang tải một báo cáo đã lưu, bạn chỉ muốn hiển thị Saved Exports, KHÔNG phải Pending Exports.
+
+} else {
+    // Reset khi không có report
+    this.expenses = [];
+    this.transfers = [];
+    this.inventoryExports = [];
+    this.currentReport = null;
+}
         }
         
         // Lấy số dư đầu kỳ - SỬA QUAN TRỌNG
@@ -182,17 +193,13 @@ formatDateForFirebase(dateStr) {
             : 'Chưa có hàng xuất';
         mainContent.innerHTML = `
             <div class="report-container">
-                <div class="report-header">
-                    <h3><i class="fas fa-chart-line"></i> BÁO CÁO NGÀY ${this.currentDate}</h3>
-                    <div class="opening-balance">
+                <div class="report-header">                    
+                        BÁO CÁO NGÀY <input type="date" id="reportDate" value="${this.getInputDateValue()}"
+                               onchange="window.reportsModule.changeDate()">                   
+                </div>
+                <div class="opening-balance">
                         <i class="fas fa-wallet"></i> Dư đầu kỳ: <strong>${openingBalance.toLocaleString()} ₫</strong>
                     </div>
-                    <div class="date-picker">
-                        <input type="date" id="reportDate" value="${this.getInputDateValue()}"
-                               onchange="window.reportsModule.changeDate()">
-                    </div>
-                </div>
-                
                 <div class="quick-stats">
                     <div class="stat-card" onclick="window.reportsModule.showExpensesModal()">
                         <i class="fas fa-credit-card"></i>
@@ -207,39 +214,35 @@ formatDateForFirebase(dateStr) {
                     </div>
                 </div>
                 
-                <div class="report-card">
-                    <label>THỰC NHẬN (tiền mặt) <small class="required">*</small></label>
-                    <div class="input-group">
-                        <input type="text" id="actualReceived" 
-                               value="${actualReceived.toLocaleString()}" 
-                               oninput="window.reportsModule.formatCurrency(this); window.reportsModule.calculate()" 
-                               placeholder="0" required>
-                        <span class="currency">₫</span>
-                    </div>
-                    <small class="input-help">Số tiền mặt thực tế nhận được</small>
-                </div>
-                
-                <div class="report-card">
-                    <label>SỐ DƯ CUỐI KỲ <small class="required">*</small></label>
-                    <div class="input-group">
-                        <input type="text" id="closingBalance" 
-                               value="${closingBalance.toLocaleString()}" 
-                               oninput="window.reportsModule.formatCurrency(this); window.reportsModule.calculate()" 
-                               placeholder="0" required>
-                        <span class="currency">₫</span>
-                    </div>
-                    <small class="input-help">Số tiền còn lại sau ngày</small>
-                </div>
-                
-                <!-- Doanh thu tính toán -->
-                <div class="revenue-display">
-                    <div class="revenue-label">
-                        <i class="fas fa-chart-line"></i>
-                        <span>DOANH THU TÍNH TOÁN</span>
-                    </div>
-                    <div class="revenue-value" id="revenue">${this.calculatedRevenue.toLocaleString()} ₫</div>
-                    
-                </div>
+                <div class="report-card compact">
+    <label>THỰC NHẬN (Giao quỹ) <small class="required">*</small></label>
+    <div class="input-group">
+        <input type="text" id="actualReceived" 
+               value="${actualReceived > 0 ? actualReceived.toLocaleString() : ''}" 
+               oninput="window.reportsModule.formatCurrency(this); window.reportsModule.calculate()" 
+               placeholder="Nhập số tiền" required>
+        <span class="currency">₫</span>
+    </div>
+</div>
+
+<div class="report-card compact">
+    <label>SỐ DƯ CUỐI KỲ <small class="required">*</small></label>
+    <div class="input-group">
+        <input type="text" id="closingBalance" 
+               value="${closingBalance > 0 ? closingBalance.toLocaleString() : ''}" 
+               oninput="window.reportsModule.formatCurrency(this); window.reportsModule.calculate()" 
+               placeholder="Nhập số dư" required>
+        <span class="currency">₫</span>
+    </div>
+</div>
+                         <div class="action-buttons">
+                    <button class="btn-primary" onclick="window.reportsModule.saveReport()" id="saveButton">
+                        <i class="fas fa-save"></i> 💾 LƯU BÁO CÁO
+                    </button>
+                    <button class="btn-primary" onclick="window.reportsModule.sendToZalo()">
+                        <i class="fas fa-paper-plane"></i> 📱 GỬI ZALO
+                    </button>
+                </div>       
                 <div class="export-line">
                     <i class="fas fa-box" style="color: #4CAF50; margin-right: 5px;"></i>
                     <strong>Hàng xuất:</strong> ${exportText}
@@ -266,14 +269,7 @@ formatDateForFirebase(dateStr) {
                     <!-- Lịch sử sẽ được render riêng -->
                 </div>
                 
-                <div class="action-buttons">
-                    <button class="btn-primary" onclick="window.reportsModule.saveReport()" id="saveButton">
-                        <i class="fas fa-save"></i> 💾 LƯU BÁO CÁO
-                    </button>
-                    <button class="btn-secondary" onclick="window.reportsModule.sendToZalo()">
-                        <i class="fas fa-paper-plane"></i> 📱 GỬI ZALO
-                    </button>
-                </div>
+                
             </div>
         `;
         
@@ -936,159 +932,234 @@ selectTransferSuggestion(suggestion) {
             toggleIcon.className = 'fas fa-chevron-down';
         }
     }
+// SỬA: Hàm toggle export - click vào bất kỳ đâu trong hàng đều tăng (trừ nút giảm)
+toggleExport(index) {
+    const products = window.dataManager.getInventoryProducts();
+    if (index >= products.length) return;
     
-    renderInventorySection() {
-        const section = document.getElementById('inventorySection');
-        if (!section) return;
+    const product = products[index];
+    const exportItemIndex = this.inventoryExports.findIndex(item => item.productId === product.id);
+    
+    if (exportItemIndex >= 0) {
+        // Nếu đã có, tăng thêm 1
+        const currentQty = this.inventoryExports[exportItemIndex].quantity;
         
-        const products = window.dataManager.getInventoryProducts();
+        if (currentQty < product.quantity) {
+            this.inventoryExports[exportItemIndex].quantity++;
+            window.showToast(`${product.name}: ${currentQty + 1}`, 'success');
+        } else {
+            window.showToast(`Không đủ tồn kho cho ${product.name}`, 'warning');
+        }
+    } else {
+        // Nếu chưa có, thêm mới với số lượng 1
+        const now = new Date();
+        const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
         
-        if (products.length === 0) {
-            section.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-box-open"></i>
-                    <p>Chưa có sản phẩm trong kho</p>
-                    <button class="btn-secondary" onclick="showTab('inventory')">
-                        <i class="fas fa-plus"></i> Thêm sản phẩm
-                    </button>
-                </div>
-            `;
-            return;
+        this.inventoryExports.push({
+            id: Date.now(),
+            productId: product.id,
+            product: product.name,
+            quantity: 1,
+            unit: product.unit,
+            time: time,
+            date: this.currentDateKey
+        });
+        
+        window.showToast(`Đã thêm ${product.name}`, 'success');
+    }
+    
+    this.updateInventoryUI();
+    this.renderInventorySection(); // Refresh UI
+}
+
+// HÀM MỚI: Xử lý click giảm với event.stopPropagation
+decreaseExport(index, event) {
+    if (event) {
+        event.stopPropagation(); // Ngăn không cho event bubble lên
+    }
+    
+    const products = window.dataManager.getInventoryProducts();
+    if (index >= products.length) return;
+    
+    const product = products[index];
+    const exportItemIndex = this.inventoryExports.findIndex(item => item.productId === product.id);
+    
+    if (exportItemIndex >= 0) {
+        const currentQty = this.inventoryExports[exportItemIndex].quantity;
+        
+        if (currentQty > 1) {
+            this.inventoryExports[exportItemIndex].quantity--;
+            window.showToast(`${product.name}: ${currentQty - 1}`, 'info');
+        } else {
+            // Nếu số lượng là 1, xóa khỏi danh sách
+            this.inventoryExports.splice(exportItemIndex, 1);
+            window.showToast(`Đã xóa ${product.name}`, 'success');
         }
         
+        this.updateInventoryUI();
+        this.renderInventorySection();
+    }
+}
+
+// SỬA: Hàm tăng số lượng khi click vào hàng
+increaseExportOnRow(index) {
+    const products = window.dataManager.getInventoryProducts();
+    if (index >= products.length) return;
+    
+    const product = products[index];
+    const exportItemIndex = this.inventoryExports.findIndex(item => item.productId === product.id);
+    
+    if (exportItemIndex >= 0) {
+        // Nếu đã có, tăng thêm 1
+        const currentQty = this.inventoryExports[exportItemIndex].quantity;
+        
+        if (currentQty < product.quantity) {
+            this.inventoryExports[exportItemIndex].quantity++;
+            window.showToast(`${product.name}: ${currentQty + 1}`, 'success');
+        } else {
+            window.showToast(`Không đủ tồn kho cho ${product.name}`, 'warning');
+        }
+    } else {
+        // Nếu chưa có, thêm mới với số lượng 1
+        const now = new Date();
+        const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        
+        this.inventoryExports.push({
+            id: Date.now(),
+            productId: product.id,
+            product: product.name,
+            quantity: 1,
+            unit: product.unit,
+            time: time,
+            date: this.currentDateKey
+        });
+        
+        window.showToast(`Đã thêm ${product.name}`, 'success');
+    }
+    
+    this.updateInventoryUI();
+    this.renderInventorySection(); // Refresh UI
+}
+
+renderInventorySection() {
+    const section = document.getElementById('inventorySection');
+    if (!section) return;
+    
+    const products = window.dataManager.getInventoryProducts();
+    
+    if (products.length === 0) {
         section.innerHTML = `
-            <div class="inventory-controls">
-                <h4>Chọn số lượng ${this.currentDate}:</h4>
-                <div class="products-list">
+            <div class="empty-state">
+                <i class="fas fa-box-open"></i>
+                <p>Chưa có sản phẩm trong kho</p>
+                <button class="btn-secondary" onclick="showTab('inventory')">
+                    <i class="fas fa-plus"></i> Thêm sản phẩm
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    section.innerHTML = `
+        
+            
+            <div class="inventory-table-simple">
+                <div class="table-header-simple">
+                    <div class="header-cell name">TÊN HÀNG HÓA</div>
+                    <div class="header-cell stock">TỒN</div>
+                    <div class="header-cell export">XUẤT</div>
+                    <div class="header-cell action">GIẢM</div>
+                </div>
+                
+                <div class="table-body-simple">
                     ${products.map((product, index) => {
                         const exportItem = this.inventoryExports.find(item => item.productId === product.id);
                         const exportQty = exportItem ? exportItem.quantity : 0;
                         
                         return `
-                            <div class="product-item">
-                                <div class="product-info">
-                                    <strong>${product.name}</strong>
-                                    <small>${product.unit} - Tồn: ${product.quantity}</small>
+                            <div class="table-row-simple clickable-row" 
+                                 onclick="window.reportsModule.toggleExport(${index})"
+                                 data-index="${index}">
+                                
+                                <div class="cell name">
+                                    <span class="product-name">${product.name}</span>
+                                    <small class="product-unit">${product.unit}</small>
                                 </div>
-                                <div class="product-quantity">
-                                    <button class="qty-btn" onclick="window.reportsModule.decreaseExport(${index})">-</button>
-                                    <span id="exportQty${index}">${exportQty}</span>
-                                    <button class="qty-btn" onclick="window.reportsModule.increaseExport(${index})">+</button>
+                                
+                                <div class="cell stock clickable-cell">
+                                    <span class="stock-value">${product.quantity}</span>
+                                </div>
+                                
+                                <div class="cell export clickable-cell">
+                                    <div class="export-display ${exportQty > 0 ? 'active' : ''}">
+                                        ${exportQty > 0 ? exportQty : '0'}
+                                    </div>
+                                </div>
+                                
+                                <div class="cell action" onclick="event.stopPropagation()">
+                                    <button class="decrease-btn" 
+                                            onclick="window.reportsModule.decreaseExport(${index}, event)"
+                                            ${exportQty <= 0 ? 'disabled' : ''}>
+                                        <i class="fas fa-minus"></i>
+                                    </button>
                                 </div>
                             </div>
                         `;
                     }).join('')}
                 </div>
-                
-                <div class="export-summary">
-                    <h4>Sản phẩm chờ xuất ngày ${this.currentDate}: <span id="pendingExports">${this.inventoryExports.length}</span></h4>
-                    <div id="exportDetails">
-                        ${this.inventoryExports.map((item, index) => `
-                            <div class="export-item">
-                                <i class="fas fa-clock"></i>
-                                <span>${item.time} - ${item.product} - ${item.quantity} ${item.unit}</span>
-                                <button class="btn-icon small" onclick="window.reportsModule.removeExport(${index})">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                        `).join('')}
-                        
-                        ${this.inventoryExports.length === 0 ? `
-                            <div class="empty-state small">
-                                <p>Chưa có sản phẩm nào chờ xuất</p>
-                            </div>
-                        ` : ''}
-                    </div>
-                </div>
             </div>
-        `;
+            
+            
+    `;
+}
+
+// HÀM MỚI: Clear all exports
+clearAllExports() {
+    if (this.inventoryExports.length === 0) {
+        window.showToast('Không có sản phẩm nào để xóa', 'info');
+        return;
     }
     
-    increaseExport(index) {
-        const products = window.dataManager.getInventoryProducts();
-        if (index >= products.length) return;
-        
-        const product = products[index];
-        const exportItem = this.inventoryExports.find(item => item.productId === product.id);
-        const currentExport = exportItem ? exportItem.quantity : 0;
-        
-        if (currentExport >= product.quantity) {
-            window.showToast(`Không đủ hàng tồn kho cho ${product.name}`, 'warning');
-            return;
-        }
-        
-        const now = new Date();
-        const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-        
-        if (exportItem) {
-            exportItem.quantity++;
-            exportItem.time = time;
-        } else {
-            this.inventoryExports.push({
-                id: Date.now(),
-                productId: product.id,
-                product: product.name,
-                quantity: 1,
-                unit: product.unit,
-                time: time,
-                date: this.currentDateKey
-            });
-        }
-        
+    if (confirm(`Xóa tất cả ${this.inventoryExports.length} sản phẩm đã chọn?`)) {
+        this.inventoryExports = [];
         this.updateInventoryUI();
-        window.showToast(`Đã thêm ${product.name} vào danh sách xuất ngày ${this.currentDate}`, 'success');
+        this.renderInventorySection();
+        
+        window.showToast('Đã xóa tất cả sản phẩm', 'success');
+    }
+}   
+    // SỬA: Cập nhật UI inventory
+updateInventoryUI() {
+    // Cập nhật số lượng chờ xuất
+    const inventoryCount = document.getElementById('inventoryCount');
+    if (inventoryCount) {
+        inventoryCount.textContent = `${this.inventoryExports.length} sản phẩm`;
     }
     
-    decreaseExport(index) {
-        const products = window.dataManager.getInventoryProducts();
-        if (index >= products.length) return;
-        
-        const product = products[index];
-        const exportItemIndex = this.inventoryExports.findIndex(item => item.productId === product.id);
-        
-        if (exportItemIndex >= 0) {
-            if (this.inventoryExports[exportItemIndex].quantity > 1) {
-                this.inventoryExports[exportItemIndex].quantity--;
-            } else {
-                this.inventoryExports.splice(exportItemIndex, 1);
-            }
+    // Cập nhật dòng hiển thị hàng xuất
+    const exportLine = document.querySelector('.export-line');
+    if (exportLine) {
+        if (this.inventoryExports.length > 0) {
+            const exportText = this.inventoryExports
+                .slice(0, 3)
+                .map(item => `${item.product} - ${item.quantity}${item.unit}`)
+                .join(', ');
             
-            this.updateInventoryUI();
-            window.showToast(`Đã giảm số lượng ${product.name}`, 'success');
-        }
-    }
-    
-    removeExport(index) {
-        if (index >= 0 && index < this.inventoryExports.length) {
-            this.inventoryExports.splice(index, 1);
-            this.updateInventoryUI();
-            this.renderInventorySection();
-            window.showToast('Đã xóa sản phẩm khỏi danh sách xuất', 'success');
-        }
-    }
-    
-    updateInventoryUI() {
-        const inventoryCount = document.getElementById('inventoryCount');
-        if (inventoryCount) {
-            inventoryCount.textContent = `${this.inventoryExports.length} sản phẩm`;
-        }
-        
-        const pendingExports = document.getElementById('pendingExports');
-        if (pendingExports) {
-            pendingExports.textContent = this.inventoryExports.length;
-        }
-        
-        const products = window.dataManager.getInventoryProducts();
-        products.forEach((product, index) => {
-            const exportItem = this.inventoryExports.find(item => item.productId === product.id);
-            const exportQty = exportItem ? exportItem.quantity : 0;
+            const moreText = this.inventoryExports.length > 3 ? 
+                ` +${this.inventoryExports.length - 3} sản phẩm khác` : '';
             
-            const qtySpan = document.getElementById(`exportQty${index}`);
-            if (qtySpan) {
-                qtySpan.textContent = exportQty;
-            }
-        });
+            exportLine.innerHTML = `
+                <i class="fas fa-box" style="color: #4CAF50; margin-right: 5px;"></i>
+                <strong>Hàng xuất:</strong> ${exportText}${moreText}
+            `;
+        } else {
+            exportLine.innerHTML = `
+                <i class="fas fa-box" style="color: #999; margin-right: 5px;"></i>
+                <strong>Hàng xuất:</strong> Chưa có hàng xuất
+            `;
+        }
     }
+}
     
     toggleHistory() {
         const section = document.getElementById('historySection');
@@ -1444,10 +1515,7 @@ showReportVersions(date) {
             // 11. Hiển thị thông báo
             window.showToast(`✅ Đã lưu báo cáo ngày ${this.currentDate}`, 'success');
             
-            // 12. TẠO BÁO CÁO ZALO TỰ ĐỘNG
-            setTimeout(() => {
-                this.sendToZalo();
-            }, 1000);
+           
             
             // 13. RENDER LẠI UI
             await this.render();
@@ -1500,9 +1568,7 @@ resetAfterSave() {
     // 1. Reset inventory exports (QUAN TRỌNG: phải reset sau khi lưu)
     this.inventoryExports = [];
     
-    // 2. Reset expenses và transfers cho ngày hiện tại
-    this.expenses = [];
-    this.transfers = [];
+   
     
     // 3. Cập nhật UI ngay lập tức
     this.updateInventoryUI();
@@ -1792,12 +1858,13 @@ async restoreInventoryFromReportFirebase(report) {
     }
 }
     sendToZalo() {
-    const openingBalance = this.getCurrencyValue('openingBalance');
-    const actualReceived = this.getCurrencyValue('actualReceived');
-    const closingBalance = this.getCurrencyValue('closingBalance');
-    const revenue = this.calculatedRevenue || 0; // Lấy doanh thu đã tính
-    
-    const message = `
+        // 1. Chuẩn bị nội dung báo cáo
+        const openingBalance = this.getCurrencyValue('openingBalance');
+        const actualReceived = this.getCurrencyValue('actualReceived');
+        const closingBalance = this.getCurrencyValue('closingBalance');
+        const revenue = this.calculatedRevenue || 0; // Lấy doanh thu đã tính
+        
+        const message = `
 📊 BÁO CÁO NGÀY ${this.currentDate}
 
 💰 Số dư đầu kỳ: ${openingBalance.toLocaleString()} ₫
@@ -1809,14 +1876,63 @@ async restoreInventoryFromReportFirebase(report) {
 
 ${this.expenses.length > 0 ? `📝 Chi tiết chi phí:\n${this.expenses.map(e => `• ${e.name}: ${e.amount.toLocaleString()} ₫`).join('\n')}\n` : ''}
 ${this.transfers.length > 0 ? `🏦 Chi tiết chuyển khoản:\n${this.transfers.map(t => `• ${t.content}: ${t.amount.toLocaleString()} ₫`).join('\n')}\n` : ''}
+${this.inventoryExports.length > 0 ? `📦 Hàng xuất kho:\n${this.inventoryExports.map(item => `• ${item.product}: ${item.quantity}${item.unit}`).join('\n')}\n` : ''}
 
 --- 
 Hệ thống Milano ☕
 ${new Date().toLocaleString('vi-VN')}
-    `.trim();
-    
-    // ... (phần copy và mở Zalo giữ nguyên)
-}
+        `.trim();
+        
+        // 2. Copy vào clipboard
+        navigator.clipboard.writeText(message).then(() => {
+            // 3. Hiển thị thông báo thành công
+            window.showToast('✅ Đã sao chép báo cáo vào clipboard!', 'success');
+            
+            // 4. Mở Zalo Web (hoặc desktop) với nội dung đã chuẩn bị
+            setTimeout(() => {
+                // Tạo URL cho Zalo với nội dung đã encode
+                const zaloUrl = `https://zalo.me/?text=${encodeURIComponent(message)}`;
+                
+                // Mở Zalo trong cửa sổ mới
+                window.open(zaloUrl, '_blank');
+                
+                // Thêm hướng dẫn cho người dùng
+                setTimeout(() => {
+                    window.showToast('📱 Zalo đã mở, nhấn Ctrl+V để dán nội dung', 'info');
+                }, 500);
+            }, 1000);
+            
+        }).catch(err => {
+            console.error('❌ Lỗi khi copy vào clipboard:', err);
+            
+            // Fallback: Tạo textarea để copy thủ công
+            const textArea = document.createElement('textarea');
+            textArea.value = message;
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    window.showToast('✅ Đã sao chép báo cáo (fallback method)', 'success');
+                    
+                    // Mở Zalo sau khi copy thành công
+                    setTimeout(() => {
+                        const zaloUrl = `https://zalo.me/?text=${encodeURIComponent(message)}`;
+                        window.open(zaloUrl, '_blank');
+                        window.showToast('📱 Zalo đã mở, nhấn Ctrl+V để dán', 'info');
+                    }, 1000);
+                } else {
+                    window.showToast('❌ Không thể sao chép, vui lòng sao chép thủ công', 'error');
+                }
+            } catch (err) {
+                window.showToast('❌ Lỗi khi sao chép: ' + err, 'error');
+            }
+            
+            document.body.removeChild(textArea);
+        });
+    }
 }
 
 // Khởi tạo module
