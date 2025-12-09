@@ -1,0 +1,1237 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Milano - Nhân viên</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="reports.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .employee-header {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .employee-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .employee-avatar {
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .employee-details h2 {
+            margin: 0 0 5px 0;
+            font-size: 18px;
+        }
+        
+        .employee-details p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 13px;
+        }
+        
+        /* Tabs cho nhân viên */
+        .employee-tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            overflow-x: auto;
+        }
+        
+        .employee-tab-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            background: white;
+            font-size: 14px;
+            color: #666;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            white-space: nowrap;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .employee-tab-btn.active {
+            color: #2196F3;
+            border-bottom-color: #2196F3;
+            font-weight: 500;
+        }
+        
+        .employee-tab-btn i {
+            font-size: 16px;
+        }
+        
+        .employee-content {
+            padding: 20px;
+        }
+        
+        /* Dashboard Content */
+        .dashboard-content {
+            display: block;
+        }
+        
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .stat-card i {
+            font-size: 28px;
+            margin-bottom: 10px;
+            color: #2196F3;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin: 5px 0;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .calendar-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .calendar-section h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .week-days {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .week {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        
+        .day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+        
+        .day:hover {
+            transform: scale(1.05);
+        }
+        
+        .day.normal {
+            background: #E8F5E9;
+            color: #2E7D32;
+            border-color: #C8E6C9;
+        }
+        
+        .day.overtime {
+            background: #FFF3E0;
+            color: #EF6C00;
+            border-color: #FFE0B2;
+        }
+        
+        .day.off {
+            background: #FFEBEE;
+            color: #C62828;
+            border-color: #FFCDD2;
+        }
+        
+        .day.selected {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.3);
+        }
+        
+        .day.empty {
+            background: transparent;
+            cursor: default;
+        }
+        
+        .day.empty:hover {
+            transform: none;
+        }
+        
+        .day-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+        
+        .day-actions button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-off {
+            background: #FFEBEE;
+            color: #C62828;
+            border: 1px solid #FFCDD2;
+        }
+        
+        .btn-overtime {
+            background: #FFF3E0;
+            color: #EF6C00;
+            border: 1px solid #FFE0B2;
+        }
+        
+        .btn-save {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .salary-card {
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.2);
+        }
+        
+        .salary-card h3 {
+            margin: 0 0 20px 0;
+            font-size: 18px;
+            text-align: center;
+        }
+        
+        .salary-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        
+        .salary-item {
+            text-align: center;
+        }
+        
+        .salary-item .label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .salary-item .value {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .salary-total {
+            grid-column: span 2;
+            text-align: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .salary-total .value {
+            font-size: 28px;
+        }
+        
+        /* Reports Content */
+        .reports-content {
+            display: none;
+        }
+        
+        .reports-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .reports-filter {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .reports-filter select,
+        .reports-filter input {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .reports-filter button {
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .reports-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .report-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .report-date {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .report-total {
+            color: #4CAF50;
+            font-weight: 600;
+        }
+        
+        .report-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            font-size: 13px;
+        }
+        
+        .report-item {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .report-item span:first-child {
+            color: #666;
+        }
+        
+        .report-item span:last-child {
+            font-weight: 500;
+        }
+        
+        .logout-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(244, 67, 54, 0.3);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        
+        .error {
+            text-align: center;
+            padding: 50px;
+            color: #f44336;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        
+        .empty-state i {
+            font-size: 40px;
+            margin-bottom: 15px;
+            color: #ddd;
+        }
+        
+        @media (max-width: 480px) {
+            .employee-tab-btn {
+                padding: 12px 8px;
+                font-size: 12px;
+            }
+            
+            .employee-content {
+                padding: 15px;
+            }
+            
+            .stats-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .salary-details {
+                grid-template-columns: 1fr;
+            }
+            
+            .salary-total {
+                grid-column: span 1;
+            }
+        }
+        /* Thêm vào phần style của employee-dashboard.html */
+.daily-report-content {
+    display: none;
+}
+
+.report-form-container {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.report-date-header {
+    text-align: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.report-date-header h3 {
+    margin: 0;
+    color: #333;
+    font-size: 20px;
+}
+
+.report-date-header .date-display {
+    color: #666;
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+.report-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.form-section h4 {
+    margin: 0 0 15px 0;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-section h4 i {
+    color: #2196F3;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #555;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #2196F3;
+}
+
+.currency-input {
+    position: relative;
+}
+
+.currency-input input {
+    padding-left: 40px;
+}
+
+.currency-symbol {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #777;
+    font-weight: 500;
+}
+
+.items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.item-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+}
+
+.item-row input {
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.add-item-btn {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.remove-item-btn {
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.totals-section {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+
+.totals-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.total-item {
+    text-align: center;
+    padding: 15px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+}
+
+.total-item .label {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+.total-item .value {
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.submit-report-btn {
+    background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.submit-report-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+}
+
+.submit-report-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .item-row {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+    
+    .remove-item-btn {
+        width: 100%;
+        margin-top: 5px;
+    }
+    
+    .totals-grid {
+        grid-template-columns: 1fr;
+    }
+}
+    </style>
+</head>
+<body>
+    <div class="employee-header">
+        <div class="employee-info">
+            <div class="employee-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="employee-details">
+                <h2 id="employeeName">Đang tải...</h2>
+                <p id="employeePosition">Nhân viên</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="employee-tabs">
+    <button class="employee-tab-btn active" data-tab="dashboard">
+        <i class="fas fa-tachometer-alt"></i>
+        <span>Thông tin</span>
+    </button>
+    <button class="employee-tab-btn" data-tab="daily-report">
+        <i class="fas fa-clipboard-check"></i>
+        <span>Báo cáo ngày</span>
+    </button>
+</div>
+    
+    <div class="employee-content">
+        <!-- Dashboard Tab -->
+        <div id="dashboardContent" class="dashboard-content">
+            <div class="loading" id="dashboardLoading">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p>Đang tải thông tin...</p>
+            </div>
+        </div>
+        
+        <!-- Reports Tab -->
+        <div id="reportsContent" class="reports-content">
+            <div class="loading" id="reportsLoading">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p>Đang tải báo cáo...</p>
+            </div>
+        </div>
+    </div>
+    
+    <button class="logout-btn" onclick="logout()" title="Đăng xuất">
+        <i class="fas fa-sign-out-alt"></i>
+    </button>
+    
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <script src="data.js"></script>
+    <script src="firebase-manager-simple.js"></script>
+    <script src="employee-login.js"></script>
+
+    <script>
+    // Khởi tạo biến toàn cục
+    window.currentEmployee = null;
+    window.currentMonth = null;
+    window.selectedDay = null;
+    window.selectedStatus = 'normal';
+    
+    // Kiểm tra đăng nhập
+    function checkLogin() {
+        const userData = sessionStorage.getItem('milano_current_user');
+        
+        if (!userData) {
+            window.location.href = 'login.html';
+            return null;
+        }
+        
+        try {
+            return JSON.parse(userData);
+        } catch (error) {
+            window.location.href = 'login.html';
+            return null;
+        }
+    }
+    
+    // Hiển thị toast
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+        
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+            <span>${message}</span>
+        `;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('fade-out');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+    
+    // Đăng xuất
+    function logout() {
+        if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+            sessionStorage.removeItem('milano_current_user');
+            localStorage.removeItem('milano_auto_login');
+            window.location.href = 'login.html';
+        }
+    }
+    
+    // Chuyển tab
+    function showEmployeeTab(tabName) {
+        // Cập nhật UI tab
+        document.querySelectorAll('.employee-tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-tab') === tabName) {
+                btn.classList.add('active');
+            }
+        });
+        
+        // Hiển thị nội dung tương ứng
+        document.getElementById('dashboardContent').style.display = 'none';
+        document.getElementById('reportsContent').style.display = 'none';
+        
+        if (tabName === 'dashboard') {
+            document.getElementById('dashboardContent').style.display = 'block';
+            renderDashboard();
+        } else if (tabName === 'reports') {
+            document.getElementById('reportsContent').style.display = 'block';
+            renderReports();
+        }
+    }
+    
+    // Chọn ngày làm việc - HÀM QUAN TRỌNG CẦN SỬA
+    function selectWorkDay(day, currentStatus) {
+        window.selectedDay = day;
+        window.selectedStatus = currentStatus;
+        
+        // Cập nhật UI
+        document.querySelectorAll('.day').forEach(dayEl => {
+            dayEl.classList.remove('selected');
+        });
+        
+        // Tìm phần tử bằng cách đơn giản
+        const allDays = document.querySelectorAll('.day:not(.empty)');
+        let selectedDayEl = null;
+        
+        for (const dayEl of allDays) {
+            if (dayEl.textContent.trim() === String(day)) {
+                selectedDayEl = dayEl;
+                break;
+            }
+        }
+        
+        if (selectedDayEl) {
+            selectedDayEl.classList.add('selected');
+        }
+        
+        // Hiển thị nút hành động
+        const actionsHTML = `
+            <div class="day-actions">
+                <button class="btn-off" onclick="setDayStatus('off')">
+                    <i class="fas fa-moon"></i> OFF
+                </button>
+                <button class="btn-overtime" onclick="setDayStatus('overtime')">
+                    <i class="fas fa-clock"></i> Tăng ca
+                </button>
+                ${currentStatus !== 'normal' ? `
+                <button class="btn-save" onclick="saveDayStatus()">
+                    <i class="fas fa-save"></i> Lưu
+                </button>
+                ` : ''}
+            </div>
+        `;
+        
+        let actionsContainer = document.querySelector('.day-actions-container');
+        if (!actionsContainer) {
+            actionsContainer = document.createElement('div');
+            actionsContainer.className = 'day-actions-container';
+            document.querySelector('.calendar-section').appendChild(actionsContainer);
+        }
+        
+        actionsContainer.innerHTML = actionsHTML;
+    }
+    
+    // Đặt trạng thái ngày
+    function setDayStatus(status) {
+        if (!window.selectedDay || !window.currentEmployee) return;
+        
+        window.selectedStatus = status;
+        
+        // Cập nhật UI ngay lập tức
+        const allDays = document.querySelectorAll('.day:not(.empty)');
+        let selectedDayEl = null;
+        
+        for (const dayEl of allDays) {
+            if (dayEl.textContent.trim() === String(window.selectedDay)) {
+                selectedDayEl = dayEl;
+                break;
+            }
+        }
+        
+        if (selectedDayEl) {
+            // Xóa class cũ
+            selectedDayEl.classList.remove('normal', 'overtime', 'off');
+            // Thêm class mới
+            selectedDayEl.classList.add(status);
+        }
+        
+        // Hiển thị lại nút hành động
+        selectWorkDay(window.selectedDay, status);
+    }
+    
+    // Lưu trạng thái ngày
+    async function saveDayStatus() {
+        if (!window.selectedDay || !window.currentEmployee || window.selectedStatus === 'normal') {
+            showToast('Vui lòng chọn trạng thái OFF hoặc Tăng ca', 'warning');
+            return;
+        }
+        
+        try {
+            // Sử dụng employeeLoginManager để cập nhật
+            const result = await window.employeeLoginManager.updateWorkDay(
+                window.currentEmployee.id,
+                window.selectedDay,
+                window.selectedStatus
+            );
+            
+            if (result.success) {
+                showToast(result.message, 'success');
+                
+                // Refresh dashboard
+                renderDashboard();
+                
+                // Ẩn nút hành động
+                const actionsContainer = document.querySelector('.day-actions-container');
+                if (actionsContainer) {
+                    actionsContainer.innerHTML = '';
+                }
+                
+                window.selectedDay = null;
+            } else {
+                showToast(result.error, 'error');
+            }
+            
+        } catch (error) {
+            console.error('Error saving day status:', error);
+            showToast('Lỗi hệ thống', 'error');
+        }
+    }
+    
+    // Tạo lịch làm việc
+    function generateCalendar(workdays, month, year, isEditable = true) {
+        const daysInMonth = new Date(year, month, 0).getDate();
+        let calendarHTML = '<div class="week-days">';
+        let dayCount = 1;
+        
+        for (let week = 0; week < 6; week++) {
+            if (dayCount > daysInMonth) break;
+            
+            calendarHTML += '<div class="week">';
+            for (let dow = 1; dow <= 7; dow++) {
+                if (dayCount > daysInMonth) {
+                    calendarHTML += '<div class="day empty"></div>';
+                } else {
+                    const dayStr = String(dayCount).padStart(2, '0');
+                    const status = workdays[dayStr] || 'normal';
+                    
+                    if (isEditable) {
+                        calendarHTML += `
+                            <div class="day ${status}" 
+                                 onclick="selectWorkDay(${dayCount}, '${status}')">
+                                ${dayCount}
+                            </div>
+                        `;
+                    } else {
+                        calendarHTML += `
+                            <div class="day ${status}">
+                                ${dayCount}
+                            </div>
+                        `;
+                    }
+                    dayCount++;
+                }
+            }
+            calendarHTML += '</div>';
+        }
+        calendarHTML += '</div>';
+        
+        return calendarHTML;
+    }
+    
+    // Render dashboard
+    async function renderDashboard() {
+        const container = document.getElementById('dashboardContent');
+        const loading = document.getElementById('dashboardLoading');
+        const userData = checkLogin();
+        
+        if (!userData || userData.role !== 'employee') {
+            return;
+        }
+        
+        try {
+            const employee = window.currentEmployee;
+            
+            if (!employee) {
+                container.innerHTML = `
+                    <div class="error">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        <p>Không tìm thấy thông tin nhân viên</p>
+                    </div>
+                `;
+                loading.style.display = 'none';
+                return;
+            }
+            
+            // Cập nhật thông tin header
+            document.getElementById('employeeName').textContent = employee.name;
+            document.getElementById('employeePosition').textContent = 
+                `${employee.position || 'Nhân viên'} - ${employee.phone || 'Chưa có SĐT'}`;
+            
+            // Tháng hiện tại
+            const now = new Date();
+            const currentMonth = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+            const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            window.currentMonth = currentMonthKey;
+            
+            // Tính lương
+            const salary = window.employeeLoginManager.calculateEmployeeSalary(employee, currentMonthKey);
+            const workdays = salary.workdays || {};
+            
+            // Tạo lịch
+            const [month, year] = currentMonth.split('/');
+            const calendar = generateCalendar(workdays, parseInt(month), parseInt(year), true);
+            
+            // Render dashboard
+            container.innerHTML = `
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <i class="fas fa-calendar-check"></i>
+                        <div class="stat-value">${salary.normalDays}</div>
+                        <div class="stat-label">Ngày làm</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <i class="fas fa-calendar-times"></i>
+                        <div class="stat-value">${salary.off}</div>
+                        <div class="stat-label">Ngày OFF</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <i class="fas fa-clock"></i>
+                        <div class="stat-value">${salary.overtime}</div>
+                        <div class="stat-label">Tăng ca</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <div class="stat-value">${Math.round(salary.base / 1000)}k</div>
+                        <div class="stat-label">Lương cơ bản</div>
+                    </div>
+                </div>
+                
+                <div class="calendar-section">
+                    <h3>LỊCH LÀM VIỆC THÁNG ${month} (Click chọn ngày)</h3>
+                    ${calendar}
+                    <div class="day-actions-container"></div>
+                </div>
+                
+                <div class="salary-card">
+                    <h3>LƯƠNG THÁNG ${currentMonth}</h3>
+                    <div class="salary-details">
+                        <div class="salary-item">
+                            <div class="label">Lương cơ bản</div>
+                            <div class="value">${salary.base.toLocaleString()}₫</div>
+                        </div>
+                        
+                        <div class="salary-item">
+                            <div class="label">Ngày OFF (${salary.off})</div>
+                            <div class="value">-${(Math.round(salary.base / 30) * salary.off).toLocaleString()}₫</div>
+                        </div>
+                        
+                        <div class="salary-item">
+                            <div class="label">Tăng ca (${salary.overtime})</div>
+                            <div class="value">+${(Math.round(salary.base / 30) * salary.overtime * 2).toLocaleString()}₫</div>
+                        </div>
+                        
+                        <div class="salary-item">
+                            <div class="label">Thưởng/Phạt</div>
+                            <div class="value">${salary.penalties.reduce((total, p) => {
+                                if (p.type === 'reward') return total + p.amount;
+                                return total - p.amount;
+                            }, 0).toLocaleString()}₫</div>
+                        </div>
+                        
+                        <div class="salary-total">
+                            <div class="label">THỰC LÃNH</div>
+                            <div class="value">${salary.actual.toLocaleString()}₫</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Ẩn loading
+            loading.style.display = 'none';
+            
+        } catch (error) {
+            console.error('Error rendering dashboard:', error);
+            container.innerHTML = `
+                <div class="error">
+                    <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    <p>Lỗi khi tải thông tin</p>
+                    <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #2196F3; color: white; border: none; border-radius: 5px;">
+                        Thử lại
+                    </button>
+                </div>
+            `;
+            loading.style.display = 'none';
+        }
+    }
+    
+    // Render reports
+    async function renderReports() {
+        const container = document.getElementById('reportsContent');
+        const loading = document.getElementById('reportsLoading');
+        const userData = checkLogin();
+        
+        if (!userData || userData.role !== 'employee') {
+            return;
+        }
+        
+        try {
+            // Lấy báo cáo từ employeeLoginManager
+            const reports = window.employeeLoginManager.getReports();
+            
+            // Lọc báo cáo của tháng hiện tại
+            const now = new Date();
+            const currentMonth = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+            
+            const currentMonthReports = reports.filter(report => {
+                if (!report.date) return false;
+                return report.date.endsWith(`/${currentMonth.split('/')[1]}`);
+            }).sort((a, b) => {
+                const dateA = a.date ? a.date.split('/') : [];
+                const dateB = b.date ? b.date.split('/') : [];
+                if (dateA[2] === dateB[2] && dateA[1] === dateB[1]) {
+                    return parseInt(dateB[0]) - parseInt(dateA[0]);
+                }
+                return 0;
+            });
+            
+            // Render reports
+            if (currentMonthReports.length > 0) {
+                const reportsHTML = currentMonthReports.map(report => {
+                    const total = (report.totalRevenue || 0) + (report.otherRevenue || 0);
+                    const profit = total - (report.totalCost || 0);
+                    
+                    return `
+                        <div class="report-card">
+                            <div class="report-header">
+                                <div class="report-date">${report.date || 'N/A'}</div>
+                                <div class="report-total">${total.toLocaleString()}₫</div>
+                            </div>
+                            <div class="report-details">
+                                <div class="report-item">
+                                    <span>Doanh thu:</span>
+                                    <span>${(report.totalRevenue || 0).toLocaleString()}₫</span>
+                                </div>
+                                <div class="report-item">
+                                    <span>Chi phí:</span>
+                                    <span>${(report.totalCost || 0).toLocaleString()}₫</span>
+                                </div>
+                                <div class="report-item">
+                                    <span>Khác:</span>
+                                    <span>${(report.otherRevenue || 0).toLocaleString()}₫</span>
+                                </div>
+                                <div class="report-item">
+                                    <span>Lợi nhuận:</span>
+                                    <span style="color: ${profit >= 0 ? '#4CAF50' : '#f44336'}">
+                                        ${profit.toLocaleString()}₫
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                container.innerHTML = `
+                    <div class="reports-container">
+                        <h3>BÁO CÁO THÁNG ${currentMonth}</h3>
+                        <div class="reports-list">
+                            ${reportsHTML}
+                        </div>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-chart-line"></i>
+                        <p>Chưa có báo cáo nào trong tháng này</p>
+                    </div>
+                `;
+            }
+            
+            // Ẩn loading
+            loading.style.display = 'none';
+            
+        } catch (error) {
+            console.error('Error rendering reports:', error);
+            container.innerHTML = `
+                <div class="error">
+                    <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    <p>Lỗi khi tải báo cáo</p>
+                </div>
+            `;
+            loading.style.display = 'none';
+        }
+    }
+    
+    // Khởi tạo
+    document.addEventListener('DOMContentLoaded', async function() {
+        // Kiểm tra đăng nhập
+        const userData = checkLogin();
+        
+        if (!userData) {
+            return;
+        }
+        
+        // Nếu là quản lý, chuyển về trang chính
+        if (userData.role === 'manager') {
+            window.location.href = 'index.html';
+            return;
+        }
+        
+        // Khởi tạo EmployeeLoginManager
+        try {
+            if (!window.employeeLoginManager) {
+                window.employeeLoginManager = new EmployeeLoginManager();
+            }
+            await window.employeeLoginManager.init();
+            
+            // Lấy thông tin nhân viên
+            const employee = await window.employeeLoginManager.getEmployeeById(userData.userData.id);
+            if (!employee) {
+                showToast('Không tìm thấy thông tin nhân viên', 'error');
+                setTimeout(() => window.location.href = 'login.html', 2000);
+                return;
+            }
+            
+            window.currentEmployee = employee;
+            
+            // Hiển thị thông báo chào mừng
+            setTimeout(() => {
+                showToast(`Xin chào ${employee.name}!`, 'success');
+            }, 1000);
+            
+            // Sự kiện click tab
+            document.querySelectorAll('.employee-tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tab = btn.getAttribute('data-tab');
+                    showEmployeeTab(tab);
+                });
+            });
+            
+            // Render dashboard mặc định
+            renderDashboard();
+            
+        } catch (error) {
+            console.error('Initialization error:', error);
+            window.location.href = 'login.html';
+        }
+    });
+</script>
+</body>
+</html>

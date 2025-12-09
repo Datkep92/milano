@@ -460,3 +460,711 @@
     color: #dc2626;
 }
 
+/* ===============================
+   ULTRA COMPACT MODAL CSS
+   =============================== */
+
+/* Modal Header - Ultra Compact */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    border-radius: 10px 10px 0 0;
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    min-height: 52px;
+}
+
+.modal-header h2 {
+    font-size: 15px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.modal-header h2 i {
+    font-size: 16px;
+}
+
+.modal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-header-actions .btn-icon {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+    height: 32px;
+}
+
+.modal-header-actions .btn-icon:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.modal-header-actions .btn-icon i {
+    font-size: 12px;
+}
+
+.modal-header-actions .btn-icon span {
+    font-size: 11px;
+}
+
+.modal-close {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: rotate(90deg);
+}
+
+/* Modal Body - Ultra Compact */
+.modal-body.compact {
+    padding: 12px 16px;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* Input Grid - Ultra Compact */
+.input-grid {
+    display: grid;
+    grid-template-columns: 2fr 1.3fr auto;
+    gap: 8px;
+    align-items: end;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.form-group {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    line-height: 1.2;
+}
+
+.form-group label i {
+    color: #10B981;
+    font-size: 12px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: border-color 0.2s ease;
+    background: white;
+    height: 36px;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #10B981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
+}
+
+/* Suggestion Wrapper - Compact */
+.suggestion-wrapper {
+    position: relative;
+}
+
+.suggestions-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #10B981;
+    border-radius: 6px;
+    max-height: 160px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-top: 2px;
+}
+
+.suggestion-item {
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid #f3f4f6;
+    line-height: 1.2;
+}
+
+.suggestion-item:hover {
+    background: #f0fdf4;
+    color: #10B981;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-empty {
+    padding: 10px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+/* Amount Input - Compact */
+.amount-input-wrapper {
+    position: relative;
+}
+
+.amount-input-wrapper .form-input {
+    padding-right: 36px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.amount-input-wrapper .currency {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #10B981;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+/* Add Button - Compact */
+.btn-add {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    min-width: 70px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+/* List Section - Compact */
+.list-section {
+    margin-bottom: 12px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.section-header h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.2;
+}
+
+.section-header h3 i {
+    color: #10B981;
+    font-size: 13px;
+}
+
+.section-total {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.section-total span {
+    color: #6b7280;
+    font-size: 11px;
+}
+
+.section-total strong {
+    color: #10B981;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+/* Compact List - Ultra Compact */
+.compact-list {
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: white;
+}
+
+.compact-list::-webkit-scrollbar {
+    width: 3px;
+}
+
+.compact-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.compact-list::-webkit-scrollbar-thumb {
+    background: #10B981;
+    border-radius: 1.5px;
+}
+
+.compact-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s ease;
+    min-height: 44px;
+}
+
+.compact-item:hover {
+    background: #f9fafb;
+}
+
+.compact-item:last-child {
+    border-bottom: none;
+}
+
+.item-main {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-right: 8px;
+    min-width: 0;
+}
+
+.item-name {
+    font-size: 12px;
+    color: #374151;
+    font-weight: 500;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-right: 6px;
+    line-height: 1.2;
+}
+
+.item-amount {
+    font-size: 13px;
+    font-weight: 600;
+    color: #10B981;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.item-actions {
+    flex-shrink: 0;
+}
+
+.btn-icon.small {
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    font-size: 11px;
+    padding: 0;
+}
+
+.btn-icon.danger {
+    background: #fee2e2;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+}
+
+.btn-icon.danger:hover {
+    background: #ef4444;
+    color: white;
+}
+
+/* Empty State - Compact */
+.empty-state.compact {
+    padding: 30px 16px;
+    text-align: center;
+    color: #9ca3af;
+}
+
+.empty-state.compact i {
+    font-size: 20px;
+    margin-bottom: 6px;
+    color: #d1d5db;
+}
+
+.empty-state.compact p {
+    font-size: 12px;
+    margin: 0;
+    line-height: 1.2;
+}
+
+/* Quick Actions - Compact */
+.quick-actions {
+    display: flex;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.quick-actions .btn-secondary {
+    flex: 1;
+    padding: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 36px;
+}
+
+/* Modal Container Width */
+.modal-container {
+    max-width: 450px !important;
+    min-width: 350px !important;
+    width: 90%;
+    max-height: 85vh;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 480px) {
+    .modal-container {
+        width: 95%;
+        min-width: 300px;
+        max-height: 90vh;
+    }
+    
+    .modal-header {
+        padding: 10px 14px;
+        min-height: 48px;
+    }
+    
+    .modal-header h2 {
+        font-size: 14px;
+    }
+    
+    .modal-header-actions .btn-icon span {
+        display: none;
+    }
+    
+    .modal-header-actions .btn-icon {
+        padding: 5px;
+        width: 32px;
+        justify-content: center;
+    }
+    
+    .modal-close {
+        width: 26px;
+        height: 26px;
+    }
+    
+    .modal-body.compact {
+        padding: 10px 14px;
+        max-height: calc(100vh - 120px);
+    }
+    
+    .input-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .btn-add {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .form-input {
+        height: 34px;
+        font-size: 12px;
+    }
+    
+    .compact-list {
+        max-height: 220px;
+    }
+    
+    .compact-item {
+        padding: 8px;
+        min-height: 40px;
+    }
+    
+    .item-name {
+        font-size: 11px;
+    }
+    
+    .item-amount {
+        font-size: 12px;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .section-header h3 {
+        font-size: 12px;
+    }
+    
+    .section-total {
+        align-self: flex-end;
+    }
+}
+
+/* Very Small Screens */
+@media (max-width: 360px) {
+    .modal-container {
+        min-width: 280px;
+        margin: 10px;
+    }
+    
+    .modal-header h2 {
+        font-size: 13px;
+    }
+    
+    .modal-header h2 i {
+        font-size: 14px;
+    }
+    
+    .modal-header-actions .btn-icon {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .modal-body.compact {
+        padding: 8px 12px;
+    }
+    
+    .form-input {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+    
+    .compact-item {
+        padding: 6px;
+        min-height: 38px;
+    }
+    
+    .item-name {
+        font-size: 10px;
+    }
+    
+    .item-amount {
+        font-size: 11px;
+    }
+}
+
+/* Landscape Mode */
+@media (max-height: 500px) and (orientation: landscape) {
+    .modal-container {
+        max-height: 95vh;
+    }
+    
+    .modal-body.compact {
+        max-height: calc(100vh - 100px);
+    }
+    
+    .compact-list {
+        max-height: 180px;
+    }
+    
+    .input-grid {
+        grid-template-columns: 2fr 1.3fr auto;
+    }
+}
+
+/* Tablet Portrait */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+    .modal-container {
+        max-width: 500px;
+    }
+    
+    .modal-body.compact {
+        max-height: calc(100vh - 160px);
+    }
+}
+
+/* Fix iOS Input Zoom */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+    .form-input {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+    
+    @media (max-width: 480px) {
+        .form-input {
+            font-size: 14px;
+        }
+    }
+}
+
+/* Reduce white space */
+.modal-body.compact > * {
+    margin-bottom: 10px;
+}
+
+.modal-body.compact > *:last-child {
+    margin-bottom: 0;
+}
+
+/* Improve text contrast */
+.item-name, 
+.form-input, 
+.suggestion-item {
+    color: #1f2937;
+}
+
+/* Better touch targets */
+.filter-btn-compact,
+.refresh-btn-compact,
+.btn-add,
+.btn-secondary {
+    min-height: 36px;
+}
+
+/* Remove unnecessary animations */
+.modal-container {
+    animation: none !important;
+}
+
+/* Optimize for print */
+@media print {
+    .modal-header-actions {
+        display: none;
+    }
+    
+    .modal-body.compact {
+        max-height: none;
+        overflow: visible;
+    }
+}
+/* ===============================
+   TOP SUGGESTIONS DROPDOWN
+   =============================== */
+
+.suggestion-wrapper {
+    position: relative;
+}
+
+.suggestions-dropdown {
+    position: absolute;
+    bottom: 100%; /* Thay đổi từ top: 100% thành bottom: 100% */
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1.5px solid #10B981;
+    border-radius: 8px 8px 8px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1); /* Shadow ở trên thay vì dưới */
+    margin-bottom: 4px; /* Thêm margin dưới thay vì trên */
+    margin-top: 0;
+    display: none;
+    animation: slideDownFromTop 0.2s ease;
+}
+
+@keyframes slideDownFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Đảo ngược arrow indicator */
+.suggestion-wrapper::before {
+    content: '';
+    position: absolute;
+    top: -8px; /* Arrow ở dưới thay vì trên */
+    left: 20px;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid #10B981; /* Arrow hướng lên */
+    border-bottom: none;
+    z-index: 101;
+    display: none;
+}
+
+.suggestions-dropdown.visible ~ .suggestion-wrapper::before {
+    display: block;
+}
+
+/* Đảm bảo suggestions không bị che bởi bàn phím trên mobile */
+@media (max-width: 768px) {
+    .suggestions-dropdown {
+        max-height: 150px;
+        bottom: 100%;
+        margin-bottom: 8px;
+    }
+    
+    /* Trên iOS, cần điều chỉnh vị trí */
+    @supports (-webkit-touch-callout: none) {
+        .suggestions-dropdown {
+            position: fixed;
+            bottom: auto;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-height: 60vh;
+            border-radius: 12px;
+            z-index: 1000;
+        }
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .suggestions-dropdown {
+        background: #374151;
+        border-color: #10B981;
+    }
+    
+    .suggestion-wrapper::before {
+        border-top-color: #10B981;
+    }
+}

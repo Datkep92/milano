@@ -1450,7 +1450,6 @@ showRevenueDetails() {
     this.clearAllCache();
     this.loadFilteredData();
     
-    window.showToast(`✅ Đã áp dụng lọc: ${this.getFilterLabel(filterId)}`, 'success');
 }
 
 getFilterLabel(filterId) {

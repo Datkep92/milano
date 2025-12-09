@@ -218,5 +218,362 @@
     align-items: center;
     justify-content: center;
 }
+/* employees.css - Thêm style cho đăng ký ngày làm */
+.registration-modal {
+    max-height: 85vh;
+    overflow-y: auto;
+}
 
+.employee-info-card {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+}
 
+.employee-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-right: 15px;
+}
+
+.employee-details {
+    flex: 1;
+}
+
+.employee-name {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.employee-month {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.employee-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.calendar-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: #f8fafc;
+    border-radius: 15px;
+}
+
+.calendar-section h3 {
+    color: #4a5568;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.registration-calendar {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.registration-calendar .week {
+    display: flex;
+    margin-bottom: 5px;
+}
+
+.registration-calendar .day {
+    flex: 1;
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    margin: 2px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.registration-calendar .day:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    z-index: 1;
+}
+
+.registration-calendar .day.normal {
+    background-color: #f0fff4;
+    border-color: #c6f6d5;
+}
+
+.registration-calendar .day.overtime {
+    background-color: #fffaf0;
+    border-color: #fed7d7;
+}
+
+.registration-calendar .day.off {
+    background-color: #fff5f5;
+    border-color: #fed7d7;
+}
+
+.registration-calendar .day.today {
+    border: 3px solid #4299e1;
+    background-color: #ebf8ff;
+}
+
+.registration-calendar .day.empty {
+    background: transparent;
+    border: none;
+    cursor: default;
+}
+
+.registration-calendar .day.empty:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.registration-calendar .day-number {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #2d3748;
+    margin-bottom: 3px;
+}
+
+.registration-calendar .day-status {
+    font-size: 0.9rem;
+}
+
+.calendar-legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #4a5568;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+}
+
+.legend-color.normal {
+    background-color: #c6f6d5;
+    border: 2px solid #9ae6b4;
+}
+
+.legend-color.overtime {
+    background-color: #fed7d7;
+    border: 2px solid #fbb6ce;
+}
+
+.legend-color.off {
+    background-color: #fed7d7;
+    border: 2px solid #f56565;
+}
+
+.legend-color.today-marker {
+    background-color: #ebf8ff;
+    border: 3px solid #4299e1;
+}
+
+.day-selection-section {
+    animation: slideIn 0.5s ease;
+    padding: 20px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.day-info-card {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border-left: 5px solid #4CAF50;
+}
+
+.day-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.day-header h4 {
+    margin: 0;
+    color: #2d3748;
+}
+
+.current-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #4a5568;
+}
+
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-badge.normal {
+    background-color: #c6f6d5;
+    color: #22543d;
+}
+
+.status-badge.overtime {
+    background-color: #fed7d7;
+    color: #742a2a;
+}
+
+.status-badge.off {
+    background-color: #fed7d7;
+    color: #c53030;
+}
+
+.workday-options {
+    margin: 20px 0;
+}
+
+.option-item {
+    display: block;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.option-item input[type="radio"] {
+    display: none;
+}
+
+.option-content {
+    padding: 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    transition: all 0.3s;
+}
+
+.option-item input[type="radio"]:checked + .option-content {
+    border-color: #4CAF50;
+    background-color: #f0fff4;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.1);
+}
+
+.option-title {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.option-title.normal-option {
+    color: #22543d;
+}
+
+.option-title.overtime-option {
+    color: #dd6b20;
+}
+
+.option-title.off-option {
+    color: #c53030;
+}
+
+.option-subtitle {
+    font-size: 0.9rem;
+    color: #718096;
+}
+
+.registration-instruction {
+    background: #e6fffa;
+    border: 1px solid #81e6d9;
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 20px;
+    color: #234e52;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.action-buttons button {
+    flex: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .registration-calendar .day {
+        margin: 1px;
+    }
+    
+    .registration-calendar .day-number {
+        font-size: 0.9rem;
+    }
+    
+    .calendar-legend {
+        gap: 10px;
+        justify-content: flex-start;
+    }
+    
+    .employee-info-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .employee-avatar {
+        margin-right: 0;
+        margin-bottom: 15px;
+    }
+    
+    .employee-stats {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-around;
+        margin-top: 15px;
+    }
+}

@@ -98,17 +98,15 @@ async handleDateChange(event) {
         const products = window.dataManager.getInventoryProducts();
         
         mainContent.innerHTML = `
-            <div class="inventory-container">
-                <!-- Header với date picker -->
-                <div class="inventory-header">
-                    <h3><i class="fas fa-boxes"></i> Kho hàng</h3>
-                    <div class="date-picker-compact">
-                        <input type="date" id="inventoryDate" 
-                               value="${this.currentDate}" 
-                               onchange="window.inventoryModule.handleDateChange(event)">
-                    </div>
+        <div class="inventory-container">
+            <!-- Header với date picker -->
+            <div class="inventory-header">
+                <div class="date-picker-compact">
+                    <input type="date" id="inventoryDate" 
+                           value="${this.currentDate}" 
+                           onchange="window.inventoryModule.handleDateChange(event)">
                 </div>
-                
+            </div>
                 <!-- Action Buttons -->
                 <div class="inventory-actions">
                     <button class="btn-primary" onclick="window.inventoryModule.showPurchaseModal()">
@@ -119,6 +117,11 @@ async handleDateChange(event) {
                     </button>
                 </div>
                 
+                </div>
+                <div class="inventory-header">
+                <h3><i class="fas fa-boxes"></i> Kho hàng  </h3> <button class="btn-secondary" onclick="window.inventoryModule.showOpeningStockModal()">
+                    <i class="fas fa-box-open"></i> TỒN ĐẦU KỲ
+                </button>
                 <!-- Inventory List -->
                 <div class="inventory-list">
                     <div class="inventory-list-header">
@@ -795,7 +798,332 @@ async deleteProduct(index) {
         </div>
     `;
 }
+    // 2. Thêm hàm showOpeningStockModal() vào class
+showOpeningStockModal() {
+    const modalContent = `
+        <div class="modal-header">
+            <h2><i class="fas fa-box-open"></i> THÊM TỒN KHO ĐẦU KỲ</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-date">${this.currentDateDisplay}</div>
+            
+            <div class="form-group">
+                <label>Tên sản phẩm:</label>
+                <input type="text" id="openingStockName" placeholder="Nhập tên sản phẩm">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Số lượng:</label>
+                    <input type="number" id="openingStockQuantity" placeholder="0" min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Đơn vị:</label>
+                    <select id="openingStockUnit">
+                        <option value="kg">kg</option>
+                        <option value="hộp">hộp</option>
+                        <option value="gói">gói</option>
+                        <option value="lít">lít</option>
+                        <option value="cái">cái</option>
+                        <option value="thùng">thùng</option>
+                        <option value="bịch">bịch</option>
+                        <option value="bao">bao</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Giá trị tồn:</label>
+                <div class="input-group">
+                    <input type="text" id="openingStockValue" placeholder="0" oninput="window.inventoryModule.formatCurrency(this)">
+                    <span class="currency">₫</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Ghi chú:</label>
+                <textarea id="openingStockNote" rows="2" placeholder="Ghi chú về tồn kho đầu kỳ..."></textarea>
+            </div>
+            
+            <button class="btn-primary" onclick="window.inventoryModule.saveOpeningStock()">
+                <i class="fas fa-save"></i> 💾 LƯU TỒN KHO
+            </button>
+            
+            <button class="btn-secondary" onclick="closeModal()">
+                ĐÓNG
+            </button>
+        </div>
+    `;
     
+    window.showModal(modalContent);
+}
+
+// 3. Thêm hàm saveOpeningStock() - NHẬP TRỰC TIẾP VÀO PRODUCTS
+async saveOpeningStock() {
+    try {
+        const name = document.getElementById('openingStockName').value.trim();
+        const quantity = parseFloat(document.getElementById('openingStockQuantity').value) || 0;
+        const unit = document.getElementById('openingStockUnit').value;
+        const value = this.getCurrencyValue('openingStockValue');
+        const note = document.getElementById('openingStockNote').value.trim();
+        
+        // Validation
+        if (!name) {
+            window.showToast('Vui lòng nhập tên sản phẩm', 'warning');
+            document.getElementById('openingStockName').focus();
+            return;
+        }
+        
+        if (quantity <= 0) {
+            window.showToast('Số lượng phải lớn hơn 0', 'warning');
+            document.getElementById('openingStockQuantity').focus();
+            return;
+        }
+        
+        if (value <= 0) {
+            window.showToast('Giá trị phải lớn hơn 0', 'warning');
+            document.getElementById('openingStockValue').focus();
+            return;
+        }
+        
+        // Lấy danh sách products hiện tại
+        const products = window.dataManager.getInventoryProducts();
+        
+        // Kiểm tra sản phẩm đã tồn tại
+        const existingIndex = products.findIndex(p => 
+            p.name.toLowerCase() === name.toLowerCase() && p.unit === unit
+        );
+        
+        const today = new Date().toISOString();
+        
+        if (existingIndex >= 0) {
+            // Cập nhật sản phẩm đã có (CỘNG DỒN)
+            const currentProduct = products[existingIndex];
+            
+            // Tính toán mới
+            const newQuantity = currentProduct.quantity + quantity;
+            const newValue = (currentProduct.totalValue || 0) + value;
+            
+            // Tạo lịch sử
+            const historyEntry = {
+                type: 'opening_stock_add',
+                date: this.currentDateDisplay,
+                quantityAdded: quantity,
+                valueAdded: value,
+                note: note || 'Bổ sung tồn kho đầu kỳ',
+                timestamp: today
+            };
+            
+            products[existingIndex] = {
+                ...currentProduct,
+                quantity: newQuantity,
+                totalValue: newValue,
+                unitPrice: newQuantity > 0 ? newValue / newQuantity : 0,
+                lastUpdated: today,
+                history: [...(currentProduct.history || []), historyEntry]
+            };
+            
+            window.showToast(`✅ Đã bổ sung tồn kho "${name}"`, 'success');
+        } else {
+            // Thêm sản phẩm mới
+            const newProduct = {
+                id: Date.now(),
+                name: name,
+                unit: unit,
+                quantity: quantity,
+                totalValue: value,
+                unitPrice: quantity > 0 ? value / quantity : 0,
+                type: 'material',
+                addedAt: today,
+                lastUpdated: today,
+                source: 'opening_stock',
+                note: note,
+                history: [{
+                    type: 'opening_stock',
+                    date: this.currentDateDisplay,
+                    quantity: quantity,
+                    totalValue: value,
+                    note: note || 'Nhập tồn kho đầu kỳ',
+                    timestamp: today
+                }]
+            };
+            
+            products.push(newProduct);
+            window.showToast(`✅ Đã thêm "${name}" vào tồn kho`, 'success');
+        }
+        
+        // Lưu vào Firebase thông qua DataManager
+        const inventoryData = { 
+            products: products,
+            lastUpdated: today
+        };
+        
+        await window.dataManager.saveLocal(
+            'inventory',
+            'products.json',
+            inventoryData,
+            `Nhập tồn kho đầu kỳ - ${name}`
+        );
+        
+        window.showToast('✅ Đã lưu tồn kho đầu kỳ thành công', 'success');
+        closeModal();
+        
+        // Render lại inventory
+        await this.render();
+        
+    } catch (error) {
+        console.error('Error saving opening stock:', error);
+        window.showToast('Lỗi khi lưu tồn kho', 'error');
+    }
+}
+
+// 4. Thêm hàm nhập nhanh (bulk import) nếu cần
+showBulkOpeningStockModal() {
+    const modalContent = `
+        <div class="modal-header">
+            <h2><i class="fas fa-file-import"></i> NHẬP NHANH TỒN KHO</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-subtitle">Nhập nhiều sản phẩm cùng lúc (mỗi dòng một sản phẩm)</div>
+            
+            <div class="form-group">
+                <label>Định dạng:</label>
+                <div class="format-guide">
+                    <code>Tên sản phẩm, Số lượng, Đơn vị, Giá trị</code>
+                    <small>VD: Cà phê hạt Arabica, 10, kg, 5000000</small>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Dữ liệu:</label>
+                <textarea id="bulkOpeningStockData" rows="10" placeholder="Dán dữ liệu vào đây..."></textarea>
+            </div>
+            
+            <button class="btn-primary" onclick="window.inventoryModule.processBulkOpeningStock()">
+                <i class="fas fa-upload"></i> NHẬP DỮ LIỆU
+            </button>
+            
+            <button class="btn-secondary" onclick="closeModal()">
+                ĐÓNG
+            </button>
+        </div>
+    `;
+    
+    window.showModal(modalContent);
+}
+
+// 5. Hàm xử lý nhập nhanh
+async processBulkOpeningStock() {
+    try {
+        const dataText = document.getElementById('bulkOpeningStockData').value.trim();
+        
+        if (!dataText) {
+            window.showToast('Vui lòng nhập dữ liệu', 'warning');
+            return;
+        }
+        
+        const lines = dataText.split('\n').filter(line => line.trim() !== '');
+        let successCount = 0;
+        let errorCount = 0;
+        
+        // Lấy products hiện tại
+        const products = window.dataManager.getInventoryProducts();
+        const today = new Date().toISOString();
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            try {
+                // Phân tích dòng: Tên, Số lượng, Đơn vị, Giá trị
+                const parts = line.split(',').map(p => p.trim());
+                
+                if (parts.length < 4) {
+                    console.warn(`Dòng ${i + 1}: Định dạng không đúng`);
+                    errorCount++;
+                    continue;
+                }
+                
+                const name = parts[0];
+                const quantity = parseFloat(parts[1]) || 0;
+                const unit = parts[2];
+                const value = parseInt(parts[3].replace(/\D/g, '')) || 0;
+                
+                if (!name || quantity <= 0) {
+                    console.warn(`Dòng ${i + 1}: Dữ liệu không hợp lệ`);
+                    errorCount++;
+                    continue;
+                }
+                
+                // Kiểm tra sản phẩm đã tồn tại
+                const existingIndex = products.findIndex(p => 
+                    p.name.toLowerCase() === name.toLowerCase() && p.unit === unit
+                );
+                
+                if (existingIndex >= 0) {
+                    // Cập nhật sản phẩm đã có
+                    const currentProduct = products[existingIndex];
+                    products[existingIndex] = {
+                        ...currentProduct,
+                        quantity: currentProduct.quantity + quantity,
+                        totalValue: (currentProduct.totalValue || 0) + value,
+                        lastUpdated: today
+                    };
+                } else {
+                    // Thêm sản phẩm mới
+                    products.push({
+                        id: Date.now() + i,
+                        name: name,
+                        unit: unit,
+                        quantity: quantity,
+                        totalValue: value,
+                        unitPrice: quantity > 0 ? value / quantity : 0,
+                        type: 'material',
+                        addedAt: today,
+                        lastUpdated: today,
+                        source: 'bulk_opening_stock'
+                    });
+                }
+                
+                successCount++;
+                
+            } catch (lineError) {
+                console.error(`Lỗi xử lý dòng ${i + 1}:`, lineError);
+                errorCount++;
+            }
+        }
+        
+        // Lưu tất cả products đã cập nhật
+        const inventoryData = { 
+            products: products,
+            lastUpdated: today
+        };
+        
+        await window.dataManager.saveLocal(
+            'inventory',
+            'products.json',
+            inventoryData,
+            `Nhập nhanh ${successCount} sản phẩm tồn kho`
+        );
+        
+        // Hiển thị kết quả
+        let message = `✅ Đã nhập ${successCount} sản phẩm`;
+        if (errorCount > 0) {
+            message += `, ${errorCount} lỗi`;
+        }
+        
+        window.showToast(message, successCount > 0 ? 'success' : 'warning');
+        closeModal();
+        
+        // Render lại inventory
+        await this.render();
+        
+    } catch (error) {
+        console.error('Error processing bulk opening stock:', error);
+        window.showToast('Lỗi khi nhập dữ liệu', 'error');
+    }
+}
     // **TOGGLE SERVICES SECTION**
     toggleServices() {
         const section = document.getElementById('servicesSection');

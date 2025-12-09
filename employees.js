@@ -857,7 +857,316 @@ formatCurrency(input) {
             }
         }, 0);
     }
+
+showWorkDayRegistration() {
+    // Chỉ nhân viên mới được đăng ký
+    if (!window.authManager || !window.authManager.isEmployee()) {
+        window.showToast('Chỉ nhân viên mới được đăng ký ngày làm', 'warning');
+        return;
+    }
     
+    const employeeId = window.authManager.getEmployeeId();
+    if (!employeeId) {
+        window.showToast('Không tìm thấy thông tin nhân viên', 'error');
+        return;
+    }
+    
+    // Lấy thông tin nhân viên hiện tại
+    const employees = this.loadEmployeesSync();
+    const employee = employees.find(e => e.id == employeeId);
+    
+    if (!employee) {
+        window.showToast('Không tìm thấy thông tin nhân viên', 'error');
+        return;
+    }
+    
+    // Lấy dữ liệu tháng hiện tại
+    const now = new Date();
+    const currentMonth = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    const [month, year] = currentMonth.split('/');
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    // Lấy trạng thái ngày làm hiện tại
+    const monthData = this.getEmployeeMonthlyData(employee);
+    const workdays = monthData.workdays || {};
+    
+    // Tạo lịch 30 ngày
+    let calendarHTML = '<div class="registration-calendar">';
+    let dayCount = 1;
+    
+    // Hiển thị các ngày trong tháng
+    for (let week = 0; week < 6; week++) {
+        if (dayCount > daysInMonth) break;
+        
+        calendarHTML += '<div class="week">';
+        for (let dow = 1; dow <= 7; dow++) {
+            if (dayCount > daysInMonth) {
+                calendarHTML += '<div class="day empty"></div>';
+            } else {
+                const dayStr = String(dayCount).padStart(2, '0');
+                const currentStatus = workdays[dayStr] || 'normal';
+                const isToday = dayCount === now.getDate();
+                
+                calendarHTML += `
+                    <div class="day ${currentStatus} ${isToday ? 'today' : ''}" 
+                         onclick="window.employeesModule.selectDayForRegistration(${dayCount}, '${currentStatus}')">
+                        <div class="day-number">${dayCount}</div>
+                        <div class="day-status">${this.getStatusIcon(currentStatus)}</div>
+                    </div>
+                `;
+                dayCount++;
+            }
+        }
+        calendarHTML += '</div>';
+    }
+    calendarHTML += '</div>';
+    
+    // Tạo legend cho màu sắc
+    const legendHTML = `
+        <div class="calendar-legend">
+            <div class="legend-item">
+                <div class="legend-color normal"></div>
+                <span>Bình thường</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color overtime"></div>
+                <span>Tăng ca</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color off"></div>
+                <span>OFF</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color today-marker"></div>
+                <span>Hôm nay</span>
+            </div>
+        </div>
+    `;
+    
+    const modalContent = `
+        <div class="modal-header">
+            <h2><i class="fas fa-calendar-plus"></i> ĐĂNG KÝ NGÀY LÀM</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body registration-modal">
+            <div class="employee-info-card">
+                <div class="employee-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="employee-details">
+                    <div class="employee-name">${employee.name}</div>
+                    <div class="employee-month">Tháng ${currentMonth}</div>
+                </div>
+                <div class="employee-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-check-circle" style="color:#4CAF50"></i>
+                        <span>Đã đăng ký: ${Object.keys(workdays).length} ngày</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-clock" style="color:#f6ad55"></i>
+                        <span>Tăng ca: ${monthData.calculated?.totalOvertime || 0} ngày</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="calendar-section">
+                <h3><i class="fas fa-calendar-alt"></i> LỊCH THÁNG ${month}/${year}</h3>
+                ${calendarHTML}
+                ${legendHTML}
+            </div>
+            
+            <div class="day-selection-section" id="daySelectionSection" style="display: none;">
+                <h3><i class="fas fa-edit"></i> CHỌN LOẠI NGÀY</h3>
+                <div class="selected-day-info" id="selectedDayInfo">
+                    <!-- Thông tin ngày được chọn sẽ hiển thị ở đây -->
+                </div>
+                
+                <div class="workday-options">
+                    <label class="option-item">
+                        <input type="radio" name="workDayType" value="normal" checked>
+                        <div class="option-content">
+                            <div class="option-title normal-option">
+                                <i class="fas fa-check-circle"></i> BÌNH THƯỜNG
+                            </div>
+                            <div class="option-subtitle">
+                                Lương ngày: +${Math.round((employee.baseSalary || 0) / 30).toLocaleString()} ₫
+                            </div>
+                        </div>
+                    </label>
+                    
+                    <label class="option-item">
+                        <input type="radio" name="workDayType" value="overtime">
+                        <div class="option-content">
+                            <div class="option-title overtime-option">
+                                <i class="fas fa-clock"></i> TĂNG CA (+1 ngày lương)
+                            </div>
+                            <div class="option-subtitle">
+                                Lương ngày: +${(Math.round((employee.baseSalary || 0) / 30) * 2).toLocaleString()} ₫
+                            </div>
+                        </div>
+                    </label>
+                    
+                    <label class="option-item">
+                        <input type="radio" name="workDayType" value="off">
+                        <div class="option-content">
+                            <div class="option-title off-option">
+                                <i class="fas fa-home"></i> OFF (-1 ngày lương)
+                            </div>
+                            <div class="option-subtitle">
+                                Lương ngày: -${Math.round((employee.baseSalary || 0) / 30).toLocaleString()} ₫
+                            </div>
+                        </div>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-sticky-note"></i> Ghi chú (nếu có):</label>
+                    <textarea id="workDayNote" placeholder="Lý do tăng ca/OFF, công việc đặc biệt..." rows="3"></textarea>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn-primary" onclick="window.employeesModule.submitWorkDayRegistration(${employeeId})">
+                        <i class="fas fa-save"></i> LƯU ĐĂNG KÝ
+                    </button>
+                    <button class="btn-secondary" onclick="window.employeesModule.cancelDaySelection()">
+                        HỦY
+                    </button>
+                </div>
+            </div>
+            
+            <div class="registration-instruction">
+                <i class="fas fa-info-circle"></i>
+                <strong>Hướng dẫn:</strong> Nhấn vào ngày trong lịch để đăng ký loại ngày làm
+            </div>
+        </div>
+    `;
+    
+    window.showModal(modalContent);
+}
+
+// Helper method để load employees đồng bộ
+loadEmployeesSync() {
+    if (this.cache.employees) {
+        return this.cache.employees;
+    }
+    
+    try {
+        return window.dataManager.getEmployees() || [];
+    } catch (error) {
+        console.error('Error loading employees:', error);
+        return [];
+    }
+}
+
+// Helper method để lấy icon trạng thái
+getStatusIcon(status) {
+    switch(status) {
+        case 'overtime': return '<i class="fas fa-clock" style="color:#f6ad55"></i>';
+        case 'off': return '<i class="fas fa-home" style="color:#fc8181"></i>';
+        default: return '<i class="fas fa-check" style="color:#4CAF50"></i>';
+    }
+}
+
+// Method để chọn ngày
+selectDayForRegistration(day, currentStatus) {
+    const now = new Date();
+    const currentMonth = `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    
+    // Cập nhật thông tin ngày được chọn
+    const dayInfoHTML = `
+        <div class="day-info-card">
+            <div class="day-header">
+                <i class="fas fa-calendar-day"></i>
+                <h4>Ngày ${day} - Tháng ${currentMonth}</h4>
+            </div>
+            <div class="current-status">
+                Trạng thái hiện tại: 
+                <span class="status-badge ${currentStatus}">
+                    ${currentStatus === 'normal' ? 'Bình thường' : 
+                      currentStatus === 'overtime' ? 'Tăng ca' : 'OFF'}
+                </span>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('selectedDayInfo').innerHTML = dayInfoHTML;
+    
+    // Chọn radio button tương ứng với trạng thái hiện tại
+    const radioButtons = document.getElementsByName('workDayType');
+    radioButtons.forEach(radio => {
+        if (radio.value === currentStatus) {
+            radio.checked = true;
+        }
+    });
+    
+    // Lưu ngày được chọn
+    this.selectedDayForRegistration = day;
+    
+    // Hiển thị section chọn loại ngày
+    document.getElementById('daySelectionSection').style.display = 'block';
+    
+    // Cuộn đến phần chọn loại ngày
+    setTimeout(() => {
+        const section = document.getElementById('daySelectionSection');
+        if (section) {
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, 100);
+}
+
+// Method hủy chọn ngày
+cancelDaySelection() {
+    this.selectedDayForRegistration = null;
+    document.getElementById('daySelectionSection').style.display = 'none';
+}
+
+// Cập nhật phương thức submit
+async submitWorkDayRegistration(employeeId) {
+    try {
+        if (!this.selectedDayForRegistration) {
+            window.showToast('Vui lòng chọn ngày trong lịch', 'warning');
+            return;
+        }
+        
+        const workDayType = document.querySelector('input[name="workDayType"]:checked').value;
+        const note = document.getElementById('workDayNote').value.trim();
+        const day = this.selectedDayForRegistration;
+        
+        // Cập nhật ngày làm
+        const success = await this.updateWorkDay(employeeId, day, workDayType);
+        
+        if (success) {
+            // Cập nhật ghi chú nếu có
+            if (note) {
+                const employees = await this.loadEmployees();
+                const employee = employees.find(e => e.id == employeeId);
+                
+                if (employee) {
+                    const monthData = this.getEmployeeMonthlyData(employee);
+                    if (!monthData.notes) monthData.notes = {};
+                    monthData.notes[String(day).padStart(2, '0')] = note;
+                    
+                    // Lưu lại
+                    await window.dataManager.saveLocal(
+                        'employees',
+                        `employee_${employeeId}.json`,
+                        employee,
+                        `Ghi chú ngày ${day} - ${employee.name}`
+                    );
+                }
+            }
+            
+            // Cập nhật lại modal
+            window.showToast('Đã cập nhật đăng ký ngày làm', 'success');
+            this.showWorkDayRegistration();
+        }
+        
+    } catch (error) {
+        console.error('Error submitting work day registration:', error);
+        window.showToast('Lỗi khi đăng ký', 'error');
+    }
+}
+
     async deleteCurrentEmployee() {
         if (!this.selectedEmployee) return;
         
