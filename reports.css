@@ -1168,3 +1168,192 @@
         border-top-color: #10B981;
     }
 }
+
+/* reports.css - CSS mạnh với !important */
+/* NÚT XEM VÀ SỬA/XÓA BÁO CÁO */
+
+/* Container cho các nút trong history */
+.history-actions {
+    display: flex !important;
+    gap: 8px !important;
+    margin-left: auto !important;
+}
+
+/* Nút cơ bản */
+.btn-small {
+    padding: 6px 12px !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+    text-decoration: none !important;
+    min-width: 60px !important;
+    justify-content: center !important;
+}
+
+/* Nút XEM - màu xanh */
+.btn-small {
+    background: #4CAF50 !important;
+    color: white !important;
+    border: 1px solid #45a049 !important;
+}
+
+.btn-small:hover {
+    background: #45a049 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.2) !important;
+}
+
+.btn-small:active {
+    transform: translateY(0) !important;
+}
+
+/* Nút XÓA - màu đỏ */
+.btn-small.danger {
+    background: #f44336 !important;
+    color: white !important;
+    border: 1px solid #d32f2f !important;
+}
+
+.btn-small.danger:hover {
+    background: #d32f2f !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 8px rgba(244, 67, 54, 0.2) !important;
+}
+
+/* Nút bị disabled */
+.btn-small:disabled,
+.btn-small.disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    background: #e0e0e0 !important;
+    color: #757575 !important;
+    border-color: #bdbdbd !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Icon trong nút */
+.btn-small i {
+    font-size: 0.8rem !important;
+}
+
+/* Badge báo cáo gần nhất */
+.latest-badge {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%) !important;
+    color: white !important;
+    padding: 3px 10px !important;
+    border-radius: 12px !important;
+    font-size: 0.7rem !important;
+    font-weight: bold !important;
+    margin-left: 8px !important;
+    display: inline-block !important;
+    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3) !important;
+}
+
+/* =========================================== */
+/* CSS MẠNH ĐỂ KHÔNG BỊ OVERRIDE - THÊM TRỰC TIẾP VÀO STYLE */
+/* =========================================== */
+
+/* CSS inline mạnh mẽ */
+.history-actions-inline {
+    display: flex !important;
+    gap: 8px !important;
+    margin-left: auto !important;
+    z-index: 9999 !important;
+    position: relative !important;
+}
+
+.btn-view-inline {
+    padding: 6px 12px !important;
+    border: none !important;
+    border-radius: 6px !important;
+    background: #4CAF50 !important;
+    color: white !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    text-decoration: none !important;
+    min-width: 60px !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.btn-view-inline:hover {
+    background: #45a049 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3) !important;
+}
+
+.btn-delete-inline {
+    padding: 6px 12px !important;
+    border: none !important;
+    border-radius: 6px !important;
+    background: #f44336 !important;
+    color: white !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    text-decoration: none !important;
+    min-width: 60px !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.btn-delete-inline:hover {
+    background: #d32f2f !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3) !important;
+}
+
+.btn-disabled-inline {
+    padding: 6px 12px !important;
+    border: none !important;
+    border-radius: 6px !important;
+    background: #e0e0e0 !important;
+    color: #757575 !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    cursor: not-allowed !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    text-decoration: none !important;
+    min-width: 60px !important;
+    justify-content: center !important;
+    opacity: 0.5 !important;
+}
+
+.btn-icon-inline {
+    width: 28px !important;
+    height: 28px !important;
+    padding: 0 !important;
+    border-radius: 4px !important;
+    background: #ffebee !important;
+    color: #f44336 !important;
+    border: 1px solid #ffcdd2 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.8rem !important;
+}
+
+.btn-icon-inline:hover {
+    background: #f44336 !important;
+    color: white !important;
+}

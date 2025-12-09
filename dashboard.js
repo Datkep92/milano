@@ -2451,65 +2451,112 @@ loadAllSuggestionsFromReports() {
         
         return html;
     }
+    // Thêm vào class DashboardModule
+debugInventoryData() {
+    console.log('=== DEBUG DASHBOARD INVENTORY ===');
     
-    renderInventoryGrouped(inventory, type) {
-        let html = '';
-        
-        if (type === 'purchases' || type === 'all') {
-            html += `
-                <div class="grouped-section">
-                    <h4><i class="fas fa-shopping-cart"></i> MUA HÀNG (${inventory.purchaseList.length} mục)</h4>
-                    <div class="grouped-list">
-                        ${inventory.purchaseList.map(item => `
-                            <div class="list-item">
-                                <span class="item-date">${item.date}</span>
-                                <span class="item-name">${item.name}</span>
-                                <span class="item-detail">${item.quantity} ${item.unit}</span>
-                                <span class="item-amount">${item.total.toLocaleString()} ₫</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-        
-        if (type === 'services' || type === 'all') {
-            html += `
-                <div class="grouped-section">
-                    <h4><i class="fas fa-concierge-bell"></i> DỊCH VỤ (${inventory.serviceList.length} mục)</h4>
-                    <div class="grouped-list">
-                        ${inventory.serviceList.map(item => `
-                            <div class="list-item">
-                                <span class="item-date">${item.date}</span>
-                                <span class="item-name">${item.name}</span>
-                                ${item.note ? `<span class="item-note">${item.note}</span>` : ''}
-                                <span class="item-amount">${item.amount.toLocaleString()} ₫</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-        
-        if (type === 'products' || type === 'all') {
-            html += `
-                <div class="grouped-section">
-                    <h4><i class="fas fa-box"></i> SẢN PHẨM TỒN KHO (${inventory.products.length} sản phẩm)</h4>
-                    <div class="grouped-list">
-                        ${inventory.products.map(product => `
-                            <div class="list-item">
-                                <span class="item-name">${product.name}</span>
-                                <span class="item-detail">${product.quantity} ${product.unit}</span>
-                                <span class="item-amount">${(product.totalValue || 0).toLocaleString()} ₫</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-        
-        return html;
+    // 1. Kiểm tra dataManager
+    console.log('DataManager inventory:', window.dataManager?.data?.inventory);
+    
+    // 2. Kiểm tra purchases
+    const purchases = window.dataManager?.data?.inventory?.purchases;
+    if (purchases) {
+        console.log('Purchases keys:', Object.keys(purchases));
+        console.log('Purchases sample:', purchases[Object.keys(purchases)[0]]);
     }
+    
+    // 3. Kiểm tra services
+    const services = window.dataManager?.data?.inventory?.services;
+    if (services) {
+        console.log('Services keys:', Object.keys(services));
+        console.log('Services sample:', services[Object.keys(services)[0]]);
+    }
+    
+    // 4. Kiểm tra filteredData
+    console.log('Dashboard filteredData:', this.filteredData);
+    
+    if (this.filteredData?.inventory) {
+        console.log('Filtered inventory:', this.filteredData.inventory);
+        console.log('Purchase list length:', this.filteredData.inventory.purchaseList?.length);
+        console.log('Service list length:', this.filteredData.inventory.serviceList?.length);
+    }
+    
+    // 5. Kiểm tra date format
+    console.log('Current dates:', {
+        startDate: this.startDate,
+        endDate: this.endDate,
+        startDateObj: this.parseDisplayDate(this.startDate),
+        endDateObj: this.parseDisplayDate(this.endDate)
+    });
+}
+    // Sửa renderInventoryGrouped trong dashboard.js
+renderInventoryGrouped(inventory, type) {
+    console.log(`📦 renderInventoryGrouped called with type: "${type}"`);
+    console.log('📊 Inventory data keys:', Object.keys(inventory));
+    
+    let html = '';
+    
+    // 1. SẢN PHẨM
+    if (type === 'products' || type === 'all') {
+        console.log('📦 Processing products section');
+        console.log('  Products array:', inventory.products);
+        console.log('  Length:', inventory.products?.length);
+        
+        if (inventory.products && inventory.products.length > 0) {
+            console.log('✅ Products has data, rendering...');
+            
+            html += `
+                <div class="grouped-section">
+                    <h4><i class="fas fa-cubes"></i> SẢN PHẨM TỒN KHO (${inventory.products.length} sản phẩm)</h4>
+                    <div class="grouped-list">
+                        ${inventory.products.map(product => {
+                            console.log('📝 Mapping product:', product);
+                            return `
+                                <div class="list-item">
+                                    <div class="item-header">
+                                        <span class="item-name"><strong>${product.name || 'Không có tên'}</strong></span>
+                                        <span class="item-amount">${(product.totalValue || 0).toLocaleString()} ₫</span>
+                                    </div>
+                                    <div class="item-body">
+                                        <span class="item-detail">${product.quantity || 0} ${product.unit || ''}</span>
+                                        ${product.note ? `<small class="item-desc">${product.note}</small>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div class="section-total">
+                        <strong>Giá trị tồn kho:</strong>
+                        <span>${inventory.inventoryValue.toLocaleString()} ₫</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            console.log('❌ No products data');
+            html += `
+                <div class="empty-state">
+                    <i class="fas fa-cubes"></i>
+                    <p>Không có sản phẩm trong tồn kho</p>
+                </div>
+            `;
+        }
+    }
+    
+    // 2. MUA HÀNG
+    if (type === 'purchases' || type === 'all') {
+        // ... existing purchases code ...
+    }
+    
+    // 3. DỊCH VỤ
+    if (type === 'services' || type === 'all') {
+        // ... existing services code ...
+    }
+    
+    console.log(`📋 Final HTML length for type "${type}": ${html.length}`);
+    console.log(`📋 Final HTML preview: ${html.substring(0, 200)}...`);
+    
+    return html;
+}
     
     showEmployeeDetails(type = 'all') {
         if (!this.filteredData) {

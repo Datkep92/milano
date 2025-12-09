@@ -417,7 +417,6 @@ async debugFirebaseStructure() {
                     <label>Thành tiền (tổng):</label>
                     <div class="input-group">
                         <input type="text" id="purchaseTotal" placeholder="0" oninput="window.inventoryModule.formatCurrency(this)">
-                        <span class="currency">₫</span>
                     </div>
                 </div>
                 
@@ -837,7 +836,6 @@ showOpeningStockModal() {
                 <label>Giá trị tồn:</label>
                 <div class="input-group">
                     <input type="text" id="openingStockValue" placeholder="0" oninput="window.inventoryModule.formatCurrency(this)">
-                    <span class="currency">₫</span>
                 </div>
             </div>
             
@@ -1301,7 +1299,6 @@ async processBulkOpeningStock() {
                         <label>Giá trị:</label>
                         <div class="input-group">
                             <input type="text" id="productValue" placeholder="0" oninput="window.inventoryModule.formatCurrency(this)">
-                            <span class="currency">₫</span>
                         </div>
                     </div>
                 </div>
@@ -1408,7 +1405,6 @@ async processBulkOpeningStock() {
                         <label>Giá trị:</label>
                         <div class="input-group">
                             <input type="text" id="editProductValue" value="${product.totalValue || 0}" oninput="window.inventoryModule.formatCurrency(this)">
-                            <span class="currency">₫</span>
                         </div>
                     </div>
                 </div>
@@ -1716,7 +1712,6 @@ switchProductHistoryTab(tab) {
                     <label>Số tiền:</label>
                     <div class="input-group">
                         <input type="text" id="serviceAmount" placeholder="0" oninput="window.inventoryModule.formatCurrency(this)">
-                        <span class="currency">₫</span>
                     </div>
                 </div>
                 

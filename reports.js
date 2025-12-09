@@ -230,7 +230,23 @@ formatDateForFirebase(dateStr) {
                 : "Chưa có hàng xuất";
 
         // ============================================================
-        // 7) RENDER HTML
+        // 7) KIỂM TRA QUYỀN TRUY CẬP
+        // ============================================================
+        const isEmployee = window.authManager?.isEmployee() || false;
+        const isAdmin = window.authManager?.isAdmin() || false;
+        const isLatestReport = this.canEmployeeEditReport(this.currentDate);
+        const canEditReport = isAdmin || (isEmployee && isLatestReport);
+        
+        console.log(`🔐 Quyền truy cập:`, {
+            isEmployee,
+            isAdmin,
+            isLatestReport,
+            canEditReport,
+            currentDate: this.currentDate
+        });
+
+        // ============================================================
+        // 8) RENDER HTML
         // ============================================================
         mainContent.innerHTML = `
             <div class="report-container">
@@ -250,6 +266,13 @@ formatDateForFirebase(dateStr) {
                         Dữ liệu chưa lưu: ${this.expenses.length} chi phí, ${this.transfers.length} chuyển khoản
                     </div>`
                     : ""}
+
+                ${isEmployee && !isLatestReport ? `
+                    <div class="view-only-notice">
+                        <i class="fas fa-eye"></i>
+                        <span>Đang xem báo cáo cũ - Chỉ có quyền xem</span>
+                    </div>
+                ` : ''}
 
                 <div class="opening-balance">
                     <i class="fas fa-wallet"></i> 
@@ -277,32 +300,44 @@ formatDateForFirebase(dateStr) {
                 </div>
 
                 <div class="report-card compact">
-                    <label>THỰC NHẬN (Giao quỹ)</label>
-                    <div class="input-group">
-                        <input type="text" id="actualReceived"
-                               value="${actualReceived > 0 ? actualReceived.toLocaleString() : ""}"
-                               oninput="window.reportsModule.formatCurrency(this); window.reportsModule.calculate()"
-                               placeholder="Nhập số tiền">
-                    </div>
-                </div>
+    <label>THỰC NHẬN (Giao quỹ)</label>
+    <div class="input-group">
+        <input type="text" id="actualReceived"
+               value="${actualReceived > 0 ? actualReceived.toLocaleString() : ""}"
+               oninput="window.reportsModule.formatLiveInput(this); window.reportsModule.calculate()"
+               onblur="window.reportsModule.formatCurrency(this)"
+               placeholder="Nhập số tiền"
+               ${!canEditReport ? 'readonly style="background:#f5f5f5; cursor:not-allowed;"' : ''}>
+    </div>
+</div>
 
-                <div class="report-card compact">
-                    <label>SỐ DƯ CUỐI KỲ</label>
-                    <div class="input-group">
-                        <input type="text" id="closingBalance"
-                               value="${closingBalance > 0 ? closingBalance.toLocaleString() : ""}"
-                               oninput="window.reportsModule.formatCurrency(this); window.reportsModule.calculate()"
-                               placeholder="Nhập số dư">
-                    </div>
-                </div>
-<div class="action-buttons">
-                    <button class="btn-primary" onclick="window.reportsModule.saveReport()">
-                        <i class="fas fa-save"></i> 💾 LƯU BÁO CÁO
-                    </button>
+<div class="report-card compact">
+    <label>SỐ DƯ CUỐI KỲ</label>
+    <div class="input-group">
+        <input type="text" id="closingBalance"
+               value="${closingBalance > 0 ? closingBalance.toLocaleString() : ""}"
+               oninput="window.reportsModule.formatLiveInput(this); window.reportsModule.calculate()"
+               onblur="window.reportsModule.formatCurrency(this)"
+               placeholder="Nhập số dư"
+               ${!canEditReport ? 'readonly style="background:#f5f5f5; cursor:not-allowed;"' : ''}>
+    </div>
+</div>
+
+                <div class="action-buttons">
+                    ${canEditReport ? `
+                        <button class="btn-primary" onclick="window.reportsModule.saveReport()">
+                            <i class="fas fa-save"></i> 💾 LƯU BÁO CÁO
+                        </button>
+                    ` : `
+                        <button class="btn-primary disabled" onclick="window.showToast('Chỉ được cập nhật báo cáo gần nhất', 'info')">
+                            <i class="fas fa-lock"></i> 🔒 CHỈ XEM
+                        </button>
+                    `}
                     <button class="btn-primary" onclick="window.reportsModule.sendToZalo()">
                         <i class="fas fa-paper-plane"></i> 📱 GỬI ZALO
                     </button>        
-            </div>
+                </div>
+
                 <div class="export-line">
                     <i class="fas fa-box" style="color:#4CAF50;margin-right:5px;"></i>
                     <strong>Hàng xuất:</strong> ${exportText}
@@ -331,11 +366,11 @@ formatDateForFirebase(dateStr) {
 
                 <div id="historySection" class="collapsible-section" style="display:none;"></div>
 
-                
+            </div>
         `;
 
         // ============================================================
-        // 8) TÍNH TOÁN & UPDATE UI BÊN DƯỚI
+        // 9) TÍNH TOÁN & UPDATE UI BÊN DƯỚI
         // ============================================================
         this.calculate();
         this.updateInventoryUI();
@@ -410,16 +445,30 @@ formatDateForFirebase(dateStr) {
 
 async saveReport() {
     try {
-        // 1. Lấy số dư đầu kỳ từ ngày trước (tính tự động)
+        // 1. Kiểm tra quyền trước khi lưu
+        if (window.authManager && window.authManager.isEmployee()) {
+            const currentDate = this.currentDate;
+            
+            console.log(`🔐 Kiểm tra quyền lưu báo cáo ngày ${currentDate}`);
+            
+            // Nhân viên chỉ được lưu báo cáo GẦN NHẤT
+            if (!this.canEmployeeEditReport(currentDate)) {
+                const latestDate = this.getLatestReportDate();
+                window.showToast(`Chỉ được cập nhật báo cáo gần nhất (${latestDate})`, 'warning');
+                return;
+            }
+        }
+        
+        // 2. Lấy số dư đầu kỳ từ ngày trước (tính tự động)
         const openingBalance = await this.getOpeningBalance(this.currentDateKey);
         
-        // 2. Lấy giá trị từ UI
+        // 3. Lấy giá trị từ UI
         const actualReceived = this.getCurrencyValue('actualReceived');
         const closingBalance = this.getCurrencyValue('closingBalance');
         const expensesTotal = this.getTotalExpenses();
         const transfersTotal = this.getTotalTransfers();
         
-        // 3. Validation cơ bản
+        // 4. Validation cơ bản
         if (actualReceived < 0) {
             window.showToast('Số tiền thực nhận không hợp lệ', 'warning');
             document.getElementById('actualReceived').focus();
@@ -432,7 +481,7 @@ async saveReport() {
             return;
         }
         
-        // 4. Tính toán doanh thu
+        // 5. Tính toán doanh thu
         const revenue = actualReceived + expensesTotal + transfersTotal - openingBalance + closingBalance;
         
         console.log('💰 Revenue calculation:', {
@@ -444,7 +493,7 @@ async saveReport() {
             revenue
         });
         
-        // 5. KIỂM TRA VÀ XỬ LÝ XUẤT KHO
+        // 6. KIỂM TRA VÀ XỬ LÝ XUẤT KHO
         let exportSuccess = true;
         let exportedItems = [];
         
@@ -461,7 +510,7 @@ async saveReport() {
             exportedItems = [...this.inventoryExports];
         }
         
-        // 6. TẠO REPORT DATA với thông tin hàng đã xuất
+        // 7. TẠO REPORT DATA với thông tin hàng đã xuất
         const reportData = {
             date: this.currentDate,
             openingBalance,
@@ -475,7 +524,9 @@ async saveReport() {
             version: (this.currentReport?.version || 0) + 1,
             inventoryUpdated: exportSuccess && exportedItems.length > 0,
             exportedItemsCount: exportedItems.length,
-            exportedItemsTotal: exportedItems.reduce((sum, item) => sum + item.quantity, 0)
+            exportedItemsTotal: exportedItems.reduce((sum, item) => sum + item.quantity, 0),
+            savedBy: window.authManager?.currentUser?.name || 'Unknown',
+            userRole: window.authManager?.currentUser?.role || 'unknown'
         };
         
         const dateKey = this.currentDateKey;
@@ -483,10 +534,11 @@ async saveReport() {
         console.log('💾 Saving report to Firebase:', {
             dateKey,
             version: reportData.version,
-            exportedItems: reportData.inventoryExports.length
+            exportedItems: reportData.inventoryExports.length,
+            canEdit: this.canEmployeeEditReport(this.currentDate)
         });
         
-        // 7. LƯU VÀO FIREBASE THÔNG QUA DATA MANAGER
+        // 8. LƯU VÀO FIREBASE THÔNG QUA DATA MANAGER
         const success = await window.dataManager.saveLocal(
             'reports',
             `${dateKey}.json`,
@@ -495,19 +547,19 @@ async saveReport() {
         );
         
         if (success) {
-            // 8. ⭐⭐⭐ XÓA DỮ LIỆU TẠM SAU KHI LƯU THÀNH CÔNG ⭐⭐⭐
+            // 9. ⭐⭐⭐ XÓA DỮ LIỆU TẠM SAU KHI LƯU THÀNH CÔNG ⭐⭐⭐
             this.clearTempData(this.currentDate);
             
-            // 9. RESET DỮ LIỆU SAU KHI LƯU THÀNH CÔNG
+            // 10. RESET DỮ LIỆU SAU KHI LƯU THÀNH CÔNG
             this.resetAfterSave();
             
-            // 10. Cập nhật currentReport
+            // 11. Cập nhật currentReport
             this.currentReport = reportData;
             
-            // 11. Hiển thị thông báo
+            // 12. Hiển thị thông báo
             window.showToast(`✅ Đã lưu báo cáo ngày ${this.currentDate}`, 'success');
             
-            // 12. RENDER LẠI UI
+            // 13. RENDER LẠI UI
             await this.render();
         } else {
             window.showToast('❌ Lỗi khi lưu báo cáo', 'error');
@@ -519,20 +571,23 @@ async saveReport() {
     }
 }
 
-
-
-
-
-
-
-
-
 setupAutoSave() {
     // Tự động lưu mỗi 30 giây nếu có dữ liệu
     setInterval(() => {
         if (this.expenses.length > 0 || this.transfers.length > 0) {
             this.saveTempExpenses(this.currentDate);
             this.saveTempTransfers(this.currentDate);
+            
+            // Lưu cả inventory exports nếu có
+            if (this.inventoryExports.length > 0) {
+                try {
+                    const key = `milano_temp_exports_${this.currentDate}`;
+                    localStorage.setItem(key, JSON.stringify(this.inventoryExports));
+                } catch (error) {
+                    console.error('Error auto-saving exports:', error);
+                }
+            }
+            
             console.log('🔄 Auto-save dữ liệu tạm');
         }
     }, 30000); // 30 giây
@@ -597,22 +652,46 @@ setupAutoSave() {
         const [day, month, year] = this.currentDate.split('/');
         return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
+    formatLiveInput(input) {
+    // 1. Loại bỏ mọi ký tự không phải là số
+    let value = input.value.replace(/\D/g, ''); 
     
-    formatCurrency(input) {
-        let value = input.value.replace(/\D/g, '');
-        if (value) {
-            value = parseInt(value).toLocaleString('vi-VN');
-        }
-        input.value = value;
+    // 2. Định dạng lại số tiền (18000 thành 18.000)
+    if (value) {
+        // Chỉ cần định dạng, KHÔNG thêm '000'
+        // Mục đích: giúp người dùng dễ đọc nếu họ nhập số lớn (ví dụ 180000 thành 180.000)
+        input.value = parseInt(value).toLocaleString('vi-VN');
+    } else {
+        input.value = ''; // Giữ input trống nếu người dùng xóa hết
     }
+}
+
+// Phương thức HIỆN TẠI (ĐÃ SỬA): Áp dụng quy tắc thêm '000' (dùng cho onblur)
+formatCurrency(input) {
+    // 1. Loại bỏ mọi ký tự không phải là số
+    let value = input.value.replace(/\D/g, ''); 
     
-    getCurrencyValue(inputId) {
-        const input = document.getElementById(inputId);
-        if (!input) return 0;
-        
-        const value = input.value.replace(/\D/g, '');
-        return parseInt(value) || 0;
+    // ⭐⭐⭐ LOGIC TỰ ĐỘNG THÊM '000' CHỈ ÁP DỤNG Ở ĐÂY ⭐⭐⭐
+    // Kiểm tra độ dài: Nếu số nhập vào có 1, 2, hoặc 3 ký tự (vd: 1, 18, 999) và lớn hơn 0
+    if (value.length > 0 && value.length <= 5) { // Đã đổi ngưỡng từ 3 thành 5
+    value = value + '000'; // Ví dụ: '13000' thành '13000000' -> 13.000.000
+}
+    
+    // 2. Định dạng lại số tiền (ví dụ: 18000 thành 18.000)
+    if (value) {
+        input.value = parseInt(value).toLocaleString('vi-VN');
+    } else {
+        input.value = '';
     }
+}
+    
+   getCurrencyValue(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return 0;
+    
+    const value = input.value.replace(/\D/g, '');
+    return parseInt(value) || 0;
+}
     async loadReport(date) {
     console.log(`📥 Loading report for date: ${date}`);
     
@@ -733,40 +812,50 @@ async changeDate() {
     this.calculatedRevenue = revenue;
 }
    showExpensesModal() {
+    // Kiểm tra quyền
+    const canEdit = window.authManager?.isAdmin() || 
+                   (window.authManager?.isEmployee() && 
+                    this.canEmployeeEditReport(this.currentDate));
+    
     const modalContent = `
         <div class="modal-header">
             <h2><i class="fas fa-credit-card"></i> CHI PHÍ NGÀY ${this.currentDate}</h2>
+            ${!canEdit ? '<span class="view-only-badge">CHỈ XEM</span>' : ''}
             <div class="modal-header-actions">
-                <button class="btn-icon" onclick="window.reportsModule.showTransfersModal()" title="Thêm chuyển khoản">
-                    <i class="fas fa-university"></i>
-                    <span>Chuyển khoản</span>
-                </button>
+                ${canEdit ? `
+                    <button class="btn-icon" onclick="window.reportsModule.showTransfersModal()" title="Thêm chuyển khoản">
+                        <i class="fas fa-university"></i>
+                        <span>Chuyển khoản</span>
+                    </button>
+                ` : ''}
                 <button class="modal-close" onclick="closeModal(); window.reportsModule.calculate()">&times;</button>
             </div>
         </div>
         <div class="modal-body compact">
-            <!-- Input Section - Grid Layout -->
-            <div class="input-grid">
-                <div class="form-group">
-                    <label><i class="fas fa-tag"></i> Tên chi phí:</label>
-                    <input type="text" id="expenseName" placeholder="Nhập tên chi phí..." 
-                           class="form-input">
-                </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-money-bill-wave"></i> Số tiền:</label>
-                    <div class="amount-input-wrapper">
-                        <input type="text" id="expenseAmount" placeholder="0" 
-                               oninput="window.reportsModule.formatCurrency(this)"
-                               class="form-input">
-                        <span class="currency">₫</span>
+            <!-- Input Section - Chỉ hiển thị nếu có quyền edit -->
+            ${canEdit ? `
+                <div class="input-grid">
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Tên chi phí:</label>
+                        <input type="text" id="expenseName" placeholder="Nhập tên chi phí..." class="form-input">
                     </div>
+                    
+                    <div class="form-group">
+    <label><i class="fas fa-money-bill-wave"></i> Số tiền:</label>
+    <div class="amount-input-wrapper">
+        <input type="text" id="expenseAmount" placeholder="0" 
+               oninput="window.reportsModule.formatLiveInput(this)"
+               onblur="window.reportsModule.formatCurrency(this)"
+               class="form-input">
+        <span class="currency">₫</span>
+    </div>
+</div>
+                    
+                    <button class="btn-primary btn-add" onclick="window.reportsModule.addExpense()">
+                        <i class="fas fa-plus"></i> THÊM
+                    </button>
                 </div>
-                
-                <button class="btn-primary btn-add" onclick="window.reportsModule.addExpense()">
-                    <i class="fas fa-plus"></i> THÊM
-                </button>
-            </div>
+            ` : ''}
             
             <!-- Expenses List - Compact -->
             <div class="list-section">
@@ -785,11 +874,13 @@ async changeDate() {
                                 <div class="item-name">${expense.name}</div>
                                 <div class="item-amount">${expense.amount.toLocaleString()} ₫</div>
                             </div>
-                            <div class="item-actions">
-                                <button class="btn-icon small danger" onclick="window.reportsModule.removeExpense(${index})" title="Xóa">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
+                            ${canEdit ? `
+                                <div class="item-actions">
+                                    <button class="btn-icon small danger" onclick="window.reportsModule.removeExpense(${index})" title="Xóa">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            ` : ''}
                         </div>
                     `).join('')}
                     
@@ -805,7 +896,7 @@ async changeDate() {
             <!-- Quick Actions -->
             <div class="quick-actions">
                 <button class="btn-secondary" onclick="closeModal(); window.reportsModule.calculate()">
-                    <i class="fas fa-check"></i> XONG
+                    <i class="fas fa-check"></i> ĐÓNG
                 </button>
             </div>
         </div>
@@ -813,194 +904,27 @@ async changeDate() {
     
     window.showModal(modalContent);
 }
-
-showTransfersModal() {
-    const modalContent = `
-        <div class="modal-header">
-            <h2><i class="fas fa-university"></i> CHUYỂN KHOẢN NGÀY ${this.currentDate}</h2>
-            <div class="modal-header-actions">
-                <!-- Nút chuyển nhanh: mở popup CHI PHÍ -->
-                <button class="btn-icon" onclick="closeModal(); window.reportsModule.showExpensesModal()" title="Mở Chi phí">
-                    <i class="fas fa-credit-card"></i>
-                    <span>Chi phí</span>
-                </button>
-
-                <button class="modal-close" onclick="closeModal(); window.reportsModule.calculate()">&times;</button>
-            </div>
-        </div>
-
-        <div class="modal-body compact">
-
-            <!-- Input Section - Grid Layout -->
-            <div class="input-grid">
-                <div class="form-group">
-                    <label><i class="fas fa-tag"></i> Nội dung chuyển khoản:</label>
-                    <input type="text" id="transferContent" placeholder="Tiết kiệm, trả nợ..." 
-                           class="form-input">
-                </div>
-
-                <div class="form-group">
-                    <label><i class="fas fa-money-bill-wave"></i> Số tiền:</label>
-                    <div class="amount-input-wrapper">
-                        <input type="text" id="transferAmount" placeholder="0"
-                               oninput="window.reportsModule.formatCurrency(this)"
-                               class="form-input">
-                        <span class="currency">₫</span>
-                    </div>
-                </div>
-
-                <button class="btn-primary btn-add" onclick="window.reportsModule.addTransfer()">
-                    <i class="fas fa-plus"></i> THÊM
-                </button>
-            </div>
-
-            <!-- Transfers List - Compact -->
-            <div class="list-section">
-                <div class="section-header">
-                    <h3><i class="fas fa-list"></i> DANH SÁCH CHUYỂN KHOẢN (${this.transfers.length})</h3>
-                    <div class="section-total">
-                        <span>Tổng:</span>
-                        <strong>${this.getTotalTransfers().toLocaleString()} ₫</strong>
-                    </div>
-                </div>
-
-                <div class="compact-list" id="transfersList">
-                    ${this.transfers.map((transfer, index) => `
-                        <div class="compact-item">
-                            <div class="item-main">
-                                <div class="item-name">${transfer.content || 'Không có nội dung'}</div>
-                                <div class="item-amount">${transfer.amount.toLocaleString()} ₫</div>
-                            </div>
-                            <div class="item-actions">
-                                <button class="btn-icon small danger" 
-                                    onclick="window.reportsModule.removeTransfer(${index})" title="Xóa">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
-
-                    ${this.transfers.length === 0 ? `
-                        <div class="empty-state compact">
-                            <i class="fas fa-exchange-alt"></i>
-                            <p>Chưa có chuyển khoản nào</p>
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="quick-actions">
-                <button class="btn-secondary" onclick="closeModal(); window.reportsModule.calculate()">
-                    <i class="fas fa-check"></i> XONG
-                </button>
-            </div>
-
-        </div>
-    `;
-
-    window.showModal(modalContent);
-} 
-    getTotalExpenses() {
-        return this.expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+selectExpenseSuggestion(suggestion) {
+    const expenseNameInput = document.getElementById('expenseName');
+    if (expenseNameInput) {
+        expenseNameInput.value = suggestion;
+        expenseNameInput.focus();
     }
-    
-    getTotalTransfers() {
-        return this.transfers.reduce((sum, transfer) => sum + (transfer.amount || 0), 0);
-    }
+}
 
-    
-showExpensesModal() {
-    const suggestionsHTML = this.expenseSuggestions.map(suggestion => 
-        `<div class="suggestion-item" onclick="window.reportsModule.selectExpenseSuggestion('${suggestion.replace(/'/g, "\\'")}')">
-            ${suggestion}
-        </div>`
-    ).join('');
-    
-    const modalContent = `
-        <div class="modal-header">
-            <h2><i class="fas fa-credit-card"></i> CHI PHÍ NGÀY ${this.currentDate}</h2>
-            <div class="modal-header-actions">
-                <button class="btn-icon" onclick="window.reportsModule.showTransfersModal()" title="Thêm chuyển khoản">
-                    <i class="fas fa-university"></i>
-                    <span>Chuyển khoản</span>
-                </button>
-                <button class="modal-close" onclick="closeModal(); window.reportsModule.calculate()">&times;</button>
-            </div>
-        </div>
-        <div class="modal-body compact">
-            <!-- Input Section - Grid Layout -->
-            <div class="input-grid">
-                <div class="form-group">
-                    <label><i class="fas fa-tag"></i> Tên chi phí:</label>
-                    <input type="text" id="expenseName" placeholder="Nhập tên chi phí..." class="form-input">
-                </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-money-bill-wave"></i> Số tiền:</label>
-                    <div class="amount-input-wrapper">
-                        <input type="text" id="expenseAmount" placeholder="0" 
-                               oninput="window.reportsModule.formatCurrency(this)"
-                               class="form-input">
-                        <span class="currency">₫</span>
-                    </div>
-                </div>
-                
-                <button class="btn-primary btn-add" onclick="window.reportsModule.addExpense()">
-                    <i class="fas fa-plus"></i> THÊM
-                </button>
-            </div>
-            
-            <!-- Expenses List - Compact -->
-            <div class="list-section">
-                <div class="section-header">
-                    <h3><i class="fas fa-list"></i> DANH SÁCH CHI PHÍ (${this.expenses.length})</h3> <strong>${this.getTotalExpenses().toLocaleString()} ₫</strong>
-                    <div class="section-total">
-                        <span>Tổng:</span>
-                        <strong>${this.getTotalExpenses().toLocaleString()} ₫</strong>
-                    </div>
-                </div>
-                
-                <div class="compact-list" id="expensesList">
-                    ${this.expenses.map((expense, index) => `
-                        <div class="compact-item">
-                            <div class="item-main">
-                                <div class="item-name">${expense.name}</div>
-                                <div class="item-amount">${expense.amount.toLocaleString()} ₫</div>
-                            </div>
-                            <div class="item-actions">
-                                <button class="btn-icon small danger" onclick="window.reportsModule.removeExpense(${index})" title="Xóa">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
-                    
-                    ${this.expenses.length === 0 ? `
-                        <div class="empty-state compact">
-                            <i class="fas fa-receipt"></i>
-                            <p>Chưa có chi phí nào</p>
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-            
-            <!-- Quick Actions -->
-            <div class="quick-actions">
-            <button class="btn-secondary" onclick="window.reportsModule.showTransfersModal()" title="Thêm chuyển khoản">
-                    <i class="fas fa-university"></i>
-                    <span>Chuyển khoản</span>
-                </button>
-                <button class="btn-secondary" onclick="closeModal(); window.reportsModule.calculate()">
-                    <i class="fas fa-check"></i> XONG
-                </button>
-            </div>
-        </div>
-    `;
-    
-    window.showModal(modalContent);
+selectTransferSuggestion(suggestion) {
+    const transferContentInput = document.getElementById('transferContent');
+    if (transferContentInput) {
+        transferContentInput.value = suggestion;
+        transferContentInput.focus();
+    }
 }
 showTransfersModal() {
+    // Kiểm tra quyền
+    const canEdit = window.authManager?.isAdmin() || 
+                   (window.authManager?.isEmployee() && 
+                    this.canEmployeeEditReport(this.currentDate));
+    
     const suggestionsHTML = this.transferSuggestions.map(suggestion => 
         `<div class="suggestion-item" onclick="window.reportsModule.selectTransferSuggestion('${suggestion.replace(/'/g, "\\'")}')">
             ${suggestion}
@@ -1010,12 +934,15 @@ showTransfersModal() {
     const modalContent = `
         <div class="modal-header">
             <h2><i class="fas fa-university"></i> CHUYỂN KHOẢN NGÀY ${this.currentDate}</h2>
+            ${!canEdit ? '<span class="view-only-badge">CHỈ XEM</span>' : ''}
             <div class="modal-header-actions">
-                <!-- Nút chuyển nhanh: mở popup CHI PHÍ -->
-                <button class="btn-icon" onclick="closeModal(); window.reportsModule.showExpensesModal()" title="Mở Chi phí">
-                    <i class="fas fa-credit-card"></i>
-                    <span>Chi phí</span>
-                </button>
+                ${canEdit ? `
+                    <!-- Nút chuyển nhanh: mở popup CHI PHÍ -->
+                    <button class="btn-icon" onclick="closeModal(); window.reportsModule.showExpensesModal()" title="Mở Chi phí">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Chi phí</span>
+                    </button>
+                ` : ''}
 
                 <button class="modal-close" onclick="closeModal(); window.reportsModule.calculate()">&times;</button>
             </div>
@@ -1023,27 +950,29 @@ showTransfersModal() {
 
         <div class="modal-body compact">
 
-            <!-- Input Section - Grid Layout -->
-            <div class="input-grid">
-                <div class="form-group">
-                    <label><i class="fas fa-tag"></i> Nội dung chuyển khoản:</label>
-                    <input type="text" id="transferContent" placeholder="Tiết kiệm, trả nợ..." class="form-input">
-                </div>
-
-                <div class="form-group">
-                    <label><i class="fas fa-money-bill-wave"></i> Số tiền:</label>
-                    <div class="amount-input-wrapper">
-                        <input type="text" id="transferAmount" placeholder="0"
-                               oninput="window.reportsModule.formatCurrency(this)"
-                               class="form-input">
-                        <span class="currency">₫</span>
+            <!-- Input Section - Grid Layout - Chỉ hiển thị nếu có quyền -->
+            ${canEdit ? `
+                <div class="input-grid">
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Nội dung chuyển khoản:</label>
+                        <input type="text" id="transferContent" placeholder="Tiết kiệm, trả nợ..." class="form-input">
                     </div>
-                </div>
 
-                <button class="btn-primary btn-add" onclick="window.reportsModule.addTransfer()">
-                    <i class="fas fa-plus"></i> THÊM
-                </button>
-            </div>
+                    <div class="form-group">
+    <label><i class="fas fa-money-bill-wave"></i> Số tiền:</label>
+    <div class="amount-input-wrapper">
+        <input type="text" id="transferAmount" placeholder="0"
+               oninput="window.reportsModule.formatLiveInput(this)" 
+               onblur="window.reportsModule.formatCurrency(this)" 
+               class="form-input">
+    </div>
+</div>
+
+                    <button class="btn-primary btn-add" onclick="window.reportsModule.addTransfer()">
+                        <i class="fas fa-plus"></i> THÊM
+                    </button>
+                </div>
+            ` : ''}
 
             <!-- Transfers List - Compact -->
             <div class="list-section">
@@ -1062,12 +991,14 @@ showTransfersModal() {
                                 <div class="item-name">${transfer.content || 'Không có nội dung'}</div>
                                 <div class="item-amount">${transfer.amount.toLocaleString()} ₫</div>
                             </div>
-                            <div class="item-actions">
-                                <button class="btn-icon small danger" 
-                                    onclick="window.reportsModule.removeTransfer(${index})" title="Xóa">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
+                            ${canEdit ? `
+                                <div class="item-actions">
+                                    <button class="btn-icon small danger" 
+                                        onclick="window.reportsModule.removeTransfer(${index})" title="Xóa">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            ` : ''}
                         </div>
                     `).join('')}
 
@@ -1080,15 +1011,10 @@ showTransfersModal() {
                 </div>
             </div>
 
-            <!-- Quick Actions -->  
-            <div class="quick-actions">         
-                <button class="btn-secondary" onclick="closeModal(); window.reportsModule.showExpensesModal()" title="Mở Chi phí">
-                    <i class="fas fa-credit-card"></i>
-                    <span>Chi phí</span>
-                </button>
-                
+            <!-- Quick Actions -->
+            <div class="quick-actions">
                 <button class="btn-secondary" onclick="closeModal(); window.reportsModule.calculate()">
-                    <i class="fas fa-check"></i> XONG
+                    <i class="fas fa-check"></i> ĐÓNG
                 </button>
             </div>
 
@@ -1096,6 +1022,163 @@ showTransfersModal() {
     `;
 
     window.showModal(modalContent);
+}
+// Thêm vào class ReportsModule
+getLatestReportDate() {
+    try {
+        const allReports = window.dataManager.getReports();
+        if (!allReports || allReports.length === 0) {
+            console.log('📭 Không có báo cáo nào trong hệ thống');
+            return null;
+        }
+        
+        // Lọc ra các báo cáo hợp lệ (có date)
+        const validReports = allReports.filter(report => {
+            return report && 
+                   report.date && 
+                   typeof report.date === 'string' && 
+                   report.date.trim() !== '';
+        });
+        
+        if (validReports.length === 0) {
+            console.log('📭 Không có báo cáo hợp lệ (có date)');
+            return null;
+        }
+        
+        // Chỉ lấy báo cáo trong 2 ngày gần nhất
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        // Filter chỉ lấy báo cáo của hôm nay và hôm qua
+        const recentReports = validReports.filter(report => {
+            try {
+                const reportDate = this.parseDisplayDate(report.date);
+                reportDate.setHours(0, 0, 0, 0);
+                
+                const todayDate = new Date(today);
+                todayDate.setHours(0, 0, 0, 0);
+                
+                const yesterdayDate = new Date(yesterday);
+                yesterdayDate.setHours(0, 0, 0, 0);
+                
+                return reportDate.getTime() === todayDate.getTime() || 
+                       reportDate.getTime() === yesterdayDate.getTime();
+            } catch (error) {
+                return false;
+            }
+        });
+        
+        if (recentReports.length === 0) {
+            console.log('📭 Không có báo cáo trong 2 ngày gần nhất');
+            return null;
+        }
+        
+        // Sắp xếp theo ngày mới nhất
+        const sortedReports = [...recentReports].sort((a, b) => {
+            try {
+                const dateA = this.parseDisplayDate(a.date);
+                const dateB = this.parseDisplayDate(b.date);
+                return dateB - dateA; // Mới nhất lên đầu
+            } catch (error) {
+                return 0;
+            }
+        });
+        
+        const latestDate = sortedReports[0]?.date;
+        console.log(`📅 Báo cáo gần nhất trong 2 ngày: ${latestDate}`);
+        return latestDate;
+        
+    } catch (error) {
+        console.error('❌ Lỗi khi lấy báo cáo gần nhất:', error);
+        return null;
+    }
+}
+
+canEmployeeEditReport(date) {
+    if (!window.authManager) return false;
+    
+    // Admin có toàn quyền
+    if (window.authManager.isAdmin()) {
+        return true;
+    }
+    
+    // Nhân viên chỉ được sửa báo cáo của NGÀY HIỆN TẠI hoặc HÔM QUA
+    if (window.authManager.isEmployee()) {
+        return this.isTodayOrYesterdayReport(date);
+    }
+    
+    return false;
+}
+
+canEmployeeDeleteReport(date) {
+    if (!window.authManager) return false;
+    
+    // Admin có toàn quyền
+    if (window.authManager.isAdmin()) {
+        return true;
+    }
+    
+    // Nhân viên chỉ được xóa báo cáo của NGÀY HIỆN TẠI hoặc HÔM QUA
+    if (window.authManager.isEmployee()) {
+        return this.isTodayOrYesterdayReport(date);
+    }
+    
+    return false;
+}
+
+// Kiểm tra xem date có phải là hôm nay hoặc hôm qua không
+isTodayOrYesterdayReport(date) {
+    try {
+        const reportDate = this.parseDisplayDate(date);
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        // Reset giờ để so sánh ngày
+        reportDate.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+        yesterday.setHours(0, 0, 0, 0);
+        
+        // So sánh với hôm nay hoặc hôm qua
+        const isToday = reportDate.getTime() === today.getTime();
+        const isYesterday = reportDate.getTime() === yesterday.getTime();
+        
+        console.log(`📅 Kiểm tra ngày: ${date}`, {
+            reportDate,
+            today,
+            yesterday,
+            isToday,
+            isYesterday
+        });
+        
+        return isToday || isYesterday;
+        
+    } catch (error) {
+        console.error('❌ Lỗi kiểm tra ngày:', error);
+        return false;
+    }
+}
+
+
+    getTotalExpenses() {
+    if (!this.expenses || !Array.isArray(this.expenses)) {
+        return 0;
+    }
+    return this.expenses.reduce((sum, expense) => {
+        const amount = expense.amount || 0;
+        return sum + (typeof amount === 'number' ? amount : parseInt(amount) || 0);
+    }, 0);
+}
+
+getTotalTransfers() {
+    if (!this.transfers || !Array.isArray(this.transfers)) {
+        return 0;
+    }
+    return this.transfers.reduce((sum, transfer) => {
+        const amount = transfer.amount || 0;
+        return sum + (typeof amount === 'number' ? amount : parseInt(amount) || 0);
+    }, 0);
 }
   
     toggleInventory() {
@@ -1307,6 +1390,9 @@ renderInventorySection() {
             return dateB - dateA;
         });
     
+    // Lấy báo cáo gần nhất
+    const latestDate = this.getLatestReportDate();
+    
     section.innerHTML = `
         <div class="history-list">
             ${sortedReports.map(report => {
@@ -1334,18 +1420,30 @@ renderInventorySection() {
                     }
                 }
                 
+                // Kiểm tra có phải báo cáo gần nhất không
+                const isLatest = report.date === latestDate;
+                
+                // KIỂM TRA QUYỀN HIỂN THỊ NÚT XÓA
+                const canDelete = window.authManager?.isAdmin() || 
+                    (window.authManager?.isEmployee() && isLatest);
+                
                 return `
-                    <div class="history-item">
+                    <div class="history-item ${isLatest ? 'latest-report' : ''}">
                         <div class="history-header">
-                            <span class="history-date">📅 ${report.date}</span>
+                            <span class="history-date">
+                                📅 ${report.date}
+                                ${isLatest ? '<span class="latest-badge">GẦN NHẤT</span>' : ''}
+                            </span>
                             ${savedTime ? `<span class="history-time">${savedTime}</span>` : ''}
                             <div class="history-actions">
                                 <button class="btn-small" onclick="window.reportsModule.loadReport('${report.date}')">
                                     <i class="fas fa-eye"></i> Xem
                                 </button>
-                                <button class="btn-small danger" onclick="window.reportsModule.deleteReportFirebase('${report.date}')">
-                                    <i class="fas fa-trash"></i> Xóa
-                                </button>
+                                ${canDelete ? `
+                                    <button class="btn-small danger" onclick="window.reportsModule.deleteReportFirebase('${report.date}')">
+                                        <i class="fas fa-trash"></i> Xóa
+                                    </button>
+                                ` : ''}
                             </div>
                         </div>
                         
@@ -1406,6 +1504,7 @@ renderInventorySection() {
                         
                         <div class="history-footer">
                             <small>
+                                ${report.savedBy ? `Người lưu: ${report.savedBy} • ` : ''}
                                 ${report.savedAt ? `Lưu: ${new Date(report.savedAt).toLocaleString('vi-VN')}` : ''}
                             </small>
                         </div>
@@ -1415,7 +1514,51 @@ renderInventorySection() {
         </div>
     `;
 }
-
+async restoreVersion(date, versionIndex) {
+    if (!confirm(`Bạn có chắc muốn khôi phục phiên bản này?\nBáo cáo hiện tại sẽ bị ghi đè.`)) {
+        return;
+    }
+    
+    try {
+        const allReports = window.dataManager.getReports('01/01/2024', '31/12/2025');
+        const reportsForDate = allReports.filter(r => r.date === date);
+        
+        if (versionIndex >= 0 && versionIndex < reportsForDate.length) {
+            const versionToRestore = reportsForDate[versionIndex];
+            
+            // Lưu lại phiên bản hiện tại trước
+            const currentReport = window.dataManager.data.reports[date];
+            if (currentReport) {
+                const backupKey = `milano_report_backup_${date}_${Date.now()}`;
+                localStorage.setItem(backupKey, JSON.stringify(currentReport));
+            }
+            
+            // Cập nhật với phiên bản cũ
+            const success = await window.dataManager.saveLocal(
+                'reports',
+                `${this.formatDateForFirebase(date)}.json`,
+                versionToRestore,
+                `Khôi phục phiên bản ${versionToRestore.version || (versionIndex + 1)} ngày ${date}`
+            );
+            
+            if (success) {
+                window.showToast(`✅ Đã khôi phục phiên bản ngày ${date}`, 'success');
+                closeModal();
+                
+                // Nếu đang xem report này, reload
+                if (this.currentDate === date) {
+                    await this.loadReport(date);
+                }
+                
+                // Refresh history
+                this.renderHistorySection();
+            }
+        }
+    } catch (error) {
+        console.error('Error restoring version:', error);
+        window.showToast('Lỗi khi khôi phục phiên bản', 'error');
+    }
+}
 // Thêm phương thức xem các phiên bản
 showReportVersions(date) {
     const allReports = window.dataManager.getReports('01/01/2024', '31/12/2025');
@@ -1622,11 +1765,24 @@ loadTempData(date) {
                 console.log(`📥 Tải ${this.transfers.length} chuyển khoản tạm cho ngày ${date}`);
             }
         }
+        
+        // Kiểm tra nếu không có dữ liệu tạm, kiểm tra xem có pending exports không
+        const pendingExportsKey = `milano_temp_exports_${date}`;
+        const tempExports = localStorage.getItem(pendingExportsKey);
+        if (tempExports) {
+            const parsed = JSON.parse(tempExports);
+            if (Array.isArray(parsed)) {
+                this.inventoryExports = parsed;
+                console.log(`📥 Tải ${this.inventoryExports.length} hàng xuất tạm cho ngày ${date}`);
+            }
+        }
+        
     } catch (error) {
         console.error('❌ Lỗi tải dữ liệu tạm:', error);
         // Nếu lỗi, reset về mảng rỗng
         this.expenses = [];
         this.transfers = [];
+        this.inventoryExports = [];
     }
 }
 
@@ -1634,6 +1790,7 @@ clearTempData(date) {
     try {
         localStorage.removeItem(`milano_temp_expenses_${date}`);
         localStorage.removeItem(`milano_temp_transfers_${date}`);
+        localStorage.removeItem(`milano_temp_exports_${date}`);
         console.log(`🧹 Xóa dữ liệu tạm ngày ${date}`);
     } catch (error) {
         console.error('❌ Lỗi xóa dữ liệu tạm:', error);
@@ -1676,21 +1833,24 @@ updateInventoryCount() {
     
     // Reset counter trong product list
     const products = window.dataManager.getInventoryProducts();
-    products.forEach((product, index) => {
-        const qtySpan = document.getElementById(`exportQty${index}`);
-        if (qtySpan) {
-            qtySpan.textContent = '0';
-        }
-    });
+    if (products && Array.isArray(products)) {
+        products.forEach((product, index) => {
+            const qtySpan = document.getElementById(`exportQty${index}`);
+            if (qtySpan) {
+                qtySpan.textContent = '0';
+            }
+        });
+    }
 }
-// THÊM PHƯƠNG THỨC resetAfterSave()
 resetAfterSave() {
     console.log('🔄 Resetting data after save...');
     
     // 1. Reset inventory exports (QUAN TRỌNG: phải reset sau khi lưu)
     this.inventoryExports = [];
     
-   
+    // 2. Reset expenses và transfers nếu muốn
+    // this.expenses = [];
+    // this.transfers = [];
     
     // 3. Cập nhật UI ngay lập tức
     this.updateInventoryUI();
@@ -1698,7 +1858,6 @@ resetAfterSave() {
     console.log('✅ Data reset completed');
 }
 
-// CẬP NHẬT updateInventoryUI()
 updateInventoryUI() {
     // Cập nhật số lượng chờ xuất
     const inventoryCount = document.getElementById('inventoryCount');
@@ -1743,7 +1902,16 @@ updateInventoryUI() {
         }
     });
 }
-
+removeExport(index) {
+    if (index >= 0 && index < this.inventoryExports.length) {
+        const item = this.inventoryExports[index];
+        this.inventoryExports.splice(index, 1);
+        
+        this.updateInventoryUI();
+        
+        window.showToast(`Đã xóa ${item.product} khỏi danh sách chờ xuất`, 'success');
+    }
+}
 async processInventoryExports() {
     try {
         if (this.inventoryExports.length === 0) {
@@ -1833,19 +2001,33 @@ async processInventoryExports() {
     }
 }
     async deleteReportFirebase(date) {
+    console.log(`🗑️ Delete request for date: ${date}`);
+    
+    // 1. KIỂM TRA QUYỀN - NHÂN VIÊN CHỈ ĐƯỢC XÓA BÁO CÁO GẦN NHẤT
+    if (window.authManager && window.authManager.isEmployee()) {
+        console.log(`🔐 Employee trying to delete report ${date}`);
+        
+        if (!this.canEmployeeDeleteReport(date)) {
+            const latestDate = this.getLatestReportDate();
+            window.showToast(`Chỉ được xóa báo cáo gần nhất (${latestDate})`, 'warning');
+            return;
+        }
+    }
+    
+    // 2. Hiển thị confirm dialog
     if (!confirm(`Bạn có chắc muốn xóa báo cáo ngày ${date}?\n\n⚠️ Cảnh báo: Hàng hóa đã xuất sẽ được hoàn trả vào kho!`)) return;
     
     try {
         console.log(`🗑️ Deleting report for date: ${date}`);
         
-        // 1. Tìm report trong dataManager
+        // 3. Tìm report trong dataManager
         const displayDate = date; // date đã là dd/mm/yyyy
         const dateKey = this.formatDateForFirebase(date);
         
         console.log(`🔍 Looking for report: ${displayDate} (key: ${dateKey})`);
         
         // Tìm trong dataManager
-        const report = window.dataManager.data.reports?.[displayDate];
+        let report = window.dataManager.data.reports?.[displayDate];
         
         if (!report) {
             // Thử tìm trong getReports()
@@ -1863,7 +2045,7 @@ async processInventoryExports() {
         
         console.log('📊 Found report to delete:', report);
         
-        // 2. Hoàn trả hàng hóa vào kho nếu có xuất kho
+        // 4. Hoàn trả hàng hóa vào kho nếu có xuất kho
         if (report.inventoryExports && report.inventoryExports.length > 0) {
             console.log(`🔄 Restoring ${report.inventoryExports.length} items to inventory`);
             
@@ -1876,13 +2058,13 @@ async processInventoryExports() {
             window.showToast(`↩️ Đã hoàn trả ${report.inventoryExports.length} sản phẩm vào kho`, 'info');
         }
         
-        // 3. Xóa report khỏi DataManager
+        // 5. Xóa report khỏi DataManager
         delete window.dataManager.data.reports[displayDate];
         
         // Lưu local data ngay lập tức
         window.dataManager.saveLocalData();
         
-        // 4. Thêm vào queue để xóa từ Firebase (gửi null để xóa)
+        // 6. Thêm vào queue để xóa từ Firebase (gửi null để xóa)
         await window.dataManager.saveLocal(
             'reports',
             `${dateKey}.json`,
@@ -1892,7 +2074,7 @@ async processInventoryExports() {
         
         window.showToast(`✅ Đã xóa báo cáo ngày ${date}`, 'success');
         
-        // 5. Refresh UI nếu đang xem report đó
+        // 7. Refresh UI nếu đang xem report đó
         if (this.currentDate === date) {
             console.log(`🔄 Current report deleted, resetting view...`);
             this.currentReport = null;
@@ -1902,7 +2084,7 @@ async processInventoryExports() {
             await this.render();
         }
         
-        // 6. Refresh lịch sử
+        // 8. Refresh lịch sử
         this.renderHistorySection();
         
     } catch (error) {
@@ -1980,45 +2162,71 @@ async restoreInventoryFromReportFirebase(report) {
     }
 }
     sendToZalo() {
-        // 1. Chuẩn bị nội dung báo cáo
-        const openingBalance = this.getCurrencyValue('openingBalance');
-        const actualReceived = this.getCurrencyValue('actualReceived');
-        const closingBalance = this.getCurrencyValue('closingBalance');
-        const revenue = this.calculatedRevenue || 0; // Lấy doanh thu đã tính
+    try {
+        // 1. Lấy số dư đầu kỳ
+        const openingBalance = this.getCurrencyValue('openingBalance') || 0;
         
-        const message = `
-📊 BÁO CÁO NGÀY ${this.currentDate}
-
-💰 Số dư đầu kỳ: ${openingBalance.toLocaleString()} ₫
-💵 Thực nhận (tiền mặt): ${actualReceived.toLocaleString()} ₫
-💳 Chi phí: ${this.getTotalExpenses().toLocaleString()} ₫
-🏦 Chuyển khoản: ${this.getTotalTransfers().toLocaleString()} ₫
-💰 Số dư cuối kỳ: ${closingBalance.toLocaleString()} ₫
-📈 Doanh thu tính toán: ${revenue.toLocaleString()} ₫
-
-${this.expenses.length > 0 ? `📝 Chi tiết chi phí:\n${this.expenses.map(e => `• ${e.name}: ${e.amount.toLocaleString()} ₫`).join('\n')}\n` : ''}
-${this.transfers.length > 0 ? `🏦 Chi tiết chuyển khoản:\n${this.transfers.map(t => `• ${t.content}: ${t.amount.toLocaleString()} ₫`).join('\n')}\n` : ''}
-${this.inventoryExports.length > 0 ? `📦 Hàng xuất kho:\n${this.inventoryExports.map(item => `• ${item.product}: ${item.quantity}${item.unit}`).join('\n')}\n` : ''}
-
---- 
-Hệ thống Milano ☕
-${new Date().toLocaleString('vi-VN')}
-        `.trim();
+        // 2. Lấy giá trị từ UI
+        const actualReceived = this.getCurrencyValue('actualReceived') || 0;
+        const closingBalance = this.getCurrencyValue('closingBalance') || 0;
+        const expensesTotal = this.getTotalExpenses();
+        const transfersTotal = this.getTotalTransfers();
         
-        // 2. Copy vào clipboard
+        // 3. Tính toán doanh thu
+        const revenue = actualReceived + expensesTotal + transfersTotal - openingBalance + closingBalance;
+        
+        // 4. Chuẩn bị nội dung báo cáo
+        let message = `📊 BÁO CÁO NGÀY ${this.currentDate}\n\n`;
+        message += `💰 Số dư đầu kỳ: ${openingBalance.toLocaleString()} ₫\n`;
+        message += `💵 Thực nhận (tiền mặt): ${actualReceived.toLocaleString()} ₫\n`;
+        message += `💳 Chi phí: ${expensesTotal.toLocaleString()} ₫\n`;
+        message += `🏦 Chuyển khoản: ${transfersTotal.toLocaleString()} ₫\n`;
+        message += `💰 Số dư cuối kỳ: ${closingBalance.toLocaleString()} ₫\n`;
+        message += `📈 Doanh thu tính toán: ${revenue.toLocaleString()} ₫\n\n`;
+        
+        if (this.expenses.length > 0) {
+            message += `📝 Chi tiết chi phí:\n`;
+            this.expenses.forEach(e => {
+                message += `• ${e.name}: ${(e.amount || 0).toLocaleString()} ₫\n`;
+            });
+            message += `\n`;
+        }
+        
+        if (this.transfers.length > 0) {
+            message += `🏦 Chi tiết chuyển khoản:\n`;
+            this.transfers.forEach(t => {
+                message += `• ${t.content || 'Không có nội dung'}: ${(t.amount || 0).toLocaleString()} ₫\n`;
+            });
+            message += `\n`;
+        }
+        
+        if (this.inventoryExports.length > 0) {
+            message += `📦 Hàng xuất kho (chờ lưu):\n`;
+            this.inventoryExports.forEach(item => {
+                message += `• ${item.product || item.name}: ${item.quantity || 0}${item.unit || ''}\n`;
+            });
+            message += `\n`;
+        }
+        
+        // Thêm thông tin người gửi nếu có
+        if (window.authManager && window.authManager.currentUser) {
+            const user = window.authManager.currentUser;
+            message += `👤 Người gửi: ${user.name}\n`;
+        }
+        
+        message += `---\n`;
+        message += `Hệ thống Milano ☕\n`;
+        message += `${new Date().toLocaleString('vi-VN')}`;
+        
+        // 5. Copy vào clipboard
         navigator.clipboard.writeText(message).then(() => {
-            // 3. Hiển thị thông báo thành công
             window.showToast('✅ Đã sao chép báo cáo vào clipboard!', 'success');
             
-            // 4. Mở Zalo Web (hoặc desktop) với nội dung đã chuẩn bị
+            // 6. Mở Zalo
             setTimeout(() => {
-                // Tạo URL cho Zalo với nội dung đã encode
                 const zaloUrl = `https://zalo.me/?text=${encodeURIComponent(message)}`;
-                
-                // Mở Zalo trong cửa sổ mới
                 window.open(zaloUrl, '_blank');
                 
-                // Thêm hướng dẫn cho người dùng
                 setTimeout(() => {
                     window.showToast('📱 Zalo đã mở, nhấn Ctrl+V để dán nội dung', 'info');
                 }, 500);
@@ -2039,7 +2247,6 @@ ${new Date().toLocaleString('vi-VN')}
                 if (successful) {
                     window.showToast('✅ Đã sao chép báo cáo (fallback method)', 'success');
                     
-                    // Mở Zalo sau khi copy thành công
                     setTimeout(() => {
                         const zaloUrl = `https://zalo.me/?text=${encodeURIComponent(message)}`;
                         window.open(zaloUrl, '_blank');
@@ -2054,7 +2261,12 @@ ${new Date().toLocaleString('vi-VN')}
             
             document.body.removeChild(textArea);
         });
+        
+    } catch (error) {
+        console.error('❌ Error in sendToZalo:', error);
+        window.showToast('Lỗi khi gửi Zalo: ' + error.message, 'error');
     }
+}
 }
 
 // Khởi tạo module
