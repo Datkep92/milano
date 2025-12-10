@@ -2222,75 +2222,102 @@ async restoreInventoryFromReportFirebase(report) {
         navigator.clipboard.writeText(message).then(() => {
             window.showToast('✅ Đã sao chép báo cáo vào clipboard!', 'success');
             
-            // 6. Mở Zalo (đã tối ưu cho Safari iOS + Android)
-setTimeout(() => {
-    const zaloUrl = `https://zalo.me/?text=${encodeURIComponent(message)}`;
+            // 6. Mở Zalo (tự nhận diện iOS / Android + tối ưu fallback)
+function openZaloWithMessage(message) {
+    const ua = navigator.userAgent.toLowerCase();
+    const zaloWebUrl = `https://zalo.me/?text=${encodeURIComponent(message)}`;
+    const zaloScheme = "zalo://";
+    const intentUrl = "intent://zalo/#Intent;scheme=zalo;package=com.zing.zalo;end";
 
-    let opened = null;
-
-    try {
-        // Cách 1: mở tab mới
-        opened = window.open(zaloUrl, "_blank");
-
-        // Nếu bị Safari chặn → dùng fallback
-        if (!opened) {
-            console.warn("window.open bị chặn, dùng fallback chuyển trang trực tiếp");
-            window.location.href = zaloUrl;
+    // 🟦 iOS — luôn dùng zalo:// (ổn định nhất)
+    if (/iphone|ipad|ipod/.test(ua)) {
+        try {
+            window.location.href = zaloScheme;
+        } catch (e) {
+            window.location.href = zaloWebUrl;
         }
-    } catch (e) {
-        console.warn("window.open lỗi, fallback:", e);
-        window.location.href = zaloUrl;
+        return;
     }
 
-    // Thông báo sau khi mở Zalo
-    setTimeout(() => {
-        window.showToast(
-            '📱 Đã mở Zalo — chỉ cần dán (Ctrl+V hoặc Paste) để gửi',
-            'info'
-        );
-    }, 500);
-}, 500);
-
-}).catch(err => {
-    console.error('❌ Lỗi khi copy vào clipboard:', err);
-
-    // Fallback copy thủ công
-    const textArea = document.createElement('textarea');
-    textArea.value = message;
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-
-    try {
-        const successful = document.execCommand('copy');
-
-        if (successful) {
-            window.showToast('✅ Đã sao chép báo cáo (fallback)', 'success');
+    // 🟩 Android — thử zalo:// → fallback intent:// → fallback zalo web
+    if (/android/.test(ua)) {
+        try {
+            window.location.href = zaloScheme;
 
             setTimeout(() => {
-                const zaloUrl = `https://zalo.me/?text=${encodeURIComponent(message)}`;
+                window.location.href = intentUrl;
+            }, 500);
 
-                let opened = window.open(zaloUrl, "_blank");
-                if (!opened) {
-                    window.location.href = zaloUrl;
-                }
-
-                window.showToast('📱 Đã mở Zalo — hãy dán nội dung', 'info');
-            }, 600);
-        } else {
-            window.showToast('❌ Không thể sao chép, vui lòng copy thủ công', 'error');
+        } catch (e) {
+            window.location.href = zaloWebUrl;
         }
-    } catch (err) {
-        window.showToast('❌ Lỗi khi sao chép: ' + err, 'error');
+        return;
     }
 
-    document.body.removeChild(textArea);
-});
+    // 🖥 PC / thiết bị khác → mở zalo web
+    window.location.href = zaloWebUrl;
+}
+
+
+
+// ===============================
+// CODE CHÍNH ĐƯỢC GIỮ NGUYÊN
+// ===============================
+try {
+    navigator.clipboard.writeText(message).then(() => {
+        window.showToast('📋 Đã sao chép nội dung vào clipboard', 'success');
+
+        // 6. Mở Zalo
+        setTimeout(() => {
+            openZaloWithMessage(message);
+
+            setTimeout(() => {
+                window.showToast(
+                    '📱 Zalo đã mở — chỉ cần dán (Ctrl+V / Paste) để gửi',
+                    'info'
+                );
+            }, 500);
+        }, 500);
+
+    }).catch(err => {
+        console.error('❌ Lỗi khi copy vào clipboard:', err);
+
+        // Fallback copy thủ công
+        const textArea = document.createElement('textarea');
+        textArea.value = message;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+            const successful = document.execCommand('copy');
+
+            if (successful) {
+                window.showToast('✅ Đã sao chép báo cáo (fallback method)', 'success');
+
+                setTimeout(() => {
+                    openZaloWithMessage(message);
+
+                    window.showToast(
+                        '📱 Đã mở Zalo — hãy dán nội dung vào khung chat',
+                        'info'
+                    );
+                }, 600);
+
+            } else {
+                window.showToast('❌ Không thể sao chép, vui lòng copy thủ công', 'error');
+            }
+
+        } catch (err) {
+            window.showToast('❌ Lỗi khi sao chép: ' + err, 'error');
+        }
+
+        document.body.removeChild(textArea);
+    });
 
 } catch (error) {
     console.error('❌ Error in sendToZalo:', error);
     window.showToast('Lỗi khi gửi Zalo: ' + error.message, 'error');
-}
 }
 }
 
