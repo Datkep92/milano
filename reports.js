@@ -2222,7 +2222,7 @@ async restoreInventoryFromReportFirebase(report) {
         navigator.clipboard.writeText(message).then(() => {
             window.showToast('✅ Đã sao chép báo cáo vào clipboard!', 'success');
             
-            // 6. Mở Zalo (tự nhận diện iOS / Android / PC)
+            // 6. Mở Zalo (tối ưu không bị hỏi xác nhận – iOS / Android / PC)
 setTimeout(() => {
 
     const ua = navigator.userAgent.toLowerCase();
@@ -2230,51 +2230,37 @@ setTimeout(() => {
     const zaloScheme = "zalo://";
     const androidIntent = "intent://zalo/#Intent;scheme=zalo;package=com.zing.zalo;end";
 
-    let opened = null;
-
     try {
 
         // ==========================
-        // iOS: mở zalo:// là chuẩn nhất
+        // iOS: mở trực tiếp zalo:// (ít bị hỏi nhất)
         // ==========================
         if (/iphone|ipad|ipod/.test(ua)) {
-            try {
-                window.location.href = zaloScheme;
-            } catch (e) {
-                window.location.href = zaloWebUrl;
-            }
+            window.location.href = zaloScheme;
         }
 
         // ==========================
-        // Android: ưu tiên zalo://
+        // Android: mở zalo:// trước → fallback intent://
         // ==========================
         else if (/android/.test(ua)) {
-            try {
-                window.location.href = zaloScheme;
+            window.location.href = zaloScheme;
 
-                // Nếu app chưa mở → fallback intent://
-                setTimeout(() => {
-                    window.location.href = androidIntent;
-                }, 400);
-
-            } catch (e) {
-                window.location.href = zaloWebUrl;
-            }
+            // Fallback nếu app không đáp ứng
+            setTimeout(() => {
+                window.location.href = androidIntent;
+            }, 500);
         }
 
         // ==========================
-        // PC hoặc thiết bị khác → mở web
+        // PC hoặc thiết bị khác
         // ==========================
         else {
-            opened = window.open(zaloWebUrl, "_blank");
-
-            if (!opened) {
-                window.location.href = zaloWebUrl;
-            }
+            // PC không có app → mở web
+            window.location.href = zaloWebUrl;
         }
 
     } catch (e) {
-        console.warn("window.open lỗi, fallback:", e);
+        console.warn("Lỗi khi mở Zalo, fallback web:", e);
         window.location.href = zaloWebUrl;
     }
 
@@ -2284,7 +2270,7 @@ setTimeout(() => {
             '📱 Đã mở Zalo — chỉ cần dán (Ctrl+V hoặc Paste) để gửi',
             'info'
         );
-    }, 500);
+    }, 400);
 
 }, 500);
 
@@ -2313,24 +2299,21 @@ setTimeout(() => {
 
                 // iOS
                 if (/iphone|ipad|ipod/.test(ua)) {
-                    try { window.location.href = zaloScheme; }
-                    catch { window.location.href = zaloWebUrl; }
+                    window.location.href = zaloScheme;
                 }
 
                 // Android
                 else if (/android/.test(ua)) {
-                    try {
-                        window.location.href = zaloScheme;
-                        setTimeout(() => window.location.href = androidIntent, 400);
-                    } catch {
-                        window.location.href = zaloWebUrl;
-                    }
+                    window.location.href = zaloScheme;
+
+                    setTimeout(() => {
+                        window.location.href = androidIntent;
+                    }, 500);
                 }
 
                 // PC
                 else {
-                    let opened = window.open(zaloWebUrl, "_blank");
-                    if (!opened) window.location.href = zaloWebUrl;
+                    window.location.href = zaloWebUrl;
                 }
 
                 window.showToast('📱 Đã mở Zalo — hãy dán nội dung', 'info');
