@@ -2353,5 +2353,6 @@ setTimeout(() => {
     window.showToast('Lỗi khi gửi Zalo: ' + error.message, 'error');
 }
 }
+}
 // Khởi tạo module
 window.reportsModule = new ReportsModule();
