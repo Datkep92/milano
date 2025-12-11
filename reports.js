@@ -1,3 +1,4 @@
+
 // reports.js - Module báo cáo với lưu trữ theo ngày
 class ReportsModule {
     constructor() {
@@ -2176,13 +2177,13 @@ async restoreInventoryFromReportFirebase(report) {
         const revenue = actualReceived + expensesTotal + transfersTotal - openingBalance + closingBalance;
         
         // 4. Chuẩn bị nội dung báo cáo
-        let message = `📊 BÁO CÁO NGÀY ${this.currentDate}\n\n`;
-        message += `💰 Số dư đầu kỳ: ${openingBalance.toLocaleString()} ₫\n`;
-        message += `💵 Thực nhận (tiền mặt): ${actualReceived.toLocaleString()} ₫\n`;
-        message += `💰 Số dư cuối kỳ: ${closingBalance.toLocaleString()} ₫\n`;
+        let message = `📊 MILANO NGÀY ${this.currentDate}\n\n`;
+        message += `💰 Dư đầu kỳ: ${openingBalance.toLocaleString()} ₫\n`;
+        message += `💵 Thực nhận: ${actualReceived.toLocaleString()} ₫\n`;
+        message += `💰 Dư cuối kỳ: ${closingBalance.toLocaleString()} ₫\n`;
         message += `--------------------------------\n`;
         if (this.expenses.length > 0) {
-            message += `📝 Chi tiết chi phí: ${expensesTotal.toLocaleString()} ₫\n`;
+            message += `📝 Tổng chi phí: ${expensesTotal.toLocaleString()} ₫\n`;
             this.expenses.forEach(e => {
                 message += `• ${e.name}: ${(e.amount || 0).toLocaleString()} ₫\n`;
             });
@@ -2192,7 +2193,7 @@ async restoreInventoryFromReportFirebase(report) {
         message += `--------------------------------\n`;
                         
         if (this.transfers.length > 0) {
-            message += `🏦 -----Chi tiết chuyển khoản: ${transfersTotal.toLocaleString()} ₫\n`;
+            message += `🏦 Tổng chuyển khoản: ${transfersTotal.toLocaleString()} ₫\n`;
             this.transfers.forEach(t => {
                 message += `• ${t.content || 'Không có nội dung'}: ${(t.amount || 0).toLocaleString()} ₫\n`;
             });
@@ -2214,7 +2215,7 @@ async restoreInventoryFromReportFirebase(report) {
             message += `👤 Người gửi: ${user.name}\n`;
         }
         
-        message += `---\n`;
+        
         message += `Milano 259 Ngô Gia Tự ☕\n`;
         message += `${new Date().toLocaleString('vi-VN')}`;
         
