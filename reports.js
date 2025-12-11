@@ -2179,11 +2179,11 @@ async restoreInventoryFromReportFirebase(report) {
         let message = `📊 BÁO CÁO NGÀY ${this.currentDate}\n\n`;
         message += `💰 Số dư đầu kỳ: ${openingBalance.toLocaleString()} ₫\n`;
         message += `💵 Thực nhận (tiền mặt): ${actualReceived.toLocaleString()} ₫\n`;
-        message += `💳 Chi phí: ${expensesTotal.toLocaleString()} ₫\n`;
-        message += `🏦 Chuyển khoản: ${transfersTotal.toLocaleString()} ₫\n`;
+
+
         message += `💰 Số dư cuối kỳ: ${closingBalance.toLocaleString()} ₫\n`;
-        message += `📈 Doanh thu: ${revenue.toLocaleString()} ₫\n\n`;
-        
+
+
         if (this.expenses.length > 0) {
             message += `📝 Chi tiết chi phí:\n`;
             this.expenses.forEach(e => {
@@ -2191,7 +2191,7 @@ async restoreInventoryFromReportFirebase(report) {
             });
             message += `\n`;
         }
-        
+                        message += `💳 Chi phí: ${expensesTotal.toLocaleString()} ₫\n`;
         if (this.transfers.length > 0) {
             message += `🏦 Chi tiết chuyển khoản:\n`;
             this.transfers.forEach(t => {
@@ -2199,7 +2199,7 @@ async restoreInventoryFromReportFirebase(report) {
             });
             message += `\n`;
         }
-        
+                message += `🏦 Chuyển khoản: ${transfersTotal.toLocaleString()} ₫\n`;
         if (this.inventoryExports.length > 0) {
             message += `📦 Hàng xuất kho (chờ lưu):\n`;
             this.inventoryExports.forEach(item => {
@@ -2215,7 +2215,7 @@ async restoreInventoryFromReportFirebase(report) {
         }
         
         message += `---\n`;
-        message += `Hệ thống Milano ☕\n`;
+        message += `Milano 259 Ngô Gia Tự ☕\n`;
         message += `${new Date().toLocaleString('vi-VN')}`;
         
         // 5. Copy vào clipboard
