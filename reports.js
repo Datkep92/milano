@@ -2179,25 +2179,26 @@ async restoreInventoryFromReportFirebase(report) {
         let message = `📊 BÁO CÁO NGÀY ${this.currentDate}\n\n`;
         message += `💰 Số dư đầu kỳ: ${openingBalance.toLocaleString()} ₫\n`;
         message += `💵 Thực nhận (tiền mặt): ${actualReceived.toLocaleString()} ₫\n`;
-
-
         message += `💰 Số dư cuối kỳ: ${closingBalance.toLocaleString()} ₫\n`;
 
 
         if (this.expenses.length > 0) {
-            message += `📝 Chi tiết chi phí:\n`;
+            message += `📝 Chi tiết chi phí: ${expensesTotal.toLocaleString()} ₫\n`;
             this.expenses.forEach(e => {
                 message += `• ${e.name}: ${(e.amount || 0).toLocaleString()} ₫\n`;
             });
             message += `\n`;
+                                    message += `💳 Chi phí: ${expensesTotal.toLocaleString()} ₫\n`;
         }
                         message += `💳 Chi phí: ${expensesTotal.toLocaleString()} ₫\n`;
+                        
         if (this.transfers.length > 0) {
-            message += `🏦 Chi tiết chuyển khoản:\n`;
+            message += `🏦 -----Chi tiết chuyển khoản: ${transfersTotal.toLocaleString()} ₫\n`;
             this.transfers.forEach(t => {
                 message += `• ${t.content || 'Không có nội dung'}: ${(t.amount || 0).toLocaleString()} ₫\n`;
             });
             message += `\n`;
+                                    message += `💳 Chi phí: ${expensesTotal.toLocaleString()} ₫\n`;
         }
                 message += `🏦 Chuyển khoản: ${transfersTotal.toLocaleString()} ₫\n`;
         if (this.inventoryExports.length > 0) {
