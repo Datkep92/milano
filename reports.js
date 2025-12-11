@@ -2180,27 +2180,26 @@ async restoreInventoryFromReportFirebase(report) {
         message += `💰 Số dư đầu kỳ: ${openingBalance.toLocaleString()} ₫\n`;
         message += `💵 Thực nhận (tiền mặt): ${actualReceived.toLocaleString()} ₫\n`;
         message += `💰 Số dư cuối kỳ: ${closingBalance.toLocaleString()} ₫\n`;
-
-
+        message += `--------------------------------\n`;
         if (this.expenses.length > 0) {
             message += `📝 Chi tiết chi phí: ${expensesTotal.toLocaleString()} ₫\n`;
             this.expenses.forEach(e => {
                 message += `• ${e.name}: ${(e.amount || 0).toLocaleString()} ₫\n`;
             });
-            message += `\n`;
-                                    message += `💳 Chi phí: ${expensesTotal.toLocaleString()} ₫\n`;
+
+
         }
-                        message += `💳 Chi phí: ${expensesTotal.toLocaleString()} ₫\n`;
+        message += `--------------------------------\n`;
                         
         if (this.transfers.length > 0) {
             message += `🏦 -----Chi tiết chuyển khoản: ${transfersTotal.toLocaleString()} ₫\n`;
             this.transfers.forEach(t => {
                 message += `• ${t.content || 'Không có nội dung'}: ${(t.amount || 0).toLocaleString()} ₫\n`;
             });
-            message += `\n`;
-                                    message += `💳 Chi phí: ${expensesTotal.toLocaleString()} ₫\n`;
+
+
         }
-                message += `🏦 Chuyển khoản: ${transfersTotal.toLocaleString()} ₫\n`;
+        message += `--------------------------------\n`;
         if (this.inventoryExports.length > 0) {
             message += `📦 Hàng xuất kho (chờ lưu):\n`;
             this.inventoryExports.forEach(item => {
@@ -2208,7 +2207,7 @@ async restoreInventoryFromReportFirebase(report) {
             });
             message += `\n`;
         }
-        
+                message += `--------------------------------\n`;
         // Thêm thông tin người gửi nếu có
         if (window.authManager && window.authManager.currentUser) {
             const user = window.authManager.currentUser;
