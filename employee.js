@@ -203,35 +203,37 @@ function selectRecentCustomer(name) {
   debtAmount.focus();
   showToast(`✓ Đã chọn: ${name}`);
 }
-// ========== SAVE PAYMENT (ĐÃ SỬA LỖI UI) ==========
+// ========== SAVE PAYMENT (ĐÃ SỬA LỖI NGÀY THANH TOÁN) ==========
 savePaymentBtn.onclick = () => {
   const date = getCurrentDate();
   const today = getToday();
   const isAdmin = window.isAdminSync ? window.isAdminSync() : false;
   
+  // 1. KHÔNG BAO GIỜ ĐƯỢC THANH TOÁN CHO NGÀY TƯƠNG LAI
   if (date > today) {
     alert(`⚠️ KHÔNG THỂ THANH TOÁN CHO NGÀY TƯƠNG LAI!\n\nNgày ${formatDisplayDate(date)} chưa xảy ra.`);
     return;
   }
   
+  // 2. KIỂM TRA QUYỀN NHÂN VIÊN
   if (!isAdmin && date === today) {
     if (!canAddData()) return;
   }
   
   const customer = paymentCustomer ? paymentCustomer.value.trim() : selectedPaymentCustomer;
+  const amount = parseMoney(paymentAmount.value);
   
-  if (date !== today) {
-    const report = getReport(date);
-    if (report.status !== "completed") {
-      alert(`⚠️ Ngày ${date} chưa chốt! Vui lòng chốt ngày này trước khi thêm dữ liệu mới.`);
-      return;
-    }
+  // 3. KIỂM TRA DỮ LIỆU NHẬP
+  if (amount <= 0) { 
+    alert("❌ Nhập số tiền"); 
+    return; 
+  }
+  if (!customer) { 
+    alert("❌ Vui lòng chọn khách hàng"); 
+    return; 
   }
 
-  const amount = parseMoney(paymentAmount.value);
-  if (amount <= 0) { alert("Nhập số tiền"); return; }
-  if (!customer) { alert("Vui lòng chọn khách hàng"); return; }
-
+  // 4. KIỂM TRA NỢ HIỆN TẠI (KHÔNG PHỤ THUỘC NGÀY)
   const currentDebt = calculateCustomerDebt(customer);
   
   if (amount > currentDebt && currentDebt > 0) {
@@ -246,80 +248,58 @@ savePaymentBtn.onclick = () => {
     if (!confirmMsg) return;
   }
 
-  // Tạo payment transaction (THÊM date VÀ businessDate)
+  // 5. TẠO GIAO DỊCH THANH TOÁN (LUÔN DÙNG NGÀY HIỆN TẠI)
   const newDebt = {
     id: createId("pay"),
     type: "payment",
     customer: customer,
     amount: amount,
     method: paymentMethod.value,
-    businessDate: date,
-    date: date,  // ← THÊM DÒNG NÀY (quan trọng!)
+    businessDate: date,     // Ngày thanh toán (có thể là hôm nay hoặc ngày cũ)
+    date: date,             // ← QUAN TRỌNG: đồng bộ cả hai trường
     deleted: false,
     createdAt: Date.now(),
     createdBy: firebase.auth().currentUser?.email || 'unknown'
   };
   
-  // Lưu vào appData
+  // 6. LƯU VÀO APP DATA
   appData.debtTransactions.push(newDebt);
   
   addCategory("customers", customer);
   addRecent("customers", customer);
   saveData();
   
-  // ========== CẬP NHẬT UI TOÀN DIỆN (QUAN TRỌNG) ==========
-  
-  // 1. Cập nhật danh sách công nợ trong tab báo cáo
+  // 7. CẬP NHẬT UI TOÀN DIỆN
   if (typeof renderCustomerDebtList === 'function') {
     renderCustomerDebtList();
   }
-  
-  // 2. Cập nhật tổng nợ hiển thị
   if (typeof updateTotalDebtDisplay === 'function') {
     updateTotalDebtDisplay();
   }
-  
-  // 3. Cập nhật popup lịch sử công nợ (nếu đang mở)
   if (typeof refreshDebtPopupUI === 'function') {
     refreshDebtPopupUI();
   }
-  
-  // 4. Cập nhật danh sách thanh toán gần đây
   if (typeof renderRecentPayments === 'function') {
     renderRecentPayments();
   }
-  
-  // 5. Cập nhật danh sách khách hàng gần đây
   if (typeof renderRecentCustomers === 'function') {
     renderRecentCustomers();
   }
-  
-  // 6. Load lại dữ liệu ngày hiện tại
   if (typeof loadTodayData === 'function') {
     loadTodayData();
   }
-  
-  // 7. Nếu đang ở tab Manager, cập nhật dashboard
   if (typeof renderManagerDashboard === 'function') {
     renderManagerDashboard();
   }
-  
-  // 8. Cập nhật tổng nợ trong manager tab
   if (typeof updateManagerTotalDebt === 'function') {
     updateManagerTotalDebt();
   }
   
-  // 9. Cập nhật thống kê công nợ trong manager tab
-  const range = typeof getDateRange === 'function' ? getDateRange() : null;
-  if (range && typeof renderDebtStats === 'function') {
-    renderDebtStats(range);
-  }
-  
-  // Reset form
+  // 8. RESET FORM
   paymentAmount.value = "";
   updatePaymentInfo();
   
-  // Hiển thị thông báo kết quả
+  // 9. HIỂN THỊ THÔNG BÁO
   const newDebtBalance = calculateCustomerDebt(customer);
   if (newDebtBalance === 0) {
     showToast(`🎉 Đã thanh toán HẾT NỢ cho ${customer}!`);
@@ -329,15 +309,14 @@ savePaymentBtn.onclick = () => {
     showToast(`✓ Đã thanh toán ${formatMoney(amount)}. Còn nợ: ${formatMoney(newDebtBalance)}`);
   }
   
-  // Đồng bộ lên Firebase (nếu có)
+  // 10. ĐỒNG BỘ LÊN FIREBASE
   if (typeof syncToFirebase === 'function') {
     setTimeout(() => syncToFirebase(), 100);
   }
   
-  // Focus vào input cho lần nhập tiếp
+  // 11. FOCUS
   paymentAmount.focus();
 };
-
 // ========== AUTO SAVE REPORT (HOÀN CHỈNH - CÓ CHẶN NGÀY TƯƠNG LAI) ==========
 function autoSaveReport() {
   const date = getCurrentDate();
