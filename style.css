@@ -530,8 +530,8 @@ body {
   padding: 8px 16px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
-  border-radius: 20px;
-  font-size: 13px;
+  border-radius: 10px;
+  font-size: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -2206,17 +2206,7 @@ textarea {
   background: var(--border);
 }
 
-.recent-item .action-btn-edit,
-.recent-item .action-btn-delete {
-  padding: 6px 10px;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-}
+
 
 .recent-item .action-btn-edit:hover {
   background: var(--accent-light);
@@ -2228,26 +2218,368 @@ textarea {
   color: var(--danger);
 }
 
-/* MẶC ĐỊNH: Ẩn nút sửa/xóa */
-.recent-item .action-btn-edit,
-.recent-item .action-btn-delete {
-  display: none;
+/* ========== PHÂN QUYỀN THEO ADMIN MODE ========== */
+
+/* Ẩn nút sửa/xóa tên khi không phải admin */
+body:not(.admin-mode) .action-btn-edit,
+body:not(.admin-mode) .action-btn-delete {
+  display: none !important;
 }
 
-/* KHI CÓ CLASS admin-mode: HIỂN THỊ NÚT SỬA/XÓA */
-body.admin-mode .recent-item .action-btn-edit,
-body.admin-mode .recent-item .action-btn-delete {
-  display: inline-flex;
+/* Ẩn nút admin-expense-fab khi không phải admin */
+body:not(.admin-mode) #adminExpenseFab {
+  display: none !important;
 }
-/* Thêm vào style.css */
+
+/* Ẩn tab Admin khi không phải admin */
+body:not(.admin-mode) .tab-btn[data-tab="managerTab"] {
+  display: none !important;
+}
+
+/* Ẩn các nút thêm mới chi phí quản lý */
+body:not(.admin-mode) .admin-expense-btn {
+  display: none !important;
+}
+
+/* Ẩn phần chi phí quản lý trong tab Employee (nếu có) */
+body:not(.admin-mode) .admin-expense-section {
+  display: none !important;
+}
+
+/* ========== DANH SÁCH KHÁCH HÀNG NHỎ GỌN ========== */
+
+/* Container danh sách công nợ */
+.customer-debt-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: 12px;
+}
+
+/* Mỗi item khách hàng */
+.debt-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.debt-item:hover {
+  background: var(--bg-tertiary);
+  transform: translateX(2px);
+}
+
+/* Thông tin khách hàng */
+.debt-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.debt-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+
+/* Badge số nợ */
+.debt-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
 .debt-badge.deposit {
   background: var(--success-light);
   color: var(--success);
 }
 
-.debt-transaction-balance {
-  font-size: 11px;
-  color: var(--text-light);
-  min-width: 80px;
-  text-align: right;
+/* Header tổng nợ nhỏ gọn */
+.debt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+}
+
+.debt-header span {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ========== RECENT ITEMS NHỎ GỌN HƠN ========== */
+
+/* Container danh sách gợi ý */
+.recent-wrap {
+  margin: 8px 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Mỗi item trong danh sách */
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+/* Nút chọn item */
+.recent-btn {
+  flex: 1;
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* Nút sửa/xóa (chỉ hiện với admin) */
+.action-btn-edit,
+.action-btn-delete {
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.action-btn-edit {
+  color: var(--warning);
+}
+
+.action-btn-edit:hover {
+  background: var(--warning-light);
+}
+
+.action-btn-delete {
+  color: var(--danger);
+}
+
+.action-btn-delete:hover {
+  background: var(--danger-light);
+}
+
+/* Container danh sách công nợ */
+.customer-debt-list {
+  max-height: 450px;
+  overflow-y: auto;
+  border-radius: 12px;
+}
+
+/* Mỗi item khách hàng */
+.debt-item {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 8px 10px !important;
+  margin-bottom: 6px !important;
+  background: var(--bg-secondary, #f5f5f5);
+  border-radius: 10px !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.debt-item:hover {
+  background: var(--bg-tertiary, #e8e8e8);
+}
+
+/* Thông tin khách hàng */
+.debt-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.debt-name {
+  font-size: 13px !important;
+  font-weight: 500;
+  color: var(--text, #333);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+/* Badge số nợ */
+.debt-badge {
+  font-size: 11px !important;
+  font-weight: 600;
+  padding: 3px 8px !important;
+  border-radius: 16px !important;
+  white-space: nowrap;
+  background: #ffe0e0;
+  color: #e74c3c;
+}
+
+.debt-badge.deposit {
+  background: #e0ffe8;
+  color: #27ae60;
+}
+
+/* ========== RECENT ITEMS NHỎ GỌN ========== */
+
+/* Container danh sách gợi ý */
+.recent-wrap {
+  margin: 8px 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Mỗi item trong danh sách */
+.recent-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  margin-bottom: 4px !important;
+}
+
+/* Nút chọn item */
+.recent-btn {
+  flex: 1;
+  text-align: left;
+  padding: 6px 8px !important;
+  background: var(--bg-tertiary, #f0f0f0);
+  border: none;
+  border-radius: 8px;
+  font-size: 12px !important;
+  color: var(--text, #333);
+  cursor: pointer;
+  transition: all 0.2s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-btn:hover {
+  background: var(--primary-light, #d4e8ff);
+}
+
+/* Nút sửa/xóa (chỉ hiện với admin) */
+.action-btn-edit,
+.action-btn-delete {
+  padding: 2px 6px !important;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 11px !important;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.action-btn-edit {
+  color: #f39c12;
+}
+
+.action-btn-edit:hover {
+  background: #fef5e0;
+}
+
+.action-btn-delete {
+  color: #e74c3c;
+}
+
+.action-btn-delete:hover {
+  background: #ffe0e0;
+}
+
+/* ========== TOOLTIP CHO NÚT ========== */
+.action-btn-edit[title]:hover:after,
+.action-btn-delete[title]:hover:after {
+  content: attr(title);
+  position: absolute;
+  background: #333;
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 20px;
+  z-index: 1000;
+}
+
+/* ========== SUMMARY GRID NHỎ GỌN ========== */
+.summary-item {
+  padding: 6px 6px !important;
+}
+
+.summary-item .big-value {
+  font-size: 16px !important;
+  font-weight: 700;
+}
+
+/* ========== MANAGER GRID NHỎ GỌN ========== */
+.manager-grid {
+  gap: 8px !important;
+}
+
+.manager-box {
+  padding: 8px 6px !important;
+}
+
+.manager-box .big-value {
+  font-size: 14px !important;
+}
+
+/* ========== RESPONSIVE CHO MOBILE ========== */
+@media (max-width: 480px) {
+  .debt-name {
+    max-width: 100px;
+    font-size: 12px !important;
+  }
+  
+  .debt-badge {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+  }
+  
+  .recent-btn {
+    font-size: 10px !important;
+    padding: 4px 6px !important;
+  }
+  
+  .summary-item .big-value {
+    font-size: 14px !important;
+  }
+  
+  .debt-item {
+    padding: 6px 8px !important;
+  }
+}
+
+#submitDayBtn {
+    position: relative;
+    top: -12px;
 }

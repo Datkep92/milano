@@ -1,13 +1,13 @@
 // Firebase cấu hình
 const firebaseConfig = {
-  apiKey: "AIzaSyAAbHF51z6HkiTmlukK_v1mt2mzVMoFbho",
-  authDomain: "milano-13e11.firebaseapp.com",
-  databaseURL: "https://milano-13e11-default-rtdb.firebaseio.com",
-  projectId: "milano-13e11",
-  storageBucket: "milano-13e11.firebasestorage.app",
-  messagingSenderId: "830228602200",
-  appId: "1:830228602200:web:8f7dbc9897269a0863d92d",
-  measurementId: "G-7H5M9WTD6S"
+  apiKey: "AIzaSyAkgqLNZRI53IR-ovAToiKiUCvAlaUAc0c",
+  authDomain: "test-820df.firebaseapp.com",
+    databaseURL: "https://test-820df-default-rtdb.firebaseio.com",
+  projectId: "test-820df",
+  storageBucket: "test-820df.firebasestorage.app",
+  messagingSenderId: "24109852350",
+  appId: "1:24109852350:web:187ea10452d88e01ca60ef",
+  measurementId: "G-T31VK7N9KE"
 };
 
 // Khởi tạo Firebase

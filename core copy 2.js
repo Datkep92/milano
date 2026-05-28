@@ -19,7 +19,7 @@ const defaultData = {
 };
 
 // Tạo biến toàn cục DUY NHẤT trên window
-window.AppData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultData;
+window.AppData = defaultData;
 
 // Tạo alias appData để code cũ vẫn chạy (tham chiếu đến cùng object)
 var appData = window.AppData;
@@ -73,8 +73,26 @@ function calculateRevenueInRange(range) {
 // Export các hàm mới ra window
 window.calculateRevenueTotal = calculateRevenueTotal;
 window.calculateRevenueInRange = calculateRevenueInRange;
+// Xóa hoặc comment các dòng liên quan đến localStorage
+// window.AppData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultData;
+// Thay bằng: khởi tạo appData rỗng, dữ liệu sẽ được load từ IndexedDB qua firebase-sync
+
+window.AppData = defaultData;
+var appData = window.AppData;
+window.appData = window.AppData;
+
+// Hàm saveData ghi đè để gọi sync
 function saveData(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+  if (window._isRealtimeUpdate) return;
+  if (appData) {
+    appData._version = (appData._version || 0) + 1;
+    appData._lastModified = Date.now();
+    appData._lastModifiedBy = localStorage.getItem("deviceId") || 'unknown';
+  }
+  // Không lưu localStorage nữa, chỉ sync lên Firebase
+  if (typeof syncToFirebase === 'function') {
+    syncToFirebase();
+  }
 }
 
 function createId(prefix="id"){
@@ -599,7 +617,7 @@ function setupPromptInputs() {
       
       // Hiển thị prompt
       let inputValue = prompt(
-        `${title} hiện tại: ${formatMoney(currentValue)}`,
+        `${title}\n\n💰 Giá trị hiện tại: ${formatMoney(currentValue)}\n\n${'─'.repeat(30)}\n\nNhập số mới (không cần dấu phẩy):`,
         currentValue.toString()
       );
       

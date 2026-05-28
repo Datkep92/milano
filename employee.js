@@ -1,8 +1,6 @@
 // ========== DOM ELEMENTS ==========
 const reportDate = document.getElementById("reportDate");
-const bankInput = document.getElementById("bankInput");
-const cashInput = document.getElementById("cashInput");
-const reserveInput = document.getElementById("reserveInput");
+
 const expenseTotal = document.getElementById("expenseTotal");
 const debtTotal = document.getElementById("debtTotal");
 const dayStatus = document.getElementById("dayStatus");
@@ -12,13 +10,11 @@ const debtFab = document.getElementById("debtFab");
 const paymentFab = document.getElementById("paymentFab");
 const prevDateBtn = document.getElementById("prevDateBtn");
 const nextDateBtn = document.getElementById("nextDateBtn");
-const revenueInput = document.getElementById("revenueInput");
-const grabInput = document.getElementById("grabInput");
+
 // Expense popup
 const expensePopup = document.getElementById("expensePopup");
 const expensePopupTitle = document.getElementById("expensePopupTitle");
 const expenseQty = document.getElementById("expenseQty");
-const expenseAmount = document.getElementById("expenseAmount");
 const recentExpenseWrap = document.getElementById("recentExpenseWrap");
 const saveExpenseBtn = document.getElementById("saveExpenseBtn");
 // Thêm dòng này cùng với các const khác
@@ -66,8 +62,8 @@ let selectedCustomerName = "";
 reportDate.value = getToday();
 
 // Chỉ giữ formatInputMoney cho các input trong popup (không dùng setupAutoThousand)
-[expenseAmount, debtAmount, paymentAmount].forEach(formatInputMoney);
-
+// formatInputMoney chỉ áp dụng cho các input trong popup (đã được xử lý trong core.js)
+// [expenseAmount, debtAmount, paymentAmount].forEach(formatInputMoney);
 // ========== THÊM CLASS ADMIN-MODE CHO BODY ==========
 function updateBodyAdminClass() {
   const isAdmin = window.isAdminSync ? window.isAdminSync() : false;
@@ -108,6 +104,70 @@ if (typeof firebase !== 'undefined' && firebase.auth) {
     setTimeout(updateBodyAdminClass, 500);
   });
 }
+
+// Thêm vào employee.js, ví dụ sau hàm deleteExpenseAndRefreshPopup
+
+window.editExpense = function(id) {
+    const expense = appData.expenses.find(x => x.id === id);
+    if (!expense) {
+        showToast("❌ Không tìm thấy chi phí");
+        return;
+    }
+    
+    // Kiểm tra quyền
+    const isAdmin = window.isAdminSync ? window.isAdminSync() : false;
+    const today = getToday();
+    const report = getReport(expense.date);
+    
+    if (!isAdmin && expense.date !== today) {
+        alert("⚠️ Chỉ được sửa chi phí của ngày hôm nay!");
+        return;
+    }
+    if (!isAdmin && report.status === "completed" && expense.date !== today) {
+        alert("⚠️ Ngày đã gửi, không thể sửa!");
+        return;
+    }
+    
+    // Set editing mode
+    editingExpenseId = id;
+    expensePopupTitle.innerText = "Sửa Chi Phí";
+    expenseNameInput.value = expense.name;
+    expenseAmount.value = expense.amount.toLocaleString("vi-VN");
+    expenseQty.value = expense.qty || "";
+    
+    openPopup("expensePopup");
+    expenseNameInput.focus();
+};
+
+window.editDebt = function(id) {
+    const debt = appData.debtTransactions.find(x => x.id === id);
+    if (!debt) {
+        showToast("❌ Không tìm thấy công nợ");
+        return;
+    }
+    
+    const isAdmin = window.isAdminSync ? window.isAdminSync() : false;
+    const today = getToday();
+    const report = getReport(debt.date);
+    
+    if (!isAdmin && debt.date !== today) {
+        alert("⚠️ Chỉ được sửa công nợ của ngày hôm nay!");
+        return;
+    }
+    if (!isAdmin && report.status === "completed" && debt.date !== today) {
+        alert("⚠️ Ngày đã gửi, không thể sửa!");
+        return;
+    }
+    
+    editingDebtId = id;
+    debtPopupTitle.innerText = "Sửa Công Nợ";
+    debtCustomerInput.value = debt.customer;
+    debtAmount.value = debt.amount.toLocaleString("vi-VN");
+    debtNote.value = debt.note || "";
+    
+    openPopup("debtPopup");
+    debtCustomerInput.focus();
+};
 function renderRecentPayments() {
   if (!recentPaymentWrap) return;
   if (!appData || !appData.recent || !appData.recent.customers || appData.recent.customers.length === 0) {
@@ -207,10 +267,7 @@ savePaymentBtn.onclick = () => {
   addRecent("customers", customer);
   saveData();
   
-  // Sync Firebase ngầm
-  if (typeof syncToFirebase === 'function') {
-    setTimeout(() => syncToFirebase(), 100);
-  }
+ 
   
   // Cập nhật UI
   if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
@@ -315,7 +372,7 @@ function autoSaveReport() {
   }
 }
 
-// ========== LOAD TODAY DATA (CHUẨN, KHÔNG NHÂN CHIA) ==========
+// ========== LOAD TODAY DATA ==========
 function loadTodayData() {
   if (!appData) {
     console.error("appData chưa sẵn sàng");
@@ -323,18 +380,42 @@ function loadTodayData() {
   }
   const date = getCurrentDate();
   const report = getReport(date);
+  const isAdmin = window.isAdminSync ? window.isAdminSync() : false;
+  const today = getToday();
   
-  // Hiển thị số thật đã format (không nhân chia)
+  // Cập nhật giá trị input
   if (bankInput) bankInput.value = formatNumberForInput(report.bank || 0);
   if (cashInput) cashInput.value = formatNumberForInput(report.cash || 0);
   if (reserveInput) reserveInput.value = formatNumberForInput(report.reserve || 0);
   if (revenueInput) revenueInput.value = formatNumberForInput(report.revenue || 0);
   if (grabInput) grabInput.value = formatNumberForInput(report.grab || 0);
   
-  // Các ô readonly
   if (expenseTotal) expenseTotal.innerText = formatMoney(calculateExpenseTotal(date));
   if (debtTotal) debtTotal.innerText = formatMoney(calculateDebtTotal(date));
   
+  // ========== XÁC ĐỊNH QUYỀN EDIT ==========
+  let canEdit = false;
+  
+  if (isAdmin) {
+    canEdit = true;  // Admin toàn quyền
+  } else {
+    // Nhân viên
+    if (date === today) {
+      canEdit = true;  // Ngày hiện tại được sửa
+    } else if (date !== today && report.status !== "completed") {
+      canEdit = true;  // Ngày cũ chưa báo cáo được sửa
+    } else {
+      canEdit = false;  // Ngày cũ đã báo cáo: chỉ xem
+    }
+  }
+  
+  // Enable/disable input
+  const inputs = [bankInput, cashInput, reserveInput, revenueInput, grabInput];
+  inputs.forEach(input => {
+    if (input) input.disabled = !canEdit;
+  });
+  
+  // Cập nhật giao diện button
   updateSubmitButtonStatus();
   updateTotalDebtDisplay();
   renderCustomerDebtList();
@@ -342,33 +423,36 @@ function loadTodayData() {
   addMissingReportButton();
 }
 
-// ========== SAVE REPORT (HOÀN CHỈNH - TỐI ƯU HIỆU NĂNG) ==========
 function doSaveReport() {
   const date = getCurrentDate();
   const today = getToday();
   
-  // CHẶN NGÀY TƯƠNG LAI
   if (date > today) {
     console.warn("Không thể lưu báo cáo cho ngày tương lai");
     return;
   }
   
+  // Lấy giá trị từ DOM
+  const bankVal = parseMoney(document.getElementById("bankInput")?.value);
+  const cashVal = parseMoney(document.getElementById("cashInput")?.value);
+  const reserveVal = parseMoney(document.getElementById("reserveInput")?.value);
+  const revenueVal = parseMoney(document.getElementById("revenueInput")?.value);
+  const grabVal = parseMoney(document.getElementById("grabInput")?.value);
+  
   appData.reports[date] = {
-    bank: parseMoney(bankInput?.value),
-    cash: parseMoney(cashInput?.value),
-    reserve: parseMoney(reserveInput?.value),
-    revenue: parseMoney(revenueInput?.value),
-    grab: parseMoney(grabInput?.value),
+    bank: bankVal,
+    cash: cashVal,
+    reserve: reserveVal,
+    revenue: revenueVal,
+    grab: grabVal,
     status: getReport(date).status
   };
   saveData();
   
-  // CHỈ CẬP NHẬT UI CỦA TAB HIỆN TẠI
   const activeTab = document.querySelector('.tab-content.active')?.id;
   if (activeTab === 'managerTab' && typeof renderManagerDashboard === 'function') {
     renderManagerDashboard();
   } else if (activeTab === 'employeeTab') {
-    // Chỉ cập nhật các số liệu tổng hợp (chi phí, công nợ) mà không gọi renderManagerDashboard
     const currentDate = getCurrentDate();
     if (expenseTotal) expenseTotal.innerText = formatMoney(calculateExpenseTotal(currentDate));
     if (debtTotal) debtTotal.innerText = formatMoney(calculateDebtTotal(currentDate));
@@ -377,9 +461,10 @@ function doSaveReport() {
   }
 }
 
-[bankInput, cashInput, reserveInput].forEach(input => {
-  if (input) input.addEventListener("input", autoSaveReport);
-});
+// ĐÃ CHUYỂN SANG DÙNG PROMPT - KHÔNG CẦN AUTO SAVE KHI INPUT
+// [bankInput, cashInput, reserveInput].forEach(input => {
+//   if (input) input.addEventListener("input", autoSaveReport);
+// });
 
 // ========== KIỂM TRA NGÀY HÔM QUA ĐÃ CHỐT CHƯA ==========
 function isYesterdayCompleted() {
@@ -915,10 +1000,49 @@ function calculateTotalDebtAll() {
 }
 
 function updateTotalDebtDisplay() {
+  // THÊM KIỂM TRA: tìm phần tử hiển thị tổng nợ
   const totalDebtElement = document.getElementById("totalDebtAll");
-  if (totalDebtElement) {
-    totalDebtElement.innerText = formatMoney(calculateTotalDebtAll());
+  if (!totalDebtElement) {
+    return; // không tìm thấy phần tử thì thoát
   }
+  
+  // THÊM KIỂM TRA: tính tổng nợ an toàn (không bị lỗi)
+  let total = 0;
+  
+  // Kiểm tra appData có tồn tại không
+  if (!appData) {
+    console.warn("⚠️ updateTotalDebtDisplay: appData chưa có dữ liệu");
+    totalDebtElement.innerText = formatMoney(0);
+    return;
+  }
+  
+  // Tạo danh sách khách hàng an toàn
+  let allCustomers = new Set();
+  
+  // Lấy từ categories (nếu có)
+  if (appData.categories && appData.categories.customers && Array.isArray(appData.categories.customers)) {
+    appData.categories.customers.forEach(c => allCustomers.add(c));
+  }
+  
+  // Lấy từ recent (nếu có)
+  if (appData.recent && appData.recent.customers && Array.isArray(appData.recent.customers)) {
+    appData.recent.customers.forEach(c => allCustomers.add(c));
+  }
+  
+  // Lấy từ debtTransactions (nếu có)
+  if (appData.debtTransactions && Array.isArray(appData.debtTransactions)) {
+    appData.debtTransactions.forEach(t => {
+      if (!t.deleted && t.customer) allCustomers.add(t.customer);
+    });
+  }
+  
+  // Tính tổng nợ từng khách hàng
+  allCustomers.forEach(customer => {
+    total += calculateCustomerDebt(customer);
+  });
+  
+  // Hiển thị kết quả
+  totalDebtElement.innerText = formatMoney(total);
 }
 
 
@@ -970,7 +1094,7 @@ function renderRecentExpenses() {
     return;
   }
   
-  let html = '<div style="margin-bottom: 8px; font-size: 11px; color: var(--text-muted);">📋 Danh sách chi phí (click để chọn):</div>';
+  let html = '<div style="margin-bottom: 8px; font-size: 11px; color: var(--text-muted);"></div>';
   
   allExpenses.forEach(name => {
     if (name) {
@@ -1092,9 +1216,7 @@ saveExpenseBtn.onclick = () => {
 
   saveData();
   
-  if (typeof syncToFirebase === 'function') {
-    setTimeout(() => syncToFirebase(), 100);
-  }
+  
   
   refreshExpensePopupUI();
   
@@ -1145,15 +1267,22 @@ function renderRecentCustomers() {
     return;
   }
   
-  let html = '<div style="margin-bottom: 8px; font-size: 11px; color: var(--text-muted);">📋 Danh sách khách hàng (click để chọn):</div>';
+  let html = '<div style="margin-bottom: 8px; font-size: 11px; color: var(--text-muted);">:</div>';
   
   allCustomers.forEach(name => {
     if (name) {
       const debt = calculateCustomerDebt(name);
+      let debtHtml = '';
+      if (debt > 0) {
+        debtHtml = `<span style="color: var(--danger);"> (nợ ${formatMoney(debt)})</span>`;
+      } else if (debt < 0) {
+        debtHtml = `<span style="color: var(--success);"> (dư ${formatMoney(Math.abs(debt))})</span>`;
+      }
+      
       html += `
         <div class="recent-item">
           <button class="recent-btn" onclick="setCustomerName('${name.replace(/'/g, "\\'")}')">
-            👤 ${name} ${debt > 0 ? `<span style="color: var(--danger);">(${formatMoney(debt)})</span>` : ''}
+            👤 ${name}${debtHtml}
           </button>
           <button class="action-btn-edit" onclick="editCustomerName('${name.replace(/'/g, "\\'")}')" title="Sửa tên">✏️</button>
           <button class="action-btn-delete" onclick="deleteCustomerName('${name.replace(/'/g, "\\'")}')" title="Xóa tên">🗑️</button>
@@ -1240,15 +1369,28 @@ function refreshExpensePopupUI() {
   historyBox.innerHTML = historyHtml;
 }
 
-// ========== SỬA TÊN CHI PHÍ ==========
-window.editExpenseName = function(oldName) {
+window.editExpenseName = async function(oldName) {
   const newName = prompt("Nhập tên chi phí mới:", oldName);
   if (!newName || newName === oldName) return;
   
+  // Kiểm tra tên mới đã tồn tại chưa
+  if (appData.categories.expenses.includes(newName)) {
+    if (!confirm(`⚠️ Tên "${newName}" đã tồn tại!\n\nBạn có muốn GỘP "${oldName}" vào "${newName}" không?\n\n(Các giao dịch của "${oldName}" sẽ được chuyển sang "${newName}")`)) {
+      return;
+    }
+    // Nếu gộp, tiến hành merge
+    await mergeExpenseNames(oldName, newName);
+    return;
+  }
+  
+  showToast(`🔄 Đang cập nhật tên chi phí...`);
+  
+  // ========== 1. CẬP NHẬT TRONG LOCAL ==========
+  
   // Cập nhật trong categories
-  const index = appData.categories.expenses.indexOf(oldName);
-  if (index !== -1) {
-    appData.categories.expenses[index] = newName;
+  const catIndex = appData.categories.expenses.indexOf(oldName);
+  if (catIndex !== -1) {
+    appData.categories.expenses[catIndex] = newName;
   }
   
   // Cập nhật trong recent
@@ -1257,52 +1399,287 @@ window.editExpenseName = function(oldName) {
     appData.recent.expenses[recentIndex] = newName;
   }
   
-  // Cập nhật trong tất cả expenses
+  // Cập nhật trong tất cả expenses (đổi tên)
+  const modifiedExpenses = [];
   appData.expenses.forEach(exp => {
-    if (exp.name === oldName) {
+    if (exp.name === oldName && !exp.deleted) {
       exp.name = newName;
       exp._modifiedAt = Date.now();
+      exp._modifiedBy = firebase.auth().currentUser?.email || 'unknown';
+      modifiedExpenses.push(exp);
     }
   });
   
+  // Lưu local trước
   saveData();
+  
+  // ========== 2. ĐỒNG BỘ LÊN FIREBASE (QUAN TRỌNG) ==========
+  
+  try {
+    const user = firebase.auth().currentUser;
+    if (!user) throw new Error("Chưa đăng nhập");
+    
+    const role = await getUserRole(user.uid);
+    const STORE_ID = "milano_coffee_259";
+    const deviceId = localStorage.getItem("deviceId") || 'unknown';
+    
+    // Cập nhật metadata (categories + recent)
+    const metadataRef = database.ref(`cafeData/${STORE_ID}/metadata`);
+    
+    await metadataRef.transaction((currentData) => {
+      if (currentData === null) {
+        return {
+          version: Date.now(),
+          lastSync: firebase.database.ServerValue.TIMESTAMP,
+          categories: {
+            expenses: [newName],
+            adminExpenses: [],
+            customers: []
+          },
+          recent: {
+            expenses: [newName],
+            adminExpenses: [],
+            customers: []
+          }
+        };
+      }
+      
+      // Cập nhật categories.expenses
+      const categories = currentData.categories || { expenses: [], adminExpenses: [], customers: [] };
+      const oldIndex = categories.expenses.indexOf(oldName);
+      if (oldIndex !== -1) {
+        categories.expenses[oldIndex] = newName;
+      } else if (!categories.expenses.includes(newName)) {
+        categories.expenses.push(newName);
+      }
+      
+      // Cập nhật recent.expenses
+      const recent = currentData.recent || { expenses: [], adminExpenses: [], customers: [] };
+      const recentOldIndex = recent.expenses.indexOf(oldName);
+      if (recentOldIndex !== -1) {
+        recent.expenses[recentOldIndex] = newName;
+      } else if (!recent.expenses.includes(newName)) {
+        recent.expenses.unshift(newName);
+        recent.expenses = recent.expenses.slice(0, 10);
+      }
+      
+      return {
+        version: Date.now(),
+        lastSync: firebase.database.ServerValue.TIMESTAMP,
+        syncedBy: user.uid,
+        syncedByEmail: user.email,
+        syncedByDevice: deviceId,
+        categories: categories,
+        recent: recent
+      };
+    });
+    
+    // Cập nhật từng expense bị ảnh hưởng trên Firebase
+    for (const exp of modifiedExpenses) {
+      if (!exp.date) continue;
+      const [year, month, day] = exp.date.split('-');
+      const expPath = `cafeData/${STORE_ID}/expenses/${year}/${month}/${day}/${exp.id}`;
+      
+      await database.ref(expPath).update({
+        name: newName,
+        _modifiedAt: firebase.database.ServerValue.TIMESTAMP,
+        _modifiedBy: user.email,
+        _modifiedByRole: role,
+        _modifiedByDevice: deviceId
+      });
+    }
+    
+    console.log(`✅ Đã đồng bộ đổi tên từ "${oldName}" → "${newName}"`);
+    showToast(`✓ Đã đổi "${oldName}" thành "${newName}" (đã đồng bộ)`);
+    
+  } catch (error) {
+    console.error("❌ Lỗi đồng bộ:", error);
+    showToast(`⚠️ Đã lưu local nhưng đồng bộ thất bại: ${error.message}`);
+  }
+  
+  // Refresh UI
   renderRecentExpenses();
-  if (typeof syncToFirebase === 'function') setTimeout(() => syncToFirebase(), 100);
-  showToast(`✓ Đã đổi "${oldName}" thành "${newName}"`);
+  if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
 };
 
-// ========== XÓA TÊN CHI PHÍ ==========
-window.deleteExpenseName = function(name) {
-  // Kiểm tra xem có đang được sử dụng không
+// ========== HÀM GỘP TÊN CHI PHÍ ==========
+async function mergeExpenseNames(oldName, targetName) {
+  showToast(`🔄 Đang gộp "${oldName}" vào "${targetName}"...`);
+  
+  // Tìm tất cả expenses cũ
+  const expensesToMerge = appData.expenses.filter(exp => exp.name === oldName && !exp.deleted);
+  
+  if (expensesToMerge.length === 0) {
+    showToast(`⚠️ Không có giao dịch nào cần gộp`);
+    return;
+  }
+  
+  // Cập nhật local
+  expensesToMerge.forEach(exp => {
+    exp.name = targetName;
+    exp._modifiedAt = Date.now();
+  });
+  
+  // Xóa oldName khỏi categories và recent
+  appData.categories.expenses = appData.categories.expenses.filter(n => n !== oldName);
+  appData.recent.expenses = appData.recent.expenses.filter(n => n !== oldName);
+  
+  // Đảm bảo targetName có trong danh sách
+  if (!appData.categories.expenses.includes(targetName)) {
+    appData.categories.expenses.push(targetName);
+  }
+  if (!appData.recent.expenses.includes(targetName)) {
+    appData.recent.expenses.unshift(targetName);
+    appData.recent.expenses = appData.recent.expenses.slice(0, 10);
+  }
+  
+  saveData();
+  
+  // Đồng bộ lên Firebase
+  try {
+    const user = firebase.auth().currentUser;
+    if (!user) throw new Error("Chưa đăng nhập");
+    
+    const STORE_ID = "milano_coffee_259";
+    const deviceId = localStorage.getItem("deviceId") || 'unknown';
+    
+    // Cập nhật metadata
+    const metadataRef = database.ref(`cafeData/${STORE_ID}/metadata`);
+    await metadataRef.transaction((currentData) => {
+      if (!currentData) return;
+      
+      const categories = currentData.categories || { expenses: [], adminExpenses: [], customers: [] };
+      categories.expenses = categories.expenses.filter(n => n !== oldName);
+      if (!categories.expenses.includes(targetName)) {
+        categories.expenses.push(targetName);
+      }
+      
+      const recent = currentData.recent || { expenses: [], adminExpenses: [], customers: [] };
+      recent.expenses = recent.expenses.filter(n => n !== oldName);
+      if (!recent.expenses.includes(targetName)) {
+        recent.expenses.unshift(targetName);
+        recent.expenses = recent.expenses.slice(0, 10);
+      }
+      
+      return {
+        ...currentData,
+        categories: categories,
+        recent: recent,
+        version: Date.now(),
+        lastSync: firebase.database.ServerValue.TIMESTAMP
+      };
+    });
+    
+    // Cập nhật từng expense trên Firebase
+    for (const exp of expensesToMerge) {
+      const [year, month, day] = exp.date.split('-');
+      const expPath = `cafeData/${STORE_ID}/expenses/${year}/${month}/${day}/${exp.id}`;
+      await database.ref(expPath).update({
+        name: targetName,
+        _modifiedAt: firebase.database.ServerValue.TIMESTAMP,
+        _modifiedBy: user.email,
+        _modifiedByDevice: deviceId
+      });
+    }
+    
+    showToast(`✓ Đã gộp "${oldName}" vào "${targetName}" (${expensesToMerge.length} giao dịch)`);
+    
+  } catch (error) {
+    console.error("❌ Lỗi đồng bộ gộp:", error);
+    showToast(`⚠️ Gộp local thành công, nhưng đồng bộ thất bại`);
+  }
+  
+  renderRecentExpenses();
+  if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
+}
+window.deleteExpenseName = async function(name) {
   const usedCount = appData.expenses.filter(exp => exp.name === name && !exp.deleted).length;
   
   let message = `Bạn có chắc muốn xóa "${name}" khỏi danh sách chi phí?`;
   if (usedCount > 0) {
-    message = `⚠️ Cảnh báo: "${name}" đang được sử dụng trong ${usedCount} giao dịch.\n\nXóa sẽ chỉ xóa khỏi danh sách gợi ý, không xóa giao dịch cũ.\n\nBạn có chắc không?`;
+    message = `⚠️ CẢNH BÁO: "${name}" đang được sử dụng trong ${usedCount} giao dịch!\n\n`;
+    message += `Hành động này sẽ CHỈ xóa tên khỏi danh sách gợi ý.\n`;
+    message += `Các giao dịch cũ vẫn giữ nguyên tên "${name}".\n\n`;
+    message += `Bạn có chắc chắn muốn xóa?`;
   }
   
-  if (confirm(message)) {
-    // Xóa khỏi categories
-    appData.categories.expenses = appData.categories.expenses.filter(n => n !== name);
-    // Xóa khỏi recent
-    appData.recent.expenses = appData.recent.expenses.filter(n => n !== name);
+  if (!confirm(message)) return;
+  
+  showToast(`🔄 Đang xóa "${name}" khỏi danh sách...`);
+  
+  // ========== 1. XÓA TRONG LOCAL ==========
+  appData.categories.expenses = appData.categories.expenses.filter(n => n !== name);
+  appData.recent.expenses = appData.recent.expenses.filter(n => n !== name);
+  
+  saveData();
+  
+  // ========== 2. ĐỒNG BỘ LÊN FIREBASE ==========
+  try {
+    const user = firebase.auth().currentUser;
+    if (!user) throw new Error("Chưa đăng nhập");
     
-    saveData();
-    renderRecentExpenses();
-    if (typeof syncToFirebase === 'function') setTimeout(() => syncToFirebase(), 100);
-    showToast(`✓ Đã xóa "${name}" khỏi danh sách`);
+    const STORE_ID = "milano_coffee_259";
+    const deviceId = localStorage.getItem("deviceId") || 'unknown';
+    
+    const metadataRef = database.ref(`cafeData/${STORE_ID}/metadata`);
+    
+    await metadataRef.transaction((currentData) => {
+      if (currentData === null) return;
+      
+      // Xóa khỏi categories
+      const categories = currentData.categories || { expenses: [], adminExpenses: [], customers: [] };
+      categories.expenses = categories.expenses.filter(n => n !== name);
+      
+      // Xóa khỏi recent
+      const recent = currentData.recent || { expenses: [], adminExpenses: [], customers: [] };
+      recent.expenses = recent.expenses.filter(n => n !== name);
+      
+      return {
+        ...currentData,
+        categories: categories,
+        recent: recent,
+        version: Date.now(),
+        lastSync: firebase.database.ServerValue.TIMESTAMP,
+        syncedBy: user.uid,
+        syncedByEmail: user.email,
+        syncedByDevice: deviceId
+      };
+    });
+    
+    console.log(`✅ Đã đồng bộ xóa "${name}" khỏi danh sách`);
+    showToast(`✓ Đã xóa "${name}" khỏi danh sách (đã đồng bộ)`);
+    
+  } catch (error) {
+    console.error("❌ Lỗi đồng bộ xóa:", error);
+    showToast(`⚠️ Đã xóa local nhưng đồng bộ thất bại: ${error.message}`);
   }
+  
+  // Refresh UI
+  renderRecentExpenses();
+  if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
 };
 
-// ========== SỬA TÊN KHÁCH HÀNG ==========
-window.editCustomerName = function(oldName) {
+window.editCustomerName = async function(oldName) {
   const newName = prompt("Nhập tên khách hàng mới:", oldName);
   if (!newName || newName === oldName) return;
   
+  // Kiểm tra tên mới đã tồn tại chưa
+  if (appData.categories.customers.includes(newName)) {
+    if (!confirm(`⚠️ Tên khách hàng "${newName}" đã tồn tại!\n\nBạn có muốn GỘP "${oldName}" vào "${newName}" không?\n\n(Các giao dịch của "${oldName}" sẽ được chuyển sang "${newName}")`)) {
+      return;
+    }
+    await mergeCustomerNames(oldName, newName);
+    return;
+  }
+  
+  showToast(`🔄 Đang cập nhật tên khách hàng...`);
+  
+  // ========== 1. CẬP NHẬT TRONG LOCAL ==========
+  
   // Cập nhật trong categories
-  const index = appData.categories.customers.indexOf(oldName);
-  if (index !== -1) {
-    appData.categories.customers[index] = newName;
+  const catIndex = appData.categories.customers.indexOf(oldName);
+  if (catIndex !== -1) {
+    appData.categories.customers[catIndex] = newName;
   }
   
   // Cập nhật trong recent
@@ -1312,44 +1689,287 @@ window.editCustomerName = function(oldName) {
   }
   
   // Cập nhật trong tất cả debtTransactions
+  const modifiedDebts = [];
   appData.debtTransactions.forEach(debt => {
-    if (debt.customer === oldName) {
+    if (debt.customer === oldName && !debt.deleted) {
       debt.customer = newName;
       debt._modifiedAt = Date.now();
+      debt._modifiedBy = firebase.auth().currentUser?.email || 'unknown';
+      modifiedDebts.push(debt);
     }
   });
   
+  // Lưu local trước
   saveData();
+  
+  // ========== 2. ĐỒNG BỘ LÊN FIREBASE ==========
+  
+  try {
+    const user = firebase.auth().currentUser;
+    if (!user) throw new Error("Chưa đăng nhập");
+    
+    const role = await getUserRole(user.uid);
+    const STORE_ID = "milano_coffee_259";
+    const deviceId = localStorage.getItem("deviceId") || 'unknown';
+    
+    // Cập nhật metadata (categories + recent)
+    const metadataRef = database.ref(`cafeData/${STORE_ID}/metadata`);
+    
+    await metadataRef.transaction((currentData) => {
+      if (currentData === null) {
+        return {
+          version: Date.now(),
+          lastSync: firebase.database.ServerValue.TIMESTAMP,
+          categories: {
+            expenses: [],
+            adminExpenses: [],
+            customers: [newName]
+          },
+          recent: {
+            expenses: [],
+            adminExpenses: [],
+            customers: [newName]
+          }
+        };
+      }
+      
+      // Cập nhật categories.customers
+      const categories = currentData.categories || { expenses: [], adminExpenses: [], customers: [] };
+      const oldIndex = categories.customers.indexOf(oldName);
+      if (oldIndex !== -1) {
+        categories.customers[oldIndex] = newName;
+      } else if (!categories.customers.includes(newName)) {
+        categories.customers.push(newName);
+      }
+      
+      // Cập nhật recent.customers
+      const recent = currentData.recent || { expenses: [], adminExpenses: [], customers: [] };
+      const recentOldIndex = recent.customers.indexOf(oldName);
+      if (recentOldIndex !== -1) {
+        recent.customers[recentOldIndex] = newName;
+      } else if (!recent.customers.includes(newName)) {
+        recent.customers.unshift(newName);
+        recent.customers = recent.customers.slice(0, 10);
+      }
+      
+      return {
+        version: Date.now(),
+        lastSync: firebase.database.ServerValue.TIMESTAMP,
+        syncedBy: user.uid,
+        syncedByEmail: user.email,
+        syncedByDevice: deviceId,
+        categories: categories,
+        recent: recent
+      };
+    });
+    
+    // Cập nhật từng debt transaction bị ảnh hưởng trên Firebase
+    for (const debt of modifiedDebts) {
+      if (!debt.date) continue;
+      const [year, month, day] = debt.date.split('-');
+      const debtPath = `cafeData/${STORE_ID}/debtTransactions/${year}/${month}/${day}/${debt.id}`;
+      
+      await database.ref(debtPath).update({
+        customer: newName,
+        _modifiedAt: firebase.database.ServerValue.TIMESTAMP,
+        _modifiedBy: user.email,
+        _modifiedByRole: role,
+        _modifiedByDevice: deviceId
+      });
+    }
+    
+    console.log(`✅ Đã đồng bộ đổi tên khách hàng từ "${oldName}" → "${newName}"`);
+    showToast(`✓ Đã đổi "${oldName}" thành "${newName}" (đã đồng bộ)`);
+    
+  } catch (error) {
+    console.error("❌ Lỗi đồng bộ:", error);
+    showToast(`⚠️ Đã lưu local nhưng đồng bộ thất bại: ${error.message}`);
+  }
+  
+  // Refresh UI
   renderRecentCustomers();
   renderRecentPayments();
   renderCustomerDebtList();
-  if (typeof syncToFirebase === 'function') setTimeout(() => syncToFirebase(), 100);
-  showToast(`✓ Đã đổi "${oldName}" thành "${newName}"`);
+  if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
+  if (typeof updateTotalDebtDisplay === 'function') updateTotalDebtDisplay();
 };
 
-// ========== XÓA TÊN KHÁCH HÀNG ==========
-window.deleteCustomerName = function(name) {
-  // Kiểm tra xem có đang nợ không
-  const debt = calculateCustomerDebt(name);
+// ========== HÀM GỘP TÊN KHÁCH HÀNG ==========
+async function mergeCustomerNames(oldName, targetName) {
+  showToast(`🔄 Đang gộp "${oldName}" vào "${targetName}"...`);
+  
+  // Tìm tất cả giao dịch của khách cũ
+  const debtsToMerge = appData.debtTransactions.filter(debt => debt.customer === oldName && !debt.deleted);
+  
+  if (debtsToMerge.length === 0) {
+    showToast(`⚠️ Không có giao dịch nào cần gộp`);
+    return;
+  }
+  
+  // Cập nhật local
+  debtsToMerge.forEach(debt => {
+    debt.customer = targetName;
+    debt._modifiedAt = Date.now();
+    debt._modifiedBy = firebase.auth().currentUser?.email || 'unknown';
+  });
+  
+  // Xóa oldName khỏi categories và recent
+  appData.categories.customers = appData.categories.customers.filter(n => n !== oldName);
+  appData.recent.customers = appData.recent.customers.filter(n => n !== oldName);
+  
+  // Đảm bảo targetName có trong danh sách
+  if (!appData.categories.customers.includes(targetName)) {
+    appData.categories.customers.push(targetName);
+  }
+  if (!appData.recent.customers.includes(targetName)) {
+    appData.recent.customers.unshift(targetName);
+    appData.recent.customers = appData.recent.customers.slice(0, 10);
+  }
+  
+  saveData();
+  
+  // Đồng bộ lên Firebase
+  try {
+    const user = firebase.auth().currentUser;
+    if (!user) throw new Error("Chưa đăng nhập");
+    
+    const STORE_ID = "milano_coffee_259";
+    const deviceId = localStorage.getItem("deviceId") || 'unknown';
+    
+    // Cập nhật metadata
+    const metadataRef = database.ref(`cafeData/${STORE_ID}/metadata`);
+    await metadataRef.transaction((currentData) => {
+      if (!currentData) return;
+      
+      const categories = currentData.categories || { expenses: [], adminExpenses: [], customers: [] };
+      categories.customers = categories.customers.filter(n => n !== oldName);
+      if (!categories.customers.includes(targetName)) {
+        categories.customers.push(targetName);
+      }
+      
+      const recent = currentData.recent || { expenses: [], adminExpenses: [], customers: [] };
+      recent.customers = recent.customers.filter(n => n !== oldName);
+      if (!recent.customers.includes(targetName)) {
+        recent.customers.unshift(targetName);
+        recent.customers = recent.customers.slice(0, 10);
+      }
+      
+      return {
+        ...currentData,
+        categories: categories,
+        recent: recent,
+        version: Date.now(),
+        lastSync: firebase.database.ServerValue.TIMESTAMP
+      };
+    });
+    
+    // Cập nhật từng debt transaction trên Firebase
+    for (const debt of debtsToMerge) {
+      const [year, month, day] = debt.date.split('-');
+      const debtPath = `cafeData/${STORE_ID}/debtTransactions/${year}/${month}/${day}/${debt.id}`;
+      await database.ref(debtPath).update({
+        customer: targetName,
+        _modifiedAt: firebase.database.ServerValue.TIMESTAMP,
+        _modifiedBy: user.email,
+        _modifiedByDevice: deviceId
+      });
+    }
+    
+    showToast(`✓ Đã gộp "${oldName}" vào "${targetName}" (${debtsToMerge.length} giao dịch)`);
+    
+  } catch (error) {
+    console.error("❌ Lỗi đồng bộ gộp khách hàng:", error);
+    showToast(`⚠️ Gộp local thành công, nhưng đồng bộ thất bại`);
+  }
+  
+  renderRecentCustomers();
+  renderRecentPayments();
+  renderCustomerDebtList();
+  if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
+  if (typeof updateTotalDebtDisplay === 'function') updateTotalDebtDisplay();
+}
+
+window.deleteCustomerName = async function(name) {
+  const currentDebt = calculateCustomerDebt(name);
+  const transactionCount = appData.debtTransactions.filter(t => t.customer === name && !t.deleted).length;
   
   let message = `Bạn có chắc muốn xóa "${name}" khỏi danh sách khách hàng?`;
-  if (debt > 0) {
-    message = `⚠️ Cảnh báo: "${name}" đang nợ ${formatMoney(debt)}!\n\nXóa sẽ chỉ xóa khỏi danh sách gợi ý, không ảnh hưởng đến số nợ.\n\nBạn có chắc không?`;
+  
+  if (currentDebt > 0) {
+    message = `⚠️ CẢNH BÁO QUAN TRỌNG!\n\n`;
+    message += `Khách hàng "${name}" đang nợ ${formatMoney(currentDebt)}!\n`;
+    message += `Có ${transactionCount} giao dịch liên quan.\n\n`;
+    message += `Hành động này sẽ CHỈ xóa tên khỏi danh sách gợi ý.\n`;
+    message += `Số nợ và lịch sử giao dịch vẫn được giữ nguyên.\n\n`;
+    message += `Bạn có chắc chắn muốn xóa?`;
+  } else if (currentDebt < 0) {
+    message = `⚠️ CẢNH BÁO!\n\n`;
+    message += `Khách hàng "${name}" đang DƯ ${formatMoney(Math.abs(currentDebt))} (gối đầu)!\n`;
+    message += `Xóa sẽ chỉ xóa khỏi danh sách gợi ý.\n\n`;
+    message += `Bạn có chắc không?`;
+  } else if (transactionCount > 0) {
+    message = `⚠️ Khách hàng "${name}" có ${transactionCount} giao dịch trong lịch sử.\n\n`;
+    message += `Xóa sẽ CHỈ xóa tên khỏi danh sách gợi ý, không xóa giao dịch cũ.\n\n`;
+    message += `Bạn có chắc không?`;
   }
   
-  if (confirm(message)) {
-    // Xóa khỏi categories
-    appData.categories.customers = appData.categories.customers.filter(n => n !== name);
-    // Xóa khỏi recent
-    appData.recent.customers = appData.recent.customers.filter(n => n !== name);
+  if (!confirm(message)) return;
+  
+  showToast(`🔄 Đang xóa "${name}" khỏi danh sách khách hàng...`);
+  
+  // ========== 1. XÓA TRONG LOCAL ==========
+  appData.categories.customers = appData.categories.customers.filter(n => n !== name);
+  appData.recent.customers = appData.recent.customers.filter(n => n !== name);
+  
+  saveData();
+  
+  // ========== 2. ĐỒNG BỘ LÊN FIREBASE ==========
+  try {
+    const user = firebase.auth().currentUser;
+    if (!user) throw new Error("Chưa đăng nhập");
     
-    saveData();
-    renderRecentCustomers();
-    renderRecentPayments();
-    renderCustomerDebtList();
-    if (typeof syncToFirebase === 'function') setTimeout(() => syncToFirebase(), 100);
-    showToast(`✓ Đã xóa "${name}" khỏi danh sách`);
+    const STORE_ID = "milano_coffee_259";
+    const deviceId = localStorage.getItem("deviceId") || 'unknown';
+    
+    const metadataRef = database.ref(`cafeData/${STORE_ID}/metadata`);
+    
+    await metadataRef.transaction((currentData) => {
+      if (currentData === null) return;
+      
+      // Xóa khỏi categories
+      const categories = currentData.categories || { expenses: [], adminExpenses: [], customers: [] };
+      categories.customers = categories.customers.filter(n => n !== name);
+      
+      // Xóa khỏi recent
+      const recent = currentData.recent || { expenses: [], adminExpenses: [], customers: [] };
+      recent.customers = recent.customers.filter(n => n !== name);
+      
+      return {
+        ...currentData,
+        categories: categories,
+        recent: recent,
+        version: Date.now(),
+        lastSync: firebase.database.ServerValue.TIMESTAMP,
+        syncedBy: user.uid,
+        syncedByEmail: user.email,
+        syncedByDevice: deviceId
+      };
+    });
+    
+    console.log(`✅ Đã đồng bộ xóa "${name}" khỏi danh sách khách hàng`);
+    showToast(`✓ Đã xóa "${name}" khỏi danh sách (đã đồng bộ)`);
+    
+  } catch (error) {
+    console.error("❌ Lỗi đồng bộ xóa khách hàng:", error);
+    showToast(`⚠️ Đã xóa local nhưng đồng bộ thất bại: ${error.message}`);
   }
+  
+  // Refresh UI
+  renderRecentCustomers();
+  renderRecentPayments();
+  renderCustomerDebtList();
+  if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
+  if (typeof updateTotalDebtDisplay === 'function') updateTotalDebtDisplay();
 };
 
 // ========== LẤY SỐ TIỀN GẦN NHẤT THEO TÊN ==========
@@ -1535,52 +2155,75 @@ window.deleteDebtAndRefreshPopup = function(id) {
     showToast(`✓ Đã xóa ${typeText} (đã đồng bộ)`);
   }
 };
-// ========== SAVE DEBT (NHÂN VIÊN ĐƯỢC NHẬP NGÀY CŨ CHƯA GỬI) ==========
-saveDebtBtn.onclick = () => {
+// ========== SAVE DEBT (FIXED) ==========
+// ========== SAVE DEBT (FIXED) ==========
+saveDebtBtn.onclick = async () => {
+  console.log("🔵 saveDebtBtn.onclick - Bắt đầu lưu công nợ");
+  
   const date = getCurrentDate();
   const today = getToday();
   const report = getReport(date);
   const isAdmin = window.isAdminSync ? window.isAdminSync() : false;
   
-  // CHẶN NGÀY TƯƠNG LAI (cho tất cả)
+  // Kiểm tra ngày tương lai
   if (date > today) {
-    alert(`⚠️ KHÔNG THỂ NHẬP DỮ LIỆU CHO NGÀY TƯƠNG LAI!\n\nNgày ${formatDisplayDate(date)} chưa xảy ra.`);
+    alert(`⚠️ KHÔNG THỂ NHẬP DỮ LIỆU CHO NGÀY TƯƠNG LAI!`);
     return;
   }
   
-  // ADMIN: TOÀN QUYỀN, KHÔNG KIỂM TRA GÌ THÊM
-  if (isAdmin) {
-    // Admin được nhập bất kỳ ngày nào
-  } 
-  // NHÂN VIÊN: BỊ GIỚI HẠN
-  else {
-    // Kiểm tra ngày hôm qua đã gửi chưa (chỉ áp dụng cho ngày hôm nay)
+  // Kiểm tra quyền
+  if (!isAdmin) {
     if (date === today) {
-      if (!canAddData()) return;
+      if (typeof canAddData === 'function' && !canAddData()) return;
     }
-    
-    // Nhân viên: KHÔNG được thêm vào ngày cũ ĐÃ GỬI
     if (date !== today && report.status === "completed") {
-      alert(`⚠️ Ngày ${formatDisplayDate(date)} đã được gửi!\n\nChỉ Quản lý mới được thêm dữ liệu vào ngày đã gửi.`);
+      alert(`⚠️ Ngày ${formatDisplayDate(date)} đã được gửi! Chỉ Quản lý mới được sửa.`);
       return;
     }
-    
-    // Nhân viên: ĐƯỢC thêm vào ngày cũ CHƯA GỬI (bỏ chặn)
-    // Không cần kiểm tra thêm
   }
 
+  // Lấy dữ liệu từ input
   let customer = debtCustomerInput ? debtCustomerInput.value.trim() : "";
-  const amount = parseMoney(debtAmount.value);
-  const note = debtNote.value;
+  
+  // ========== LẤY SỐ TIỀN AN TOÀN ==========
+let amount = 0;
 
-  if (amount <= 0) { alert("Nhập số tiền"); return; }
-  if (!customer) { alert("Vui lòng nhập tên khách hàng"); return; }
+// Cách 1: Lấy trực tiếp từ DOM bằng id (không qua biến debtAmount)
+const debtAmountElement = document.getElementById("debtAmount");
+console.log("debtAmountElement:", debtAmountElement);
 
+if (debtAmountElement) {
+  let rawAmount = debtAmountElement.value;
+  console.log("Raw amount (từ DOM):", rawAmount, "type:", typeof rawAmount);
+  
+  if (rawAmount && rawAmount !== "" && rawAmount !== "NaN") {
+    // Xóa tất cả ký tự không phải số
+    const cleanNumber = String(rawAmount).replace(/[^0-9]/g, '');
+    amount = parseInt(cleanNumber, 10) || 0;
+  }
+}
+
+console.log("Final amount:", amount);
+  
+  const note = debtNote ? debtNote.value : "";
+  
+  // Kiểm tra dữ liệu
+  if (amount <= 0) { 
+    alert("❌ Nhập số tiền (phải lớn hơn 0) - Bạn vừa nhập: " + rawAmount); 
+    if (debtAmount) debtAmount.focus();
+    return; 
+  }
+  
+  if (!customer) { 
+    alert("❌ Vui lòng nhập tên khách hàng"); 
+    if (debtCustomerInput) debtCustomerInput.focus();
+    return; 
+  }
+
+  // Thêm vào danh sách gần đây và categories
   if (!appData.recent.customers.includes(customer)) {
     appData.recent.customers.unshift(customer);
     appData.recent.customers = appData.recent.customers.slice(0, 10);
-    renderRecentCustomers();
-    renderRecentPayments();
   }
   if (!appData.categories.customers.includes(customer)) {
     appData.categories.customers.push(customer);
@@ -1588,67 +2231,74 @@ saveDebtBtn.onclick = () => {
 
   const currentUser = firebase.auth().currentUser;
   
-  const data = {
+  const newDebt = {
     id: editingDebtId || createId("debt"),
     type: "debt_add",
     customer: customer,
     amount: amount,
     note: note,
+    businessDate: date,
     date: date,
     deleted: false,
-    _modifiedAt: Date.now(),
-    _modifiedBy: currentUser?.email || 'unknown',
-    _modifiedByDevice: deviceId
+    version: 1,
+    createdAt: Date.now(),
+    createdBy: currentUser?.email || 'unknown',
+    updatedAt: Date.now(),
+    updatedBy: currentUser?.email || 'unknown'
   };
 
+  console.log("💾 Đối tượng debt sẽ lưu:", newDebt);
+
   if (editingDebtId) {
-    const oldItem = appData.debtTransactions.find(x => x.id === editingDebtId);
-    if (!oldItem) {
-      showToast("❌ Không tìm thấy item cần sửa");
-      return;
-    }
-    if (!isEditable(oldItem.date)) {
-      alert("⚠️ Ngày này đã gửi, không thể sửa!");
-      return;
-    }
     const index = appData.debtTransactions.findIndex(x => x.id === editingDebtId);
-    appData.debtTransactions[index] = data;
+    if (index !== -1) {
+      const oldVersion = appData.debtTransactions[index].version || 1;
+      newDebt.version = oldVersion + 1;
+      appData.debtTransactions[index] = newDebt;
+      showToast(`✓ Đã sửa công nợ: ${customer} - ${formatMoney(amount)}`);
+      
+      if (typeof window.updateDebt === 'function') {
+        window.updateDebt(editingDebtId, { customer, amount, note }, oldVersion);
+      }
+    }
     editingDebtId = null;
-    showToast(`✓ Đã sửa công nợ: ${customer} - ${formatMoney(amount)}`);
   } else {
-    appData.debtTransactions.push(data);
+    appData.debtTransactions.push(newDebt);
     showToast(`✓ Đã thêm công nợ: ${customer} - ${formatMoney(amount)}`);
+    
+    if (typeof window.createDebt === 'function') {
+      window.createDebt(newDebt);
+    }
   }
 
-  saveData();
+  // Lưu dữ liệu
+  if (typeof saveData === 'function') saveData();
   
+  // Reset form
+  if (debtCustomerInput) debtCustomerInput.value = "";
+  if (debtAmount) debtAmount.value = "";
+  if (debtNote) debtNote.value = "";
+  
+  // Refresh UI
+  if (typeof refreshDebtPopupUI === 'function') refreshDebtPopupUI();
+  if (typeof renderRecentCustomers === 'function') renderRecentCustomers();
+  if (typeof renderRecentPayments === 'function') renderRecentPayments();
+  if (typeof renderCustomerDebtList === 'function') renderCustomerDebtList();
+  if (typeof updateTotalDebtDisplay === 'function') updateTotalDebtDisplay();
+  
+  // Đóng popup
+  if (typeof closePopup === 'function') closePopup('debtPopup');
+  
+  // Đồng bộ lên Firebase
   if (typeof syncToFirebase === 'function') {
     setTimeout(() => syncToFirebase(), 100);
   }
   
-  refreshDebtPopupUI();
-  
-  const activeTab = document.querySelector('.tab-content.active')?.id;
-  if (activeTab === 'managerTab' && typeof renderManagerDashboard === 'function') {
-    renderManagerDashboard();
-  } else if (activeTab === 'employeeTab') {
-    const currentDate = getCurrentDate();
-    if (expenseTotal) expenseTotal.innerText = formatMoney(calculateExpenseTotal(currentDate));
-    if (debtTotal) debtTotal.innerText = formatMoney(calculateDebtTotal(currentDate));
-    updateTotalDebtDisplay();
-    renderCustomerDebtList();
-  }
-  
-  renderRecentCustomers();
-  renderRecentPayments();
-
-  if (debtCustomerInput) debtCustomerInput.value = "";
-  debtAmount.value = "";
-  debtNote.value = "";
+  console.log("✅ Lưu công nợ thành công!");
   
   setTimeout(() => {
     if (debtCustomerInput) debtCustomerInput.focus();
-  }, 50);
+  }, 100);
 };
 
 // ========== SỬA LẠI EXPENSE FAB ==========
@@ -1697,7 +2347,7 @@ function updateSubmitButtonStatus() {
     // Admin luôn có thể gửi, nhân viên chỉ gửi được ngày hôm nay
     const canSend = isAdmin || (date === getToday());
     if (canSend) {
-      submitBtn.innerHTML = "📤 Gửi báo cáo";
+      submitBtn.innerHTML = "📤 Gửi";
       submitBtn.classList.remove("submitted");
       submitBtn.disabled = false;
     } else {
@@ -1782,47 +2432,77 @@ if (submitBtnElement) {
   };
 }
 
-
-// ========== XỬ LÝ NÚT SỐ TIỀN NHANH ==========
+// ========== SETUP QUICK MONEY BUTTONS (FIX CHO POPUP) ==========
 function setupQuickMoneyButtons() {
-  // Nút số tiền nhanh cho Expense
-  document.querySelectorAll(".quick-money-btn").forEach(btn => {
-    btn.onclick = (e) => {
-      e.preventDefault();
-      const amount = btn.getAttribute('data-amount') || (parseInt(btn.innerText) * 1000);
-      if (expenseAmount) {
-        expenseAmount.value = Number(amount).toLocaleString("vi-VN");
-        expenseAmount.focus();
+  // Hàm helper để điền số tiền vào input
+  function setAmount(inputId, amount) {
+    const input = document.getElementById(inputId);
+    if (input) {
+      input.value = Number(amount).toLocaleString("vi-VN");
+      input.focus();
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      if (typeof showToast === 'function') {
+        showToast(`💰 Đã điền ${Number(amount).toLocaleString("vi-VN")}đ`);
       }
-    };
-  });
+      return true;
+    }
+    console.error(`Không tìm thấy input: ${inputId}`);
+    return false;
+  }
 
-  // Nút số tiền nhanh cho Debt
-  document.querySelectorAll(".quick-debt-btn").forEach(btn => {
-    btn.onclick = (e) => {
+  // Dùng event delegation trên document (bắt được cả element trong popup)
+  document.addEventListener('click', function(e) {
+    const target = e.target;
+    
+    // Nút cho Expense
+    if (target.classList && target.classList.contains('quick-money-btn')) {
       e.preventDefault();
-      const amount = btn.getAttribute('data-amount') || (parseInt(btn.innerText) * 1000);
-      if (debtAmount) {
-        debtAmount.value = Number(amount).toLocaleString("vi-VN");
-        debtAmount.focus();
-      }
-    };
-  });
-
-  // Nút số tiền nhanh cho Admin Expense
-  document.querySelectorAll(".quick-admin-money-btn").forEach(btn => {
-    btn.onclick = (e) => {
+      const amount = target.getAttribute('data-amount') || (parseInt(target.innerText) * 1000);
+      setAmount('expenseAmount', amount);
+      return;
+    }
+    
+    // Nút cho Debt (Công nợ)
+    if (target.classList && target.classList.contains('quick-debt-btn')) {
       e.preventDefault();
-      const amount = btn.getAttribute('data-amount') || (parseInt(btn.innerText) * 1000);
-      const adminExpenseAmount = document.getElementById("adminExpenseAmount");
-      if (adminExpenseAmount) {
-        adminExpenseAmount.value = Number(amount).toLocaleString("vi-VN");
-        adminExpenseAmount.focus();
+      const amount = target.getAttribute('data-amount') || (parseInt(target.innerText) * 1000);
+      setAmount('debtAmount', amount);
+      return;
+    }
+    
+    // Nút cho Payment
+    if (target.classList && target.classList.contains('quick-payment-btn')) {
+      e.preventDefault();
+      const amount = target.getAttribute('data-amount');
+      if (amount && setAmount('paymentAmount', amount)) {
+        if (typeof updatePaymentInfo === 'function') updatePaymentInfo();
       }
-    };
+      return;
+    }
+    
+    // Nút cho Admin Expense
+    if (target.classList && target.classList.contains('quick-admin-money-btn')) {
+      e.preventDefault();
+      const amount = target.getAttribute('data-amount') || (parseInt(target.innerText) * 1000);
+      setAmount('adminExpenseAmount', amount);
+      return;
+    }
   });
 }
 
+// Gọi sau khi DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupQuickMoneyButtons);
+} else {
+  setupQuickMoneyButtons();
+}
+
+// Gọi một lần duy nhất khi trang load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupQuickMoneyButtons);
+} else {
+  setupQuickMoneyButtons();
+}
 // Gọi hàm sau khi DOM load
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', setupQuickMoneyButtons);

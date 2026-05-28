@@ -750,43 +750,79 @@ function renderAdminExpenseStats(range){
 }
 
 function renderDebtStats(range){
-  const allCustomers = new Set();
-  const balanceAtEnd = {};
+  // THÊM KIỂM TRA: nếu không có dữ liệu thì thoát, không báo lỗi
+  if (!appData) {
+    console.warn("⚠️ renderDebtStats: appData chưa có dữ liệu");
+    if (managerDebtList) managerDebtList.innerHTML = '<div class="empty-text">📭 Đang tải dữ liệu...</div>';
+    return;
+  }
   
-  appData.categories.customers.forEach(c => allCustomers.add(c));
-  appData.recent.customers.forEach(c => allCustomers.add(c));
-  appData.debtTransactions.forEach(t => { if(!t.deleted) allCustomers.add(t.customer); });
+  // THÊM KIỂM TRA: tạo danh sách khách hàng an toàn
+  let allCustomers = new Set();
   
+  // Lấy từ categories (nếu có)
+  if (appData.categories && appData.categories.customers && Array.isArray(appData.categories.customers)) {
+    appData.categories.customers.forEach(c => allCustomers.add(c));
+  }
+  
+  // Lấy từ recent (nếu có)
+  if (appData.recent && appData.recent.customers && Array.isArray(appData.recent.customers)) {
+    appData.recent.customers.forEach(c => allCustomers.add(c));
+  }
+  
+  // Lấy từ debtTransactions (nếu có)
+  if (appData.debtTransactions && Array.isArray(appData.debtTransactions)) {
+    appData.debtTransactions.forEach(t => { 
+      if (!t.deleted && t.customer) allCustomers.add(t.customer); 
+    });
+  }
+  
+  // Nếu không có khách hàng nào
+  if (allCustomers.size === 0) {
+    if (managerDebtList) managerDebtList.innerHTML = '<div class="empty-text">✅ Không có khách nợ</div>';
+    return;
+  }
+  
+  // Tính ngày kết thúc của kỳ
   const rangeEnd = new Date(range.end);
   rangeEnd.setHours(23, 59, 59, 999);
   
+  let balanceAtEnd = {};
+  
+  // Tính số dư cuối kỳ cho từng khách hàng
   allCustomers.forEach(customer => {
     let balance = 0;
-    appData.debtTransactions
-      .filter(t => !t.deleted && t.customer === customer)
-      .forEach(t => {
-        const transDate = new Date(t.date);
-        transDate.setHours(0, 0, 0, 0);
-        if(transDate <= rangeEnd){
-          if(t.type === "debt_add") balance += t.amount;
-          else balance -= t.amount;
-        }
-      });
+    
+    if (appData.debtTransactions && Array.isArray(appData.debtTransactions)) {
+      appData.debtTransactions
+        .filter(t => !t.deleted && t.customer === customer)
+        .forEach(t => {
+          const transDate = new Date(t.date);
+          transDate.setHours(0, 0, 0, 0);
+          if (transDate <= rangeEnd) {
+            if (t.type === "debt_add") balance += t.amount;
+            else balance -= t.amount;
+          }
+        });
+    }
+    
     balanceAtEnd[customer] = balance;
   });
   
+  // Tạo HTML hiển thị
   let html = "";
   Object.keys(balanceAtEnd).sort().forEach(customer => {
     const balance = balanceAtEnd[customer];
-    if(balance > 0){
+    if (balance > 0) {
       html += `<div class="manager-item" onclick="showDebtDetail('${customer.replace(/'/g, "\\'")}')" style="display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer;">
         <span style="flex:1;">👤 ${customer}</span>
         <strong style="color:var(--danger); white-space:nowrap;">Nợ: ${formatMoney(balance)}</strong>
       </div>`;
     }
   });
-  if(html === "") html = '<div class="empty-text">✅ Không có khách nợ</div>';
-  if(managerDebtList) managerDebtList.innerHTML = html;
+  
+  if (html === "") html = '<div class="empty-text">✅ Không có khách nợ</div>';
+  if (managerDebtList) managerDebtList.innerHTML = html;
 }
 
 // ========== EXPORT ==========
@@ -950,16 +986,43 @@ if(!document.querySelector('#manager-styles')) {
 }
 
 function calculateTotalDebtAll() {
-  const allCustomers = new Set();
-  appData.categories.customers.forEach(c => allCustomers.add(c));
-  appData.recent.customers.forEach(c => allCustomers.add(c));
-  appData.debtTransactions.forEach(t => {
-    if (!t.deleted && t.customer) allCustomers.add(t.customer);
-  });
+  // THÊM KIỂM TRA: nếu không có dữ liệu thì trả về 0, không báo lỗi
+  if (!appData) {
+    console.warn("⚠️ appData chưa có dữ liệu");
+    return 0;
+  }
+  
+  // THÊM KIỂM TRA: tạo danh sách khách hàng an toàn
+  let allCustomers = new Set();
+  
+  // Lấy danh sách từ categories (nếu có)
+  if (appData.categories && appData.categories.customers && Array.isArray(appData.categories.customers)) {
+    appData.categories.customers.forEach(c => allCustomers.add(c));
+  }
+  
+  // Lấy danh sách từ recent (nếu có)
+  if (appData.recent && appData.recent.customers && Array.isArray(appData.recent.customers)) {
+    appData.recent.customers.forEach(c => allCustomers.add(c));
+  }
+  
+  // Lấy từ debtTransactions (nếu có)
+  if (appData.debtTransactions && Array.isArray(appData.debtTransactions)) {
+    appData.debtTransactions.forEach(t => {
+      if (!t.deleted && t.customer) allCustomers.add(t.customer);
+    });
+  }
+  
+  // Nếu không có khách hàng nào thì trả về 0
+  if (allCustomers.size === 0) {
+    return 0;
+  }
+  
+  // Tính tổng nợ
   let total = 0;
   allCustomers.forEach(customer => {
     total += calculateCustomerDebt(customer);
   });
+  
   return total;
 }
 

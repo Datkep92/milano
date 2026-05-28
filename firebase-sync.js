@@ -298,157 +298,377 @@ syncBtn.style.cssText = 'position:fixed; bottom:80px; right:16px; z-index:999; b
 syncBtn.onclick = () => window.forceSyncNow();
 document.body.appendChild(syncBtn);
 // ========== TẢI DỮ LIỆU TỪ FIREBASE (CÓ RETRY) ==========
-async function loadFromFirebase(retryCount = 0) {
-  if (isLoading) {
-    console.log("⏭️ Đang load, bỏ qua");
-    return false;
+// Cache version đã load
+let lastLoadedVersion = null;
+
+// Promise đang load để tránh gọi trùng
+let currentLoadPromise = null;
+
+async function loadFromFirebase(retryCount = 0, forceReload = false) {
+
+  // Nếu đang load thì dùng lại promise cũ
+  if (currentLoadPromise) {
+    console.log("⏭️ Đang load, dùng request cũ");
+    return currentLoadPromise;
   }
-  
-  isLoading = true;
-  
-  try {
-    const user = firebase.auth().currentUser;
-    if (!user) return false;
-    
-    const role = await getUserRole(user.uid);
-    const isAdminUser = role === ROLES.ADMIN;
-    
-    console.log(`📥 ${isAdminUser ? 'Admin' : 'Nhân viên'} đang tải dữ liệu từ server... (lần thử ${retryCount + 1})`);
-    
-    // Tải metadata
-    const metadataSnap = await database.ref(`cafeData/${STORE_ID}/metadata`).once('value');
-    const metadata = metadataSnap.val() || {};
-    
-    // Khởi tạo dữ liệu mới nếu chưa có (chỉ admin mới được tạo)
-    if (Object.keys(metadata).length === 0 && isAdminUser) {
-      console.log("📝 Chưa có dữ liệu trên server, khởi tạo mới...");
-      const emptyData = {
-        _version: 1,
-        _lastModified: Date.now(),
-        reports: {},
-        expenses: [],
-        adminExpenses: [],
-        debtTransactions: [],
-        categories: { expenses: [], adminExpenses: [], customers: [] },
-        recent: { expenses: [], adminExpenses: [], customers: [] }
-      };
-      saveToLocal(emptyData, true);
-      await syncToFirebase();
-      isLoading = false;
-      return true;
-    }
-    
-    // Tải dữ liệu 3 tháng gần nhất
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-    const startDate = threeMonthsAgo.toISOString().split('T')[0];
-    const endDate = new Date().toISOString().split('T')[0];
-    
-    const reports = {};
-    const expenses = [];
-    const adminExpenses = [];
-    const debts = [];
-    
-    const dates = [];
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      dates.push(d.toISOString().split('T')[0]);
-    }
-    
-    // Tải từng ngày - sử dụng Promise.all để tải song song
-    const batchSize = 10;
-    for (let i = 0; i < dates.length; i += batchSize) {
-      const batch = dates.slice(i, i + batchSize);
-      await Promise.all(batch.map(async (date) => {
-        const [year, month, day] = date.split('-');
-        
-        const [reportSnap, expensesSnap, adminExpensesSnap, debtsSnap] = await Promise.all([
-          database.ref(`cafeData/${STORE_ID}/reports/${year}/${month}/${day}`).once('value'),
-          database.ref(`cafeData/${STORE_ID}/expenses/${year}/${month}/${day}`).once('value'),
-          database.ref(`cafeData/${STORE_ID}/adminExpenses/${year}/${month}/${day}`).once('value'),
-          database.ref(`cafeData/${STORE_ID}/debtTransactions/${year}/${month}/${day}`).once('value')
-        ]);
-        
-        const report = reportSnap.val();
-        if (report) {
-          const cleanReport = { ...report };
-          delete cleanReport._syncedAt;
-          delete cleanReport._syncedBy;
-          delete cleanReport._syncedByEmail;
-          delete cleanReport._syncedByRole;
-          delete cleanReport._syncedByDevice;
-          reports[date] = cleanReport;
+
+  currentLoadPromise = (async () => {
+
+    try {
+
+      const user = firebase.auth().currentUser;
+
+      if (!user) {
+        currentLoadPromise = null;
+        return false;
+      }
+
+      const role = await getUserRole(user.uid);
+      const isAdminUser = role === ROLES.ADMIN;
+
+      console.log(
+        `📥 ${isAdminUser ? 'Admin' : 'Nhân viên'} đang tải dữ liệu từ server...`
+      );
+
+      // =========================
+      // LOAD METADATA NHẸ TRƯỚC
+      // =========================
+
+      const metadataRef = database.ref(
+        `cafeData/${STORE_ID}/metadata`
+      );
+
+      const metadataSnap = await metadataRef.once("value");
+
+      const metadata = metadataSnap.val() || {};
+
+      // =========================
+      // CHƯA CÓ DỮ LIỆU
+      // =========================
+
+      if (Object.keys(metadata).length === 0) {
+
+        if (isAdminUser) {
+
+          console.log("📝 Khởi tạo dữ liệu mới...");
+
+          const emptyData = {
+            _version: 1,
+            _lastModified: Date.now(),
+            reports: {},
+            expenses: [],
+            adminExpenses: [],
+            debtTransactions: [],
+            categories: {
+              expenses: [],
+              adminExpenses: [],
+              customers: []
+            },
+            recent: {
+              expenses: [],
+              adminExpenses: [],
+              customers: []
+            }
+          };
+
+          // Không trigger loop
+          saveToLocal(emptyData, false);
+
+          await syncToFirebase();
         }
-        
-        const expensesMap = expensesSnap.val() || {};
-        Object.entries(expensesMap).forEach(([id, exp]) => {
-          if (!exp.deleted) {
-            const cleanExp = { ...exp };
-            delete cleanExp._modifiedBy;
-            delete cleanExp._modifiedByRole;
-            delete cleanExp._modifiedByDevice;
-            expenses.push({ id, date, ...cleanExp });
+
+        currentLoadPromise = null;
+        return true;
+      }
+
+      // =========================
+      // CHECK VERSION
+      // =========================
+
+      const serverVersion = metadata.version || 1;
+
+      // Lấy version local
+      const localVersion =
+        JSON.parse(
+          localStorage.getItem("cafe_metadata") || "{}"
+        )?._version || null;
+
+      // Nếu đã có dữ liệu mới nhất -> bỏ qua
+      if (
+        !forceReload &&
+        (
+          lastLoadedVersion === serverVersion ||
+          localVersion === serverVersion
+        )
+      ) {
+
+        console.log(
+          `⏭️ Dữ liệu đã mới nhất (v${serverVersion})`
+        );
+
+        currentLoadPromise = null;
+
+        return true;
+      }
+
+      lastLoadedVersion = serverVersion;
+
+      // =========================
+      // LOAD SONG SONG TOÀN BỘ
+      // =========================
+
+      const threeMonthsAgo = new Date();
+
+      threeMonthsAgo.setMonth(
+        threeMonthsAgo.getMonth() - 3
+      );
+
+      const start = new Date(threeMonthsAgo);
+      const end = new Date();
+
+      const dates = [];
+
+      for (
+        let d = new Date(start);
+        d <= end;
+        d.setDate(d.getDate() + 1)
+      ) {
+
+        dates.push(
+          d.toISOString().split("T")[0]
+        );
+      }
+
+      const reports = {};
+      const expenses = [];
+      const adminExpenses = [];
+      const debts = [];
+
+      // =========================
+      // LOAD SIÊU NHANH
+      // =========================
+
+      await Promise.all(
+
+        dates.map(async (date) => {
+
+          const [year, month, day] = date.split("-");
+
+          const basePath =
+            `cafeData/${STORE_ID}`;
+
+          const [
+            reportSnap,
+            expensesSnap,
+            adminExpensesSnap,
+            debtsSnap
+          ] = await Promise.all([
+
+            database
+              .ref(`${basePath}/reports/${year}/${month}/${day}`)
+              .once("value"),
+
+            database
+              .ref(`${basePath}/expenses/${year}/${month}/${day}`)
+              .once("value"),
+
+            database
+              .ref(`${basePath}/adminExpenses/${year}/${month}/${day}`)
+              .once("value"),
+
+            database
+              .ref(`${basePath}/debtTransactions/${year}/${month}/${day}`)
+              .once("value")
+
+          ]);
+
+          // =========================
+          // REPORT
+          // =========================
+
+          const report = reportSnap.val();
+
+          if (report) {
+
+            delete report._syncedAt;
+            delete report._syncedBy;
+            delete report._syncedByEmail;
+            delete report._syncedByRole;
+            delete report._syncedByDevice;
+
+            reports[date] = report;
           }
-        });
-        
-        const adminExpensesMap = adminExpensesSnap.val() || {};
-        Object.entries(adminExpensesMap).forEach(([id, exp]) => {
-          if (!exp.deleted) {
-            const cleanExp = { ...exp };
-            delete cleanExp._modifiedBy;
-            delete cleanExp._modifiedByRole;
-            delete cleanExp._modifiedByDevice;
-            adminExpenses.push({ id, date, ...cleanExp });
+
+          // =========================
+          // EXPENSES
+          // =========================
+
+          const expensesMap =
+            expensesSnap.val() || {};
+
+          for (const [id, exp] of Object.entries(expensesMap)) {
+
+            if (exp.deleted) continue;
+
+            delete exp._modifiedBy;
+            delete exp._modifiedByRole;
+            delete exp._modifiedByDevice;
+
+            expenses.push({
+              id,
+              date,
+              ...exp
+            });
           }
-        });
-        
-        const debtsMap = debtsSnap.val() || {};
-        Object.entries(debtsMap).forEach(([id, debt]) => {
-          if (!debt.deleted) {
-            const cleanDebt = { ...debt };
-            delete cleanDebt._modifiedBy;
-            delete cleanDebt._modifiedByRole;
-            delete cleanDebt._modifiedByDevice;
-            debts.push({ id, date, ...cleanDebt });
+
+          // =========================
+          // ADMIN EXPENSES
+          // =========================
+
+          const adminExpensesMap =
+            adminExpensesSnap.val() || {};
+
+          for (const [id, exp] of Object.entries(adminExpensesMap)) {
+
+            if (exp.deleted) continue;
+
+            delete exp._modifiedBy;
+            delete exp._modifiedByRole;
+            delete exp._modifiedByDevice;
+
+            adminExpenses.push({
+              id,
+              date,
+              ...exp
+            });
           }
-        });
-      }));
+
+          // =========================
+          // DEBTS
+          // =========================
+
+          const debtsMap =
+            debtsSnap.val() || {};
+
+          for (const [id, debt] of Object.entries(debtsMap)) {
+
+            if (debt.deleted) continue;
+
+            delete debt._modifiedBy;
+            delete debt._modifiedByRole;
+            delete debt._modifiedByDevice;
+
+            debts.push({
+              id,
+              date,
+              ...debt
+            });
+          }
+
+        })
+
+      );
+
+      // =========================
+      // SAVE LOCAL
+      // =========================
+
+      const structuredData = {
+
+        _version: serverVersion,
+
+        _lastModified: Date.now(),
+
+        _lastModifiedBy: deviceId,
+
+        reports,
+
+        expenses,
+
+        adminExpenses,
+
+        debtTransactions: debts,
+
+        categories:
+          metadata.categories || {
+            expenses: [],
+            adminExpenses: [],
+            customers: []
+          },
+
+        recent:
+          metadata.recent || {
+            expenses: [],
+            adminExpenses: [],
+            customers: []
+          }
+      };
+
+      // Save local KHÔNG refresh loop
+      saveToLocal(structuredData, false);
+
+      // Save metadata cache
+      localStorage.setItem(
+        "cafe_metadata",
+        JSON.stringify({
+          _version: serverVersion
+        })
+      );
+
+      // Refresh đúng 1 lần
+      if (typeof refreshUI === "function") {
+        refreshUI();
+      }
+
+      console.log(
+        `✅ Đã tải: ${
+          Object.keys(reports).length
+        } reports, ${
+          expenses.length
+        } expenses, ${
+          adminExpenses.length
+        } adminExpenses, ${
+          debts.length
+        } debts`
+      );
+
+      currentLoadPromise = null;
+
+      return true;
+
+    } catch (error) {
+
+      console.error("❌ Lỗi tải:", error);
+
+      currentLoadPromise = null;
+
+      // Retry
+      if (retryCount < MAX_RETRY_COUNT) {
+
+        console.log(
+          `🔄 Retry ${retryCount + 1}/${MAX_RETRY_COUNT}`
+        );
+
+        await new Promise(resolve =>
+          setTimeout(resolve, RETRY_DELAY_MS)
+        );
+
+        return loadFromFirebase(
+          retryCount + 1,
+          true
+        );
+      }
+
+      console.error(
+        "❌ Retry thất bại hoàn toàn"
+      );
+
+      return false;
     }
-    
-    const structuredData = {
-      _version: metadata.version || 1,
-      _lastModified: Date.now(),
-      _lastModifiedBy: deviceId,
-      reports: reports,
-      expenses: expenses,
-      adminExpenses: adminExpenses,
-      debtTransactions: debts,
-      categories: metadata.categories || { expenses: [], adminExpenses: [], customers: [] },
-      recent: metadata.recent || { expenses: [], adminExpenses: [], customers: [] }
-    };
-    
-    saveToLocal(structuredData, true);
-    
-    console.log(`✅ Đã tải: ${Object.keys(reports).length} reports, ${expenses.length} expenses, ${adminExpenses.length} adminExpenses, ${debts.length} debts`);
-    
-    isLoading = false;
-    return true;
-    
-  } catch (error) {
-    console.error("❌ Lỗi tải:", error);
-    isLoading = false;
-    
-    // Retry logic
-    if (retryCount < MAX_RETRY_COUNT) {
-      console.log(`🔄 Đang thử lại lần ${retryCount + 2} sau ${RETRY_DELAY_MS}ms...`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-      return loadFromFirebase(retryCount + 1);
-    }
-    
-    console.error("❌ Đã thử tối đa số lần, vẫn thất bại");
-    return false;
-  }
+
+  })();
+
+  return currentLoadPromise;
 }
 
 function setupRealtimeListener() {
@@ -548,7 +768,43 @@ function setupRealtimeListener() {
 
   console.log("✅ Realtime listener đã sẵn sàng");
 }
-
+async function loadDateFromFirebase(date) {
+  console.log(`📡 Tải lại dữ liệu ngày ${date} do realtime update`);
+  const [year, month, day] = date.split('-');
+  const reportSnap = await database.ref(`cafeData/${STORE_ID}/reports/${year}/${month}/${day}`).once('value');
+  const expensesSnap = await database.ref(`cafeData/${STORE_ID}/expenses/${year}/${month}/${day}`).once('value');
+  const adminExpensesSnap = await database.ref(`cafeData/${STORE_ID}/adminExpenses/${year}/${month}/${day}`).once('value');
+  const debtsSnap = await database.ref(`cafeData/${STORE_ID}/debtTransactions/${year}/${month}/${day}`).once('value');
+  
+  const localData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+  
+  // Cập nhật report
+  const newReport = reportSnap.val();
+  if (newReport) {
+    if (!localData.reports) localData.reports = {};
+    const cleanReport = { ...newReport };
+    delete cleanReport._syncedAt; delete cleanReport._syncedBy; // ... xóa các field phụ
+    localData.reports[date] = cleanReport;
+  }
+  
+  // Cập nhật expenses – thay thế toàn bộ các expense của ngày đó
+  localData.expenses = (localData.expenses || []).filter(e => e.date !== date);
+  const expensesMap = expensesSnap.val() || {};
+  Object.entries(expensesMap).forEach(([id, exp]) => {
+    if (!exp.deleted) {
+      const cleanExp = { ...exp };
+      delete cleanExp._modifiedBy; // xóa field phụ
+      localData.expenses.push({ id, date, ...cleanExp });
+    }
+  });
+  
+  // Tương tự cho adminExpenses và debtTransactions
+  
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(localData));
+  window.appData = localData;
+  // Đồng bộ biến appData toàn cục
+  Object.assign(appData, localData);
+}
 // ========== XỬ LÝ CẬP NHẬT/NHẬP DỮ LIỆU ==========
 async function handleRealtimeUpdate(path, data) {
   const parts = path.split('/');
@@ -809,7 +1065,7 @@ async function initFirebaseSync() {
       console.log("🚀 Firebase Sync Pro - Đã sẵn sàng");
     } else {
       console.error("❌ Không thể tải dữ liệu, sẽ thử lại sau 5 giây");
-      setTimeout(() => initFirebaseSync(), 5000);
+      setTimeout(() => initFirebaseSync(), 1000);
     }
   }
 }

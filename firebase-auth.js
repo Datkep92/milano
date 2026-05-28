@@ -156,14 +156,23 @@ async function getUserRole(uid, forceRefresh = false) {
   
   try {
     const snapshot = await database.ref(`users/${uid}/role`).once('value');
-    const role = snapshot.val();
-    cachedRole = role || ROLES.STAFF;
+    let role = snapshot.val();
+    
+    // Nếu chưa có role, tự động tạo (mặc định là staff)
+    if (!role) {
+      console.log(`📝 Chưa có role cho user ${uid}, tự động tạo role staff`);
+      await database.ref(`users/${uid}/role`).set('staff');
+      role = 'staff';
+    }
+    
+    cachedRole = role;
     cachedRoleUid = uid;
     currentUserRole = cachedRole;
+    console.log(`👤 Role của user ${uid}: ${role}`);
     return cachedRole;
   } catch (error) {
     console.error("Lỗi lấy role:", error);
-    return ROLES.STAFF;
+    return 'staff';
   }
 }
 
