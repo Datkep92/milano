@@ -501,7 +501,7 @@ async function loadFromFirebase(retryCount = 0, forceReload = false) {
   return currentLoadPromise;
 }
 
-// ========== REALTIME LISTENER (CÓ EMPLOYEES) ==========
+// ========== REALTIME LISTENER (CÓ EMPLOYEES - HOÀN CHỈNH) ==========
 function setupRealtimeListener() {
   const user = firebase.auth().currentUser;
   if (!user) return;
@@ -511,12 +511,12 @@ function setupRealtimeListener() {
     realtimeListenerRef = null;
   }
 
-  console.log("📡 Đang thiết lập realtime listener (child_changed)...");
+  console.log("📡 Đang thiết lập realtime listener...");
 
   const baseRef = database.ref(`cafeData/${STORE_ID}`);
   realtimeListenerRef = baseRef;
 
-  // Hàm xử lý thay đổi realtime
+  // ========== HÀM XỬ LÝ THAY ĐỔI CHUNG ==========
   const handleDataChange = async (snapshot, eventType) => {
     if (window._isRealtimeUpdate) {
       console.log(`⏭️ Bỏ qua ${eventType} (đang xử lý)`);
@@ -526,7 +526,7 @@ function setupRealtimeListener() {
     const changedData = snapshot.val();
     const path = snapshot.key;
 
-    // Kiểm tra self-update (chính thiết bị này gửi lên)
+    // Kiểm tra self-update
     const isSelfUpdate = changedData && 
                          changedData._syncedByDevice === deviceId && 
                          changedData._syncedBy === user.uid;
@@ -541,7 +541,7 @@ function setupRealtimeListener() {
     window._isRealtimeUpdate = true;
 
     try {
-      // ========== XỬ LÝ METADATA ==========
+      // Xử lý metadata
       if (path === 'metadata') {
         const metadata = changedData;
         if (metadata && metadata.categories && metadata.recent) {
@@ -565,50 +565,41 @@ function setupRealtimeListener() {
         return;
       }
 
-            // ========== XỬ LÝ EMPLOYEES (THÊM, SỬA, XÓA) ==========
+      // Xử lý employees (cả thêm, sửa, xóa)
       if (path === 'employees' || path.startsWith('employees/')) {
-        console.log("📡 Cập nhật danh sách nhân viên do realtime:", eventType);
+        console.log(`📡 Cập nhật employees do ${eventType} tại ${path}`);
         
-        if (eventType === 'child_removed') {
-          // Xóa một nhân viên cụ thể
-          const employeeId = path.split('/')[1];
-          if (employeeId) {
-            const localData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-            localData.employees = (localData.employees || []).filter(e => e.id !== employeeId);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(localData));
-            if (typeof appData !== 'undefined') appData.employees = localData.employees;
-            if (typeof showToast === 'function') showToast(`📡 Đã xóa nhân viên (đồng bộ)`);
-            refreshUIAfterUpdate();
-          }
-        } else {
-          // child_changed hoặc child_added: tải lại toàn bộ employees
-          const employeesRef = database.ref(`cafeData/${STORE_ID}/employees`);
-          const employeesSnap = await employeesRef.once('value');
-          const employeesData = employeesSnap.val() || {};
-          const employees = Object.entries(employeesData).map(([id, emp]) => ({
-            id: id,
-            name: emp.name,
-            salaryPerDay: emp.salaryPerDay || 200000,
-            workDays: emp.workDays || 0,
-            ...emp
-          }));
-          
-          const localData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-          localData.employees = employees;
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(localData));
-          if (typeof appData !== 'undefined') appData.employees = employees;
-          
-          refreshUIAfterUpdate();
-          if (typeof showToast === 'function') showToast("📡 Đã cập nhật danh sách nhân viên");
-        }
+        // Tải lại toàn bộ employees (cách đơn giản nhất, đảm bảo đồng bộ)
+        const employeesRef = database.ref(`cafeData/${STORE_ID}/employees`);
+        const employeesSnap = await employeesRef.once('value');
+        const employeesData = employeesSnap.val() || {};
+        const employees = Object.entries(employeesData).map(([id, emp]) => ({
+          id: id,
+          name: emp.name,
+          salaryPerDay: emp.salaryPerDay || 200000,
+          workDays: emp.workDays || 0,
+          overtimeDays: emp.overtimeDays || 0,
+          absentDays: emp.absentDays || 0,
+          overtimeHistory: emp.overtimeHistory || {},
+          absentHistory: emp.absentHistory || {},
+          rewardEnabled: emp.rewardEnabled || false,
+          dailyBonus: emp.dailyBonus || {},
+          ...emp
+        }));
+        
+        const localData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+        localData.employees = employees;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(localData));
+        if (typeof appData !== 'undefined') appData.employees = employees;
+        
+        refreshUIAfterUpdate();
+        if (typeof showToast === 'function') showToast("📡 Đã cập nhật danh sách nhân viên");
         return;
       }
 
-      // ========== XỬ LÝ CÁC THAY ĐỔI THEO NGÀY (REPORTS, EXPENSES, DEBTS, ADMIN EXPENSES) ==========
-      // Tìm ngày từ path (cấu trúc: /reports/2026/05/26 hoặc /expenses/2026/05/26/id...)
+      // Xử lý các thay đổi theo ngày (reports, expenses, debts, adminExpenses)
       const parts = path.split('/');
       if (parts.length >= 4) {
-        // Tìm vị trí bắt đầu của năm
         let year, month, day;
         for (let i = 0; i < parts.length; i++) {
           if (/^\d{4}$/.test(parts[i])) {
@@ -618,21 +609,17 @@ function setupRealtimeListener() {
             break;
           }
         }
-        
         if (year && month && day) {
           const changedDate = `${year}-${month}-${day}`;
-          console.log(`📡 Chỉ cập nhật ngày ${changedDate} do ${eventType} tại ${path}`);
-          
-          // Tải lại dữ liệu của ngày đó
+          console.log(`📡 Cập nhật ngày ${changedDate} do ${eventType} tại ${path}`);
           await loadDateFromFirebase(changedDate);
         } else {
-          // Fallback: tải lại toàn bộ nếu không xác định được ngày
-          console.log(`📡 Không parse được ngày từ path: ${path}, tải lại toàn bộ`);
+          console.log(`📡 Không parse được ngày từ ${path}, tải lại toàn bộ`);
           await loadFromFirebase();
         }
       } else {
-        // Path không phải dạng ngày tháng (có thể là employees - đã xử lý ở trên)
-        if (path !== 'employees') {
+        // Path không xác định (không phải employees và không phải metadata) -> tải lại toàn bộ
+        if (path !== 'employees' && path !== 'metadata') {
           console.log(`📡 Path không xác định: ${path}, tải lại toàn bộ`);
           await loadFromFirebase();
         }
@@ -648,7 +635,7 @@ function setupRealtimeListener() {
     }
   };
 
-  // Đăng ký lắng nghe các sự kiện
+  // Đăng ký lắng nghe trên node gốc
   baseRef.on('child_changed', (snapshot) => handleDataChange(snapshot, 'child_changed'));
   baseRef.on('child_added', (snapshot) => handleDataChange(snapshot, 'child_added'));
   baseRef.on('child_removed', (snapshot) => handleDataChange(snapshot, 'child_removed'));
