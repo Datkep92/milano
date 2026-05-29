@@ -56,7 +56,7 @@ function saveToLocal(data, skipVersion = false) {
   return data._version;
 }
 
-// ========== ĐỒNG BỘ LÊN FIREBASE ==========
+// ========== ĐỒNG BỘ LÊN FIREBASE (CÓ EMPLOYEES) ==========
 async function syncToFirebase() {
   if (window._isRealtimeUpdate) {
     console.log("⏭️ Bỏ qua sync (đang nhận dữ liệu từ realtime)");
@@ -83,7 +83,7 @@ async function syncToFirebase() {
     
     console.log(`🔄 ${isAdminUser ? 'Admin' : 'Nhân viên'} đang đồng bộ...`);
     
-    // Lấy tất cả ngày có dữ liệu thay đổi
+    // ========== LẤY TẤT CẢ NGÀY CÓ DỮ LIỆU ==========
     const allDates = new Set();
     
     Object.keys(localData.reports || {}).forEach(date => allDates.add(date));
@@ -93,6 +93,7 @@ async function syncToFirebase() {
     
     const updates = {};
     
+    // ========== ĐỒNG BỘ REPORTS, EXPENSES, DEBTS, ADMIN EXPENSES THEO NGÀY ==========
     for (const date of allDates) {
       const [year, month, day] = date.split('-');
       
@@ -129,6 +130,7 @@ async function syncToFirebase() {
             name: exp.name,
             amount: exp.amount,
             qty: exp.qty || 0,
+            date: exp.date,
             deleted: false,
             _modifiedAt: exp._modifiedAt || Date.now(),
             _modifiedBy: user.email,
@@ -158,6 +160,7 @@ async function syncToFirebase() {
             customer: debt.customer,
             amount: debt.amount,
             type: debt.type,
+            date: debt.date,
             note: debt.note || '',
             method: debt.method || '',
             deleted: false,
@@ -186,6 +189,7 @@ async function syncToFirebase() {
             name: exp.name,
             amount: exp.amount,
             qty: exp.qty || 0,
+            date: exp.date,
             deleted: false,
             _modifiedAt: exp._modifiedAt || Date.now(),
             _modifiedBy: user.email,
@@ -196,15 +200,37 @@ async function syncToFirebase() {
       }
     }
     
+    // Sync employees (có history)
+if (localData.employees && localData.employees.length > 0) {
+  for (const emp of localData.employees) {
+    const empPath = `cafeData/${STORE_ID}/employees/${emp.id}`;
+    updates[empPath] = {
+  name: emp.name,
+  salaryPerDay: emp.salaryPerDay || 200000,
+  workDays: emp.workDays || 0,
+  overtimeDays: emp.overtimeDays || 0,
+  absentDays: emp.absentDays || 0,
+  overtimeHistory: emp.overtimeHistory || {},
+  absentHistory: emp.absentHistory || {},
+  rewardEnabled: emp.rewardEnabled || false,
+  dailyBonus: emp.dailyBonus || {},
+  _modifiedAt: Date.now(),
+  _modifiedBy: user.email,
+  _modifiedByRole: role,
+  _modifiedByDevice: deviceId
+};
+  }
+}
+    
+    // ========== THỰC HIỆN UPDATE LÊN FIREBASE ==========
     if (Object.keys(updates).length > 0) {
       await database.ref().update(updates);
       console.log(`✅ Đã đồng bộ ${Object.keys(updates).length} thay đổi lên server`);
     }
     
-    // Sync metadata
+    // ========== ĐỒNG BỘ METADATA ==========
     try {
       const metadataRef = database.ref(`cafeData/${STORE_ID}/metadata`);
-      
       await metadataRef.transaction((currentData) => {
         const localCategories = localData.categories || { expenses: [], adminExpenses: [], customers: [] };
         const localRecent = localData.recent || { expenses: [], adminExpenses: [], customers: [] };
@@ -248,7 +274,6 @@ async function syncToFirebase() {
           recent: mergedRecent
         };
       });
-      
       console.log(`✅ Đã đồng bộ metadata lên server`);
     } catch (metadataError) {
       console.error("❌ Lỗi sync metadata:", metadataError);
@@ -300,12 +325,9 @@ document.body.appendChild(syncBtn);
 // ========== TẢI DỮ LIỆU TỪ FIREBASE (CÓ RETRY) ==========
 // Cache version đã load
 let lastLoadedVersion = null;
-
-// Promise đang load để tránh gọi trùng
 let currentLoadPromise = null;
 
 async function loadFromFirebase(retryCount = 0, forceReload = false) {
-
   // Nếu đang load thì dùng lại promise cũ
   if (currentLoadPromise) {
     console.log("⏭️ Đang load, dùng request cũ");
@@ -313,11 +335,8 @@ async function loadFromFirebase(retryCount = 0, forceReload = false) {
   }
 
   currentLoadPromise = (async () => {
-
     try {
-
       const user = firebase.auth().currentUser;
-
       if (!user) {
         currentLoadPromise = null;
         return false;
@@ -325,33 +344,17 @@ async function loadFromFirebase(retryCount = 0, forceReload = false) {
 
       const role = await getUserRole(user.uid);
       const isAdminUser = role === ROLES.ADMIN;
+      console.log(`📥 ${isAdminUser ? 'Admin' : 'Nhân viên'} đang tải dữ liệu từ server...`);
 
-      console.log(
-        `📥 ${isAdminUser ? 'Admin' : 'Nhân viên'} đang tải dữ liệu từ server...`
-      );
-
-      // =========================
-      // LOAD METADATA NHẸ TRƯỚC
-      // =========================
-
-      const metadataRef = database.ref(
-        `cafeData/${STORE_ID}/metadata`
-      );
-
+      // ========== LOAD METADATA ==========
+      const metadataRef = database.ref(`cafeData/${STORE_ID}/metadata`);
       const metadataSnap = await metadataRef.once("value");
-
       const metadata = metadataSnap.val() || {};
 
-      // =========================
-      // CHƯA CÓ DỮ LIỆU
-      // =========================
-
+      // Nếu chưa có dữ liệu (admin tạo mới)
       if (Object.keys(metadata).length === 0) {
-
         if (isAdminUser) {
-
           console.log("📝 Khởi tạo dữ liệu mới...");
-
           const emptyData = {
             _version: 1,
             _lastModified: Date.now(),
@@ -359,84 +362,35 @@ async function loadFromFirebase(retryCount = 0, forceReload = false) {
             expenses: [],
             adminExpenses: [],
             debtTransactions: [],
-            categories: {
-              expenses: [],
-              adminExpenses: [],
-              customers: []
-            },
-            recent: {
-              expenses: [],
-              adminExpenses: [],
-              customers: []
-            }
+            employees: [],
+            categories: { expenses: [], adminExpenses: [], customers: [] },
+            recent: { expenses: [], adminExpenses: [], customers: [] }
           };
-
-          // Không trigger loop
           saveToLocal(emptyData, false);
-
           await syncToFirebase();
         }
-
         currentLoadPromise = null;
         return true;
       }
 
-      // =========================
-      // CHECK VERSION
-      // =========================
-
+      // Kiểm tra version
       const serverVersion = metadata.version || 1;
-
-      // Lấy version local
-      const localVersion =
-        JSON.parse(
-          localStorage.getItem("cafe_metadata") || "{}"
-        )?._version || null;
-
-      // Nếu đã có dữ liệu mới nhất -> bỏ qua
-      if (
-        !forceReload &&
-        (
-          lastLoadedVersion === serverVersion ||
-          localVersion === serverVersion
-        )
-      ) {
-
-        console.log(
-          `⏭️ Dữ liệu đã mới nhất (v${serverVersion})`
-        );
-
+      const localVersion = JSON.parse(localStorage.getItem("cafe_metadata") || "{}")?._version || null;
+      if (!forceReload && (lastLoadedVersion === serverVersion || localVersion === serverVersion)) {
+        console.log(`⏭️ Dữ liệu đã mới nhất (v${serverVersion})`);
         currentLoadPromise = null;
-
         return true;
       }
-
       lastLoadedVersion = serverVersion;
 
-      // =========================
-      // LOAD SONG SONG TOÀN BỘ
-      // =========================
-
+      // ========== TẢI REPORTS, EXPENSES, ADMINEXPENSES, DEBTS ==========
       const threeMonthsAgo = new Date();
-
-      threeMonthsAgo.setMonth(
-        threeMonthsAgo.getMonth() - 3
-      );
-
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
       const start = new Date(threeMonthsAgo);
       const end = new Date();
-
       const dates = [];
-
-      for (
-        let d = new Date(start);
-        d <= end;
-        d.setDate(d.getDate() + 1)
-      ) {
-
-        dates.push(
-          d.toISOString().split("T")[0]
-        );
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push(d.toISOString().split("T")[0]);
       }
 
       const reports = {};
@@ -444,233 +398,110 @@ async function loadFromFirebase(retryCount = 0, forceReload = false) {
       const adminExpenses = [];
       const debts = [];
 
-      // =========================
-      // LOAD SIÊU NHANH
-      // =========================
+      await Promise.all(dates.map(async (date) => {
+        const [year, month, day] = date.split("-");
+        const basePath = `cafeData/${STORE_ID}`;
+        const [reportSnap, expensesSnap, adminExpensesSnap, debtsSnap] = await Promise.all([
+          database.ref(`${basePath}/reports/${year}/${month}/${day}`).once("value"),
+          database.ref(`${basePath}/expenses/${year}/${month}/${day}`).once("value"),
+          database.ref(`${basePath}/adminExpenses/${year}/${month}/${day}`).once("value"),
+          database.ref(`${basePath}/debtTransactions/${year}/${month}/${day}`).once("value")
+        ]);
 
-      await Promise.all(
+        // Xử lý report
+        const report = reportSnap.val();
+        if (report) {
+          delete report._syncedAt;
+          delete report._syncedBy;
+          delete report._syncedByEmail;
+          delete report._syncedByRole;
+          delete report._syncedByDevice;
+          reports[date] = report;
+        }
 
-        dates.map(async (date) => {
+        // Xử lý expenses
+        const expensesMap = expensesSnap.val() || {};
+        for (const [id, exp] of Object.entries(expensesMap)) {
+          if (exp.deleted) continue;
+          delete exp._modifiedBy;
+          delete exp._modifiedByRole;
+          delete exp._modifiedByDevice;
+          expenses.push({ id, date, ...exp });
+        }
 
-          const [year, month, day] = date.split("-");
+        // Xử lý adminExpenses
+        const adminExpensesMap = adminExpensesSnap.val() || {};
+        for (const [id, exp] of Object.entries(adminExpensesMap)) {
+          if (exp.deleted) continue;
+          delete exp._modifiedBy;
+          delete exp._modifiedByRole;
+          delete exp._modifiedByDevice;
+          adminExpenses.push({ id, date, ...exp });
+        }
 
-          const basePath =
-            `cafeData/${STORE_ID}`;
+        // Xử lý debts
+        const debtsMap = debtsSnap.val() || {};
+        for (const [id, debt] of Object.entries(debtsMap)) {
+          if (debt.deleted) continue;
+          delete debt._modifiedBy;
+          delete debt._modifiedByRole;
+          delete debt._modifiedByDevice;
+          debts.push({ id, date, ...debt });
+        }
+      }));
 
-          const [
-            reportSnap,
-            expensesSnap,
-            adminExpensesSnap,
-            debtsSnap
-          ] = await Promise.all([
+      // ========== TẢI EMPLOYEES ==========
+      const employeesRef = database.ref(`cafeData/${STORE_ID}/employees`);
+      const employeesSnap = await employeesRef.once('value');
+      const employeesData = employeesSnap.val() || {};
+      const employees = Object.entries(employeesData).map(([id, emp]) => ({
+        id: id,
+        name: emp.name,
+        salaryPerDay: emp.salaryPerDay || 200000,
+        workDays: emp.workDays || 0,
+        ...emp
+      }));
 
-            database
-              .ref(`${basePath}/reports/${year}/${month}/${day}`)
-              .once("value"),
-
-            database
-              .ref(`${basePath}/expenses/${year}/${month}/${day}`)
-              .once("value"),
-
-            database
-              .ref(`${basePath}/adminExpenses/${year}/${month}/${day}`)
-              .once("value"),
-
-            database
-              .ref(`${basePath}/debtTransactions/${year}/${month}/${day}`)
-              .once("value")
-
-          ]);
-
-          // =========================
-          // REPORT
-          // =========================
-
-          const report = reportSnap.val();
-
-          if (report) {
-
-            delete report._syncedAt;
-            delete report._syncedBy;
-            delete report._syncedByEmail;
-            delete report._syncedByRole;
-            delete report._syncedByDevice;
-
-            reports[date] = report;
-          }
-
-          // =========================
-          // EXPENSES
-          // =========================
-
-          const expensesMap =
-            expensesSnap.val() || {};
-
-          for (const [id, exp] of Object.entries(expensesMap)) {
-
-            if (exp.deleted) continue;
-
-            delete exp._modifiedBy;
-            delete exp._modifiedByRole;
-            delete exp._modifiedByDevice;
-
-            expenses.push({
-              id,
-              date,
-              ...exp
-            });
-          }
-
-          // =========================
-          // ADMIN EXPENSES
-          // =========================
-
-          const adminExpensesMap =
-            adminExpensesSnap.val() || {};
-
-          for (const [id, exp] of Object.entries(adminExpensesMap)) {
-
-            if (exp.deleted) continue;
-
-            delete exp._modifiedBy;
-            delete exp._modifiedByRole;
-            delete exp._modifiedByDevice;
-
-            adminExpenses.push({
-              id,
-              date,
-              ...exp
-            });
-          }
-
-          // =========================
-          // DEBTS
-          // =========================
-
-          const debtsMap =
-            debtsSnap.val() || {};
-
-          for (const [id, debt] of Object.entries(debtsMap)) {
-
-            if (debt.deleted) continue;
-
-            delete debt._modifiedBy;
-            delete debt._modifiedByRole;
-            delete debt._modifiedByDevice;
-
-            debts.push({
-              id,
-              date,
-              ...debt
-            });
-          }
-
-        })
-
-      );
-
-      // =========================
-      // SAVE LOCAL
-      // =========================
-
+      // ========== CẤU TRÚC DỮ LIỆU HOÀN CHỈNH ==========
       const structuredData = {
-
         _version: serverVersion,
-
         _lastModified: Date.now(),
-
         _lastModifiedBy: deviceId,
-
         reports,
-
         expenses,
-
         adminExpenses,
-
         debtTransactions: debts,
-
-        categories:
-          metadata.categories || {
-            expenses: [],
-            adminExpenses: [],
-            customers: []
-          },
-
-        recent:
-          metadata.recent || {
-            expenses: [],
-            adminExpenses: [],
-            customers: []
-          }
+        employees,               // ← ĐÃ THÊM
+        categories: metadata.categories || { expenses: [], adminExpenses: [], customers: [] },
+        recent: metadata.recent || { expenses: [], adminExpenses: [], customers: [] }
       };
 
-      // Save local KHÔNG refresh loop
       saveToLocal(structuredData, false);
+      localStorage.setItem("cafe_metadata", JSON.stringify({ _version: serverVersion }));
 
-      // Save metadata cache
-      localStorage.setItem(
-        "cafe_metadata",
-        JSON.stringify({
-          _version: serverVersion
-        })
-      );
-
-      // Refresh đúng 1 lần
-      if (typeof refreshUI === "function") {
-        refreshUI();
-      }
-
-      console.log(
-        `✅ Đã tải: ${
-          Object.keys(reports).length
-        } reports, ${
-          expenses.length
-        } expenses, ${
-          adminExpenses.length
-        } adminExpenses, ${
-          debts.length
-        } debts`
-      );
+      if (typeof refreshUI === "function") refreshUI();
+      console.log(`✅ Đã tải: ${Object.keys(reports).length} reports, ${expenses.length} expenses, ${adminExpenses.length} adminExpenses, ${debts.length} debts, ${employees.length} nhân viên`);
 
       currentLoadPromise = null;
-
       return true;
 
     } catch (error) {
-
       console.error("❌ Lỗi tải:", error);
-
       currentLoadPromise = null;
-
-      // Retry
       if (retryCount < MAX_RETRY_COUNT) {
-
-        console.log(
-          `🔄 Retry ${retryCount + 1}/${MAX_RETRY_COUNT}`
-        );
-
-        await new Promise(resolve =>
-          setTimeout(resolve, RETRY_DELAY_MS)
-        );
-
-        return loadFromFirebase(
-          retryCount + 1,
-          true
-        );
+        console.log(`🔄 Retry ${retryCount + 1}/${MAX_RETRY_COUNT}`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+        return loadFromFirebase(retryCount + 1, true);
       }
-
-      console.error(
-        "❌ Retry thất bại hoàn toàn"
-      );
-
+      console.error("❌ Retry thất bại hoàn toàn");
       return false;
     }
-
   })();
 
   return currentLoadPromise;
 }
 
+// ========== REALTIME LISTENER (CÓ EMPLOYEES) ==========
 function setupRealtimeListener() {
   const user = firebase.auth().currentUser;
   if (!user) return;
@@ -685,7 +516,7 @@ function setupRealtimeListener() {
   const baseRef = database.ref(`cafeData/${STORE_ID}`);
   realtimeListenerRef = baseRef;
 
-  // Xử lý tất cả các loại thay đổi: child_changed, child_added, child_removed
+  // Hàm xử lý thay đổi realtime
   const handleDataChange = async (snapshot, eventType) => {
     if (window._isRealtimeUpdate) {
       console.log(`⏭️ Bỏ qua ${eventType} (đang xử lý)`);
@@ -695,7 +526,7 @@ function setupRealtimeListener() {
     const changedData = snapshot.val();
     const path = snapshot.key;
 
-    // Kiểm tra self-update: cùng user và cùng device
+    // Kiểm tra self-update (chính thiết bị này gửi lên)
     const isSelfUpdate = changedData && 
                          changedData._syncedByDevice === deviceId && 
                          changedData._syncedBy === user.uid;
@@ -710,7 +541,7 @@ function setupRealtimeListener() {
     window._isRealtimeUpdate = true;
 
     try {
-      // Cập nhật metadata riêng nếu path là metadata
+      // ========== XỬ LÝ METADATA ==========
       if (path === 'metadata') {
         const metadata = changedData;
         if (metadata && metadata.categories && metadata.recent) {
@@ -734,22 +565,77 @@ function setupRealtimeListener() {
         return;
       }
 
-      // Đối với các thay đổi khác, chỉ tải lại ngày bị ảnh hưởng
+            // ========== XỬ LÝ EMPLOYEES (THÊM, SỬA, XÓA) ==========
+      if (path === 'employees' || path.startsWith('employees/')) {
+        console.log("📡 Cập nhật danh sách nhân viên do realtime:", eventType);
+        
+        if (eventType === 'child_removed') {
+          // Xóa một nhân viên cụ thể
+          const employeeId = path.split('/')[1];
+          if (employeeId) {
+            const localData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+            localData.employees = (localData.employees || []).filter(e => e.id !== employeeId);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(localData));
+            if (typeof appData !== 'undefined') appData.employees = localData.employees;
+            if (typeof showToast === 'function') showToast(`📡 Đã xóa nhân viên (đồng bộ)`);
+            refreshUIAfterUpdate();
+          }
+        } else {
+          // child_changed hoặc child_added: tải lại toàn bộ employees
+          const employeesRef = database.ref(`cafeData/${STORE_ID}/employees`);
+          const employeesSnap = await employeesRef.once('value');
+          const employeesData = employeesSnap.val() || {};
+          const employees = Object.entries(employeesData).map(([id, emp]) => ({
+            id: id,
+            name: emp.name,
+            salaryPerDay: emp.salaryPerDay || 200000,
+            workDays: emp.workDays || 0,
+            ...emp
+          }));
+          
+          const localData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+          localData.employees = employees;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(localData));
+          if (typeof appData !== 'undefined') appData.employees = employees;
+          
+          refreshUIAfterUpdate();
+          if (typeof showToast === 'function') showToast("📡 Đã cập nhật danh sách nhân viên");
+        }
+        return;
+      }
+
+      // ========== XỬ LÝ CÁC THAY ĐỔI THEO NGÀY (REPORTS, EXPENSES, DEBTS, ADMIN EXPENSES) ==========
       // Tìm ngày từ path (cấu trúc: /reports/2026/05/26 hoặc /expenses/2026/05/26/id...)
       const parts = path.split('/');
       if (parts.length >= 4) {
-        const year = parts[1];
-        const month = parts[2];
-        const day = parts[3];
-        const changedDate = `${year}-${month}-${day}`;
+        // Tìm vị trí bắt đầu của năm
+        let year, month, day;
+        for (let i = 0; i < parts.length; i++) {
+          if (/^\d{4}$/.test(parts[i])) {
+            year = parts[i];
+            month = parts[i+1];
+            day = parts[i+2];
+            break;
+          }
+        }
         
-        console.log(`📡 Chỉ cập nhật ngày ${changedDate}`);
-        
-        // Tải lại dữ liệu của ngày đó
-        await loadDateFromFirebase(changedDate);
+        if (year && month && day) {
+          const changedDate = `${year}-${month}-${day}`;
+          console.log(`📡 Chỉ cập nhật ngày ${changedDate} do ${eventType} tại ${path}`);
+          
+          // Tải lại dữ liệu của ngày đó
+          await loadDateFromFirebase(changedDate);
+        } else {
+          // Fallback: tải lại toàn bộ nếu không xác định được ngày
+          console.log(`📡 Không parse được ngày từ path: ${path}, tải lại toàn bộ`);
+          await loadFromFirebase();
+        }
       } else {
-        // Fallback: tải lại toàn bộ nếu không xác định được ngày
-        await loadFromFirebase();
+        // Path không phải dạng ngày tháng (có thể là employees - đã xử lý ở trên)
+        if (path !== 'employees') {
+          console.log(`📡 Path không xác định: ${path}, tải lại toàn bộ`);
+          await loadFromFirebase();
+        }
       }
       
       refreshUIAfterUpdate();
@@ -758,52 +644,102 @@ function setupRealtimeListener() {
     } finally {
       setTimeout(() => {
         window._isRealtimeUpdate = false;
-      }, 100); // Giảm lock xuống 100ms
+      }, 300);
     }
   };
 
+  // Đăng ký lắng nghe các sự kiện
   baseRef.on('child_changed', (snapshot) => handleDataChange(snapshot, 'child_changed'));
   baseRef.on('child_added', (snapshot) => handleDataChange(snapshot, 'child_added'));
   baseRef.on('child_removed', (snapshot) => handleDataChange(snapshot, 'child_removed'));
 
   console.log("✅ Realtime listener đã sẵn sàng");
 }
+// ========== TẢI LẠI DỮ LIỆU 1 NGÀY CỤ THỂ (GIỮ NGUYÊN EMPLOYEES) ==========
 async function loadDateFromFirebase(date) {
   console.log(`📡 Tải lại dữ liệu ngày ${date} do realtime update`);
   const [year, month, day] = date.split('-');
-  const reportSnap = await database.ref(`cafeData/${STORE_ID}/reports/${year}/${month}/${day}`).once('value');
-  const expensesSnap = await database.ref(`cafeData/${STORE_ID}/expenses/${year}/${month}/${day}`).once('value');
-  const adminExpensesSnap = await database.ref(`cafeData/${STORE_ID}/adminExpenses/${year}/${month}/${day}`).once('value');
-  const debtsSnap = await database.ref(`cafeData/${STORE_ID}/debtTransactions/${year}/${month}/${day}`).once('value');
   
+  // Lấy dữ liệu mới từ server
+  const [reportSnap, expensesSnap, adminExpensesSnap, debtsSnap] = await Promise.all([
+    database.ref(`cafeData/${STORE_ID}/reports/${year}/${month}/${day}`).once('value'),
+    database.ref(`cafeData/${STORE_ID}/expenses/${year}/${month}/${day}`).once('value'),
+    database.ref(`cafeData/${STORE_ID}/adminExpenses/${year}/${month}/${day}`).once('value'),
+    database.ref(`cafeData/${STORE_ID}/debtTransactions/${year}/${month}/${day}`).once('value')
+  ]);
+  
+  // Đọc dữ liệu local hiện tại
   const localData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
   
-  // Cập nhật report
+  // ========== 1. CẬP NHẬT REPORT ==========
   const newReport = reportSnap.val();
-  if (newReport) {
+  if (newReport && Object.keys(newReport).length > 0) {
     if (!localData.reports) localData.reports = {};
     const cleanReport = { ...newReport };
-    delete cleanReport._syncedAt; delete cleanReport._syncedBy; // ... xóa các field phụ
+    delete cleanReport._syncedAt;
+    delete cleanReport._syncedBy;
+    delete cleanReport._syncedByEmail;
+    delete cleanReport._syncedByRole;
+    delete cleanReport._syncedByDevice;
     localData.reports[date] = cleanReport;
+  } else if (localData.reports && localData.reports[date]) {
+    delete localData.reports[date];
   }
   
-  // Cập nhật expenses – thay thế toàn bộ các expense của ngày đó
+  // ========== 2. CẬP NHẬT EXPENSES (XÓA CŨ, THÊM MỚI) ==========
   localData.expenses = (localData.expenses || []).filter(e => e.date !== date);
   const expensesMap = expensesSnap.val() || {};
   Object.entries(expensesMap).forEach(([id, exp]) => {
     if (!exp.deleted) {
       const cleanExp = { ...exp };
-      delete cleanExp._modifiedBy; // xóa field phụ
+      delete cleanExp._modifiedBy;
+      delete cleanExp._modifiedByRole;
+      delete cleanExp._modifiedByDevice;
       localData.expenses.push({ id, date, ...cleanExp });
     }
   });
   
-  // Tương tự cho adminExpenses và debtTransactions
+  // ========== 3. CẬP NHẬT ADMIN EXPENSES ==========
+  localData.adminExpenses = (localData.adminExpenses || []).filter(e => e.date !== date);
+  const adminExpensesMap = adminExpensesSnap.val() || {};
+  Object.entries(adminExpensesMap).forEach(([id, exp]) => {
+    if (!exp.deleted) {
+      const cleanExp = { ...exp };
+      delete cleanExp._modifiedBy;
+      delete cleanExp._modifiedByRole;
+      delete cleanExp._modifiedByDevice;
+      localData.adminExpenses.push({ id, date, ...cleanExp });
+    }
+  });
   
+  // ========== 4. CẬP NHẬT DEBT TRANSACTIONS ==========
+  localData.debtTransactions = (localData.debtTransactions || []).filter(d => d.date !== date);
+  const debtsMap = debtsSnap.val() || {};
+  Object.entries(debtsMap).forEach(([id, debt]) => {
+    if (!debt.deleted) {
+      const cleanDebt = { ...debt };
+      delete cleanDebt._modifiedBy;
+      delete cleanDebt._modifiedByRole;
+      delete cleanDebt._modifiedByDevice;
+      // Đảm bảo có trường date (nếu server thiếu)
+      if (!cleanDebt.date) cleanDebt.date = date;
+      localData.debtTransactions.push({ id, date, ...cleanDebt });
+    }
+  });
+  
+  // ========== 5. GIỮ NGUYÊN EMPLOYEES (KHÔNG THAY ĐỔI) ==========
+  // localData.employees giữ nguyên, không bị ảnh hưởng bởi tải ngày
+  
+  // Cập nhật version tổng thể
+  localData._version = (localData._version || 0) + 1;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(localData));
-  window.appData = localData;
-  // Đồng bộ biến appData toàn cục
-  Object.assign(appData, localData);
+  
+  // Đồng bộ với biến appData toàn cục
+  if (typeof appData !== 'undefined') {
+    Object.assign(appData, localData);
+  }
+  
+  console.log(`✅ Đã cập nhật local cho ngày ${date}`);
 }
 // ========== XỬ LÝ CẬP NHẬT/NHẬP DỮ LIỆU ==========
 async function handleRealtimeUpdate(path, data) {
@@ -957,24 +893,28 @@ async function handleRealtimeRemoval(path) {
     refreshUIAfterUpdate();
   }
 }
-// ========== REFRESH UI SAU REALTIME UPDATE (MẠNH MẼ HƠN) ==========
-// ========== REFRESH UI SAU REALTIME UPDATE ==========
+// ========== REFRESH UI SAU REALTIME UPDATE (CÓ EMPLOYEES) ==========
+// ========== REFRESH UI SAU REALTIME UPDATE (GIỮ NGUYÊN EMPLOYEES) ==========
 function refreshUIAfterUpdate() {
   console.log("🔄 Refresh UI sau realtime update...");
   
-  // Đồng bộ biến appData toàn cục (quan trọng!)
+  // Đọc dữ liệu mới nhất từ localStorage
   const freshData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+  
+  // Cập nhật appData toàn cục
   if (typeof appData !== 'undefined') {
-    // Gán từng thuộc tính để giữ tham chiếu
+    // Lưu lại employees hiện tại (tránh bị ghi đè nếu freshData không có)
+    const currentEmployees = appData.employees;
+    
     Object.keys(freshData).forEach(key => {
       appData[key] = freshData[key];
     });
-    // Thêm các thuộc tính mới nếu có
-    Object.keys(appData).forEach(key => {
-      if (!(key in freshData)) delete appData[key];
-    });
+    
+    // Nếu freshData không có employees nhưng currentEmployees có, khôi phục lại
+    if (!appData.employees && currentEmployees && currentEmployees.length > 0) {
+      appData.employees = currentEmployees;
+    }
   } else {
-    // Nếu chưa có biến appData, tạo mới
     window.appData = freshData;
   }
   
@@ -983,7 +923,22 @@ function refreshUIAfterUpdate() {
     ensureAppDataStructure();
   }
   
-  // Render lại toàn bộ UI
+  // Chỉ cập nhật UI nếu popup đang mở
+  const employeePopup = document.getElementById("employeePopup");
+  const isEmployeePopupOpen = employeePopup && !employeePopup.classList.contains("hidden");
+  
+  if (isEmployeePopupOpen) {
+    console.log("🔄 Popup nhân viên đang mở, cập nhật danh sách...");
+    if (typeof renderEmployeeList === 'function') {
+      renderEmployeeList();
+    }
+  }
+  
+  // Cập nhật các thành phần khác
+  if (typeof updateManagerTotalSalary === 'function') {
+    updateManagerTotalSalary();
+  }
+  
   if (typeof loadTodayData === 'function') {
     loadTodayData();
   }
@@ -992,28 +947,8 @@ function refreshUIAfterUpdate() {
     renderManagerDashboard();
   }
   
-  if (typeof renderCustomerDebtList === 'function') {
-    renderCustomerDebtList();
-  }
-  
-  if (typeof renderRecentExpenses === 'function') {
-    renderRecentExpenses();
-  }
-  
-  if (typeof renderRecentCustomers === 'function') {
-    renderRecentCustomers();
-  }
-  
-  if (typeof renderRecentAdminExpenses === 'function') {
-    renderRecentAdminExpenses();
-  }
-  
   if (typeof updateTotalDebtDisplay === 'function') {
     updateTotalDebtDisplay();
-  }
-  
-  if (typeof updateSubmitButtonStatus === 'function') {
-    updateSubmitButtonStatus();
   }
   
   console.log("✅ Refresh UI hoàn tất");
