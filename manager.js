@@ -656,7 +656,7 @@ function scrollToAdminExpenseList() {
   }
 }
 
-// THÊM MỚI: Hiển thị popup chi tiết công nợ phát sinh trong kỳ
+// ========== HIỂN THỊ POPUP CHI TIẾT CÔNG NỢ PHÁT SINH (DÙNG CSS CHUNG) ==========
 function showDebtInRangeDetail() {
   const details = window.currentDebtDetails || [];
   if (!details || details.length === 0) {
@@ -668,27 +668,34 @@ function showDebtInRangeDetail() {
   const periodText = range ? range.label : '';
   const total = details.reduce((a,b) => a + b.amount, 0);
   
-  detailTitle.innerText = `📊 Công Nợ Phát Sinh - ${periodText}`;
+  const detailTitle = document.getElementById("detailTitle");
+  const detailContent = document.getElementById("detailContent");
   
+  if (detailTitle) detailTitle.innerText = `📊 Công Nợ Phát Sinh - ${periodText}`;
+  
+  // Sử dụng class thay vì inline style
   let html = `
-    <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: 12px; text-align: center;">
-      <div style="font-size: 12px; color: var(--text-light);">Tổng công nợ phát sinh</div>
-      <div style="font-size: 28px; font-weight: 700; color: var(--danger);">${formatMoney(total)}</div>
+    <div class="detail-summary">
+      <div class="detail-summary-label">Tổng công nợ phát sinh</div>
+      <div class="detail-summary-value danger">${formatMoney(total)}</div>
     </div>
-    <div style="font-weight: 600; margin-bottom: 12px; font-size: 14px;">📋 Chi tiết theo ngày:</div>
+    <div class="detail-section-title">📋 Chi tiết theo ngày:</div>
+    <div class="detail-list">
   `;
   
   details.forEach(item => {
     const formattedDate = formatDisplayDate(item.date);
     html += `
-      <div class="history-item" style="display: flex; justify-content: space-between; align-items: center;">
-        <div class="history-name">📅 ${formattedDate}</div>
-        <div class="history-amount" style="color: var(--danger); font-weight: 700;">+ ${formatMoney(item.amount)}</div>
+      <div class="detail-item">
+        <span class="detail-item-label">📅 ${formattedDate}</span>
+        <span class="detail-item-value danger">+ ${formatMoney(item.amount)}</span>
       </div>
     `;
   });
   
-  detailContent.innerHTML = html;
+  html += `</div>`;
+  
+  if (detailContent) detailContent.innerHTML = html;
   openPopup("detailPopup");
 }
 
@@ -725,50 +732,63 @@ function showTransactionDetail(type, title, details) {
   openPopup("detailPopup");
 }
 
-function renderExpenseStats(range){
+function renderExpenseStats(range) {
   const grouped = {};
   appData.expenses
     .filter(x => !x.deleted && isDateInRange(x.date, range))
     .forEach(item => {
-      if(!grouped[item.name]) grouped[item.name] = [];
+      if (!grouped[item.name]) grouped[item.name] = [];
       grouped[item.name].push(item);
     });
-  
-  let html = "";
-  Object.keys(grouped).sort().forEach(name => {
+
+  // Tạo mảng các item với tổng tiền và số lượng
+  let items = Object.keys(grouped).map(name => {
     const total = grouped[name].reduce((a, b) => a + b.amount, 0);
     const qtyTotal = grouped[name].reduce((a, b) => a + (b.qty || 0), 0);
+    return { name, total, qtyTotal };
+  });
+
+  // Sắp xếp theo tổng tiền giảm dần (lớn nhất lên đầu)
+  items.sort((a, b) => b.total - a.total);
+
+  let html = "";
+  items.forEach(({ name, total, qtyTotal }) => {
     html += `<div class="manager-item" onclick="showExpenseDetail('${name.replace(/'/g, "\\'")}')" style="display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer;">
       <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📦 ${name}</span>
       <strong style="flex-shrink:0; white-space:nowrap;">${qtyTotal > 0 ? `SL:${qtyTotal} • ` : ""}${formatMoney(total)}</strong>
     </div>`;
   });
-  if(html === "") html = '<div class="empty-text">📭 Chưa có dữ liệu chi phí</div>';
-  if(managerExpenseList) managerExpenseList.innerHTML = html;
+  if (html === "") html = '<div class="empty-text">📭 Chưa có dữ liệu chi phí</div>';
+  if (managerExpenseList) managerExpenseList.innerHTML = html;
 }
 
-function renderAdminExpenseStats(range){
+function renderAdminExpenseStats(range) {
   const grouped = {};
   appData.adminExpenses
     .filter(x => !x.deleted && isDateInRange(x.date, range))
     .forEach(item => {
-      if(!grouped[item.name]) grouped[item.name] = [];
+      if (!grouped[item.name]) grouped[item.name] = [];
       grouped[item.name].push(item);
     });
-  
-  let html = "";
-  Object.keys(grouped).sort().forEach(name => {
+
+  let items = Object.keys(grouped).map(name => {
     const total = grouped[name].reduce((a, b) => a + b.amount, 0);
     const qtyTotal = grouped[name].reduce((a, b) => a + (b.qty || 0), 0);
+    return { name, total, qtyTotal };
+  });
+
+  items.sort((a, b) => b.total - a.total);
+
+  let html = "";
+  items.forEach(({ name, total, qtyTotal }) => {
     html += `<div class="manager-item" onclick="showAdminExpenseDetail('${name.replace(/'/g, "\\'")}')" style="display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer;">
       <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">🏢 ${name}</span>
       <strong style="flex-shrink:0; white-space:nowrap;">${qtyTotal > 0 ? `SL:${qtyTotal} • ` : ""}${formatMoney(total)}</strong>
     </div>`;
   });
-  if(html === "") html = '<div class="empty-text">📭 Chưa có dữ liệu chi phí quản lý</div>';
-  
+  if (html === "") html = '<div class="empty-text">📭 Chưa có dữ liệu chi phí quản lý</div>';
   let container = document.getElementById("managerAdminExpenseList");
-  if(container) container.innerHTML = html;
+  if (container) container.innerHTML = html;
 }
 
 // ========== RENDER DANH SÁCH CÔNG NỢ (TAB QUẢN LÝ) – HIỂN THỊ CẢ KHÁCH ĐÃ TRẢ HẾT ==========

@@ -579,7 +579,21 @@ function formatNumberForInput(value) {
 
 function parseMoney(value) {
   if (!value) return 0;
-  return Number(String(value).replace(/[^0-9]/g, "")) || 0;
+  
+  // Xóa tất cả ký tự không phải số
+  let clean = String(value).replace(/[^0-9]/g, '');
+  if (clean === '') return 0;
+  
+  let number = parseInt(clean, 10);
+  
+  // QUY TẮC NHANH: Nếu số nhập vào <= 9999 (tức từ 1 đến 9999), coi là nghìn => nhân với 1000
+  // Ví dụ: 1000 -> 1.000.000, 500 -> 500.000, 10 -> 10.000
+  // Bạn có thể tùy chỉnh ngưỡng theo nhu cầu (ví dụ <= 999)
+  if (number <= 9999) {
+    number = number * 1000;
+  }
+  
+  return number;
 }
 
 

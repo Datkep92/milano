@@ -2723,3 +2723,72 @@ body:not(.admin-mode) .admin-expense-section {
   margin-top: 4px;
   font-size: 13px;
 }
+
+#employeePopup {
+    display: flex;
+    align-items: flex-end !important;
+    justify-content: center;
+}
+
+#employeePopup .popup-content {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 100vw !important;
+
+    border-radius: 20px 20px 0 0 !important;
+
+    margin: 0 !important;
+    padding: 20px !important;
+
+    box-sizing: border-box !important;
+
+    height: 80vh !important;
+    max-height: 85vh !important;
+
+    display: flex;
+    flex-direction: column;
+
+    position: fixed;
+    bottom: 0;
+    left: 0;
+}
+
+/* Điều chỉnh vị trí xuất hiện (từ dưới lên – giữ hiệu ứng) */
+#employeePopup {
+  align-items: stretch !important;
+  background: rgba(0,0,0,0.6);
+}
+
+/* Đảm bảo phần danh sách nhân viên có thể cuộn */
+#employeePopup .employee-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 8px;
+  padding-right: 4px;
+}
+
+/* Header popup */
+#employeePopup .popup-header {
+  flex-shrink: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+
+/* Footer tổng lương cố định dưới cùng */
+#employeePopup .employee-total {
+  flex-shrink: 0;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+/* Nội dung các employee-item không bị tràn */
+#employeePopup .employee-item {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
