@@ -215,7 +215,16 @@ window.APP_VERSION = "1.0.0";
   <div class="big-value" id="managerTotalDebt">0đ</div>
   <div class="summary-hint">Click xem danh sách nợ</div>
 </div>
-
+<div class="manager-box employee-box" id="employeeBox" style="cursor: pointer;">
+  <label>👥 NHÂN VIÊN</label>
+  <div class="big-value" id="managerTotalSalary">0đ</div>
+  <div class="summary-hint">Click quản lý</div>
+</div>
+<div class="manager-box" id="netIncomeBox" style="cursor: pointer;">
+  <label>💰 THU NHẬP RÒNG</label>
+  <div class="big-value" id="managerNetIncome">0đ</div>
+  <div class="summary-hint">Click chi tiết</div>
+</div>
 </div>
     </div>
 <div class="card collapsible">
@@ -374,7 +383,46 @@ window.APP_VERSION = "1.0.0";
   <div id="toast"></div>
   <button id="manualSyncBtn" style="display: none;">🔄 Đồng bộ</button>
 </div>
+<!-- Popup quản lý nhân viên (gọn nhẹ) -->
+<div class="popup hidden" id="employeePopup">
+  <div class="popup-content" style="max-width: 500px; width: 90%;">
+    <div class="popup-header">
+      <h2>👥 QUẢN LÝ NHÂN VIÊN</h2>
+      <button class="close-btn" data-close="employeePopup">✕</button>
+    </div>
+    <div class="popup-body">
+      <!-- Nút thêm nhân viên dạng prompt -->
+      <div style="margin-bottom: 16px;">
+        <button id="addEmployeeBtnSimple" class="primary-btn" style="width: 100%;">➕ Thêm nhân viên</button>
+      </div>
+      <!-- Danh sách nhân viên -->
+      <div id="employeeList" class="employee-list"></div>
+      <!-- Tổng lương popup -->
+      <div class="employee-total">
+        💰 Tổng lương kỳ: <strong id="popupTotalSalary">0đ</strong>
+      </div>
+    </div>
+  </div>
+</div>
 
+<!-- Edit Employee Popup -->
+<div class="popup hidden" id="editEmployeePopup">
+  <div class="popup-content" style="max-width: 300px;">
+    <div class="popup-header">
+      <h2>✏️ Sửa tên nhân viên</h2>
+      <button class="close-btn" data-close="editEmployeePopup">✕</button>
+    </div>
+    <div style="margin-bottom: 12px;">
+  <label style="display: flex; align-items: center; gap: 8px;">
+    <input type="checkbox" id="editEmployeeRewardEnabled"> 🏆 Tự động thưởng doanh thu
+  </label>
+</div>
+    <div class="popup-body">
+      <input type="text" id="editEmployeeName" placeholder="Tên nhân viên" style="width: 100%; padding: 10px; margin-bottom: 16px; border-radius: 10px; border: 1px solid var(--border);">
+      <button id="saveEditEmployeeBtn" class="primary-btn" style="width: 100%;">💾 Lưu</button>
+    </div>
+  </div>
+</div>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
@@ -383,9 +431,9 @@ window.APP_VERSION = "1.0.0";
 <script src="firebase-config.js?v=1.0.0"></script>
 <script src="core.js?v=1.0.0"></script>
 <script src="firebase-sync.js?v=1.0.0"></script>
+<script src="telegram.js?v=1.0.0"></script>
 <script src="firebase-auth.js?v=1.0.0"></script>
 <script src="firebase-role.js?v=1.0.0"></script>
-<script src="telegram.js?v=1.0.0"></script>
 <script src="employee.js?v=1.0.0"></script>
 <script src="manager.js?v=1.0.0"></script>
 

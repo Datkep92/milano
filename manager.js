@@ -136,22 +136,9 @@ if(periodPrevBtn){
       }
 
     }
-    else if(currentViewMode === "day"){
-
-      const newDate = new Date(currentDay);
-
-      newDate.setDate(
-        newDate.getDate() - 1
-      );
-
-      currentDay =
-        newDate.toISOString().split("T")[0];
-
-      if(managerDatePicker){
-        managerDatePicker.value = currentDay;
-      }
-
-    }
+   else if(currentViewMode === "day"){
+  currentDay = addDays(currentDay, -1);
+}
 
     renderManagerDashboard();
   };
@@ -195,21 +182,8 @@ if(periodNextBtn){
 
     }
     else if(currentViewMode === "day"){
-
-      const newDate = new Date(currentDay);
-
-      newDate.setDate(
-        newDate.getDate() + 1
-      );
-
-      currentDay =
-        newDate.toISOString().split("T")[0];
-
-      if(managerDatePicker){
-        managerDatePicker.value = currentDay;
-      }
-
-    }
+  currentDay = addDays(currentDay, 1);
+}
 
     renderManagerDashboard();
   };
@@ -444,7 +418,14 @@ function renderManagerDashboard() {
   const adminExpense = appData.adminExpenses
     .filter(x => !x.deleted && isDateInRange(x.date, range))
     .reduce((a, b) => a + (b.amount || 0), 0);
-  
+  // ... sau khi tính adminExpense ...
+
+// Tính thu nhập ròng
+const netIncome = (cash + bank + grab) - (expense + adminExpense + calculateTotalSalaryForMonth(getYearMonthFromRange(range).year, getYearMonthFromRange(range).month));
+
+// Cập nhật UI cho ô thu nhập ròng
+const managerNetIncome = document.getElementById("managerNetIncome");
+if (managerNetIncome) managerNetIncome.innerText = formatMoney(netIncome);
   // ========== CẬP NHẬT UI ==========
   const managerRevenue = document.getElementById("managerRevenue");
   const managerGrab = document.getElementById("managerGrab");
@@ -472,6 +453,7 @@ function renderManagerDashboard() {
   
   // Cập nhật tổng nợ hiện tại
   updateManagerTotalDebt();
+updateViewModeLabels();
 }
 // ========== HIỂN THỊ CHI TIẾT GRAB ==========
 function showGrabDetail() {
@@ -511,6 +493,42 @@ function showGrabDetail() {
   if (detailContentEl) detailContentEl.innerHTML = html;
   openPopup("detailPopup");
 }
+function showNetIncomeDetail() {
+  const range = window.currentRange;
+  const periodText = range ? range.label : '';
+  const { year, month } = getYearMonthFromRange(range);
+  const totalSalary = calculateTotalSalaryForMonth(year, month);
+  
+  const cash = parseMoney(document.getElementById("managerCash")?.innerText.replace(/[^0-9]/g, '')) || 0;
+  const bank = parseMoney(document.getElementById("managerBank")?.innerText.replace(/[^0-9]/g, '')) || 0;
+  const grab = parseMoney(document.getElementById("managerGrab")?.innerText.replace(/[^0-9]/g, '')) || 0;
+  const expense = parseMoney(document.getElementById("managerExpense")?.innerText.replace(/[^0-9]/g, '')) || 0;
+  const adminExpense = parseMoney(document.getElementById("managerAdminExpense")?.innerText.replace(/[^0-9]/g, '')) || 0;
+  
+  const netIncome = cash + bank + grab - expense - adminExpense - totalSalary;
+  
+  const detailTitle = document.getElementById("detailTitle");
+  const detailContent = document.getElementById("detailContent");
+  if (detailTitle) detailTitle.innerText = `💰 THU NHẬP RÒNG - ${periodText}`;
+  
+  let html = `
+    <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: 12px; text-align: center;">
+      <div style="font-size: 12px; color: var(--text-light);">Tổng thu nhập ròng</div>
+      <div style="font-size: 28px; font-weight: 700; color: var(--success);">${formatMoney(netIncome)}</div>
+    </div>
+    <div style="font-weight: 600; margin-bottom: 12px;">📊 Chi tiết cấu thành:</div>
+    <div>💵 Thực nhận: ${formatMoney(cash)}</div>
+    <div>🏦 Chuyển khoản: ${formatMoney(bank)}</div>
+    <div>🚕 Grab: ${formatMoney(grab)}</div>
+    <div style="border-top: 1px dashed var(--border); margin: 8px 0;"></div>
+    <div>📉 Chi phí NV: -${formatMoney(expense)}</div>
+    <div>📋 Chi phí quản lý: -${formatMoney(adminExpense)}</div>
+    <div>👥 Lương nhân viên: -${formatMoney(totalSalary)}</div>
+  `;
+  
+  if (detailContent) detailContent.innerHTML = html;
+  openPopup("detailPopup");
+}
 // ========== SETUP CLICKABLE MANAGER BOXES ==========
 function setupClickableManagerBoxes() {
   // Doanh thu
@@ -519,7 +537,11 @@ function setupClickableManagerBoxes() {
     revenueBox.style.cursor = 'pointer';
     revenueBox.onclick = () => showRevenueDetail();
   }
-  
+  const netIncomeBox = document.getElementById('netIncomeBox');
+if (netIncomeBox) {
+  netIncomeBox.style.cursor = 'pointer';
+  netIncomeBox.onclick = () => showNetIncomeDetail();
+}
   // Grab
   const grabBox = document.getElementById('grabBox');
   if (grabBox) {
@@ -749,7 +771,8 @@ function renderAdminExpenseStats(range){
   if(container) container.innerHTML = html;
 }
 
-function renderDebtStats(range){
+// ========== RENDER DANH SÁCH CÔNG NỢ (TAB QUẢN LÝ) – HIỂN THỊ CẢ KHÁCH ĐÃ TRẢ HẾT ==========
+function renderDebtStats(range) {
   // THÊM KIỂM TRA: nếu không có dữ liệu thì thoát, không báo lỗi
   if (!appData) {
     console.warn("⚠️ renderDebtStats: appData chưa có dữ liệu");
@@ -787,12 +810,10 @@ function renderDebtStats(range){
   const rangeEnd = new Date(range.end);
   rangeEnd.setHours(23, 59, 59, 999);
   
-  let balanceAtEnd = {};
-  
-  // Tính số dư cuối kỳ cho từng khách hàng
+  // Tạo mảng chứa thông tin từng khách hàng (tên, balance)
+  const customersWithBalance = [];
   allCustomers.forEach(customer => {
     let balance = 0;
-    
     if (appData.debtTransactions && Array.isArray(appData.debtTransactions)) {
       appData.debtTransactions
         .filter(t => !t.deleted && t.customer === customer)
@@ -805,20 +826,46 @@ function renderDebtStats(range){
           }
         });
     }
-    
-    balanceAtEnd[customer] = balance;
+    customersWithBalance.push({ name: customer, balance: balance });
+  });
+  
+  // Sắp xếp: nợ > 0 lên đầu (theo số nợ giảm dần), sau đó đến dư tiền, cuối cùng là đã trả hết (balance === 0)
+  customersWithBalance.sort((a, b) => {
+    if (a.balance > 0 && b.balance <= 0) return -1;
+    if (a.balance <= 0 && b.balance > 0) return 1;
+    if (a.balance > 0 && b.balance > 0) return b.balance - a.balance;
+    if (a.balance < 0 && b.balance < 0) return Math.abs(b.balance) - Math.abs(a.balance);
+    return a.name.localeCompare(b.name);
   });
   
   // Tạo HTML hiển thị
   let html = "";
-  Object.keys(balanceAtEnd).sort().forEach(customer => {
-    const balance = balanceAtEnd[customer];
-    if (balance > 0) {
-      html += `<div class="manager-item" onclick="showDebtDetail('${customer.replace(/'/g, "\\'")}')" style="display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer;">
-        <span style="flex:1;">👤 ${customer}</span>
-        <strong style="color:var(--danger); white-space:nowrap;">Nợ: ${formatMoney(balance)}</strong>
-      </div>`;
+  customersWithBalance.forEach(customer => {
+    const balance = customer.balance;
+    const isDebt = balance > 0;
+    const isDeposit = balance < 0;
+    const isPaidOff = balance === 0;
+    const displayBalance = Math.abs(balance);
+    
+    let statusText = '';
+    let statusColor = '';
+    if (isDebt) {
+      statusText = `Nợ: ${formatMoney(displayBalance)}`;
+      statusColor = 'var(--danger)';
+    } else if (isDeposit) {
+      statusText = `Dư: ${formatMoney(displayBalance)}`;
+      statusColor = 'var(--success)';
+    } else {
+      statusText = '✅ Đã trả hết';
+      statusColor = 'var(--text-light)';
     }
+    
+    html += `
+      <div class="manager-item" onclick="showDebtDetail('${customer.name.replace(/'/g, "\\'")}')" style="display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer;">
+        <span style="flex:1;">👤 ${customer.name}</span>
+        <strong style="color:${statusColor}; white-space:nowrap;">${statusText}</strong>
+      </div>
+    `;
   });
   
   if (html === "") html = '<div class="empty-text">✅ Không có khách nợ</div>';
@@ -1033,11 +1080,7 @@ function updateManagerTotalDebt() {
   }
 }
 
-const originalRenderManagerDashboard = renderManagerDashboard;
-renderManagerDashboard = function() {
-  originalRenderManagerDashboard();
-  updateManagerTotalDebt();
-};
+
 
 // Export functions
 window.showAdminExpenseDetail = showAdminExpenseDetail;
@@ -1105,3 +1148,820 @@ if (document.readyState === 'loading') {
 }
 
 setupCollapsibleCards();
+
+
+
+
+// ========== HÀM TÍNH TOÁN CHO NHÂN VIÊN ==========
+const DAY_RATE = 200000;
+
+// Lấy tháng hiện tại (YYYY-MM)
+function getCurrentMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Lấy số ngày trong tháng
+function getDaysInMonth(year, month) {
+  return new Date(year, month, 0).getDate();
+}
+
+// Tính tổng ngày công theo logic: tăng ca +1, nghỉ -1
+function calculateActualWorkDaysFromHistory(overtimeHistory, absentHistory, year, month) {
+  const daysInMonth = getDaysInMonth(year, month);
+  let overtimeCount = 0;
+  let absentCount = 0;
+  
+  const monthStr = String(month).padStart(2, '0');
+  Object.keys(overtimeHistory || {}).forEach(date => {
+    if (date.startsWith(`${year}-${monthStr}`)) overtimeCount++;
+  });
+  Object.keys(absentHistory || {}).forEach(date => {
+    if (date.startsWith(`${year}-${monthStr}`)) absentCount++;
+  });
+  
+  // Công thức mới: (ngày trong tháng - nghỉ) + tăng ca
+  const totalWorkDays = (daysInMonth - absentCount) + overtimeCount;
+  
+  return {
+    workDays: daysInMonth - absentCount,      // Số ngày thực tế có mặt (kể cả tăng ca)
+    overtimeDays: overtimeCount,
+    absentDays: absentCount,
+    actualWorkDays: totalWorkDays
+  };
+}
+
+function calculateEmployeeMonthlySalary(emp, year, month) {
+  const stats = calculateActualWorkDaysFromHistory(emp.overtimeHistory, emp.absentHistory, year, month);
+  const salary = stats.actualWorkDays * (emp.salaryPerDay || 200000);
+  
+  console.log(`💰 Lương ${emp.name}: (${stats.workDays} ngày có mặt + ${stats.overtimeDays} tăng ca) = ${stats.actualWorkDays} ngày công → ${formatMoney(salary)}`);
+  
+  return {
+    workDays: stats.workDays,
+    overtimeDays: stats.overtimeDays,
+    absentDays: stats.absentDays,
+    actualWorkDays: stats.actualWorkDays,
+    salary: salary
+  };
+}
+
+// Tính tổng lương tất cả nhân viên trong tháng
+function calculateTotalMonthlySalary() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  
+  let total = 0;
+  (appData.employees || []).forEach(emp => {
+    const result = calculateEmployeeMonthlySalary(emp, year, month);
+    total += result.salary;
+  });
+  return total;
+}
+
+function calculateTotalSalaryForMonth(year, month) {
+  let total = 0;
+  (appData.employees || []).forEach(emp => {
+    const stats = calculateEmployeeSalaryForMonth(emp, year, month);
+    const bonus = calculateDailyBonusForMonth(emp, year, month);
+    total += stats.salary + bonus;
+  });
+  return total;
+}
+
+function updateManagerTotalSalary() {
+  const range = getDateRange();
+  const { year, month } = getYearMonthFromRange(range);
+  const total = calculateTotalSalaryForMonth(year, month);
+  const el = document.getElementById("managerTotalSalary");
+  if (el) el.innerText = formatMoney(total);
+}
+
+// Lấy danh sách các ngày trong tháng (để hiển thị dropdown)
+function getDaysInMonthArray() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const days = [];
+  for (let i = 1; i <= daysInMonth; i++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+    days.push(dateStr);
+  }
+  return days;
+}
+function calculateDailyBonusForMonth(employee, year, month) {
+  if (!employee.rewardEnabled) return 0;
+  
+  let totalBonus = 0;
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0);
+  if (!employee.dailyBonus) employee.dailyBonus = {};
+  
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dateStr = d.toISOString().split('T')[0];
+    const report = appData.reports[dateStr];
+    
+    let dayBonus = 0;
+    if (report) {
+      const revenue = report.revenue || 0;
+      if (revenue >= 2200000) dayBonus = 20000;
+      else if (revenue >= 2000000) dayBonus = 10000;
+    }
+    
+    if (dayBonus > 0) employee.dailyBonus[dateStr] = dayBonus;
+    else delete employee.dailyBonus[dateStr];
+    
+    totalBonus += dayBonus;
+  }
+  return totalBonus;
+}
+
+// Cập nhật thưởng cho tất cả nhân viên (gọi khi doanh thu thay đổi)
+function updateAllEmployeesBonus() {
+  const range = getDateRange();
+  const { year, month } = getYearMonthFromRange(range);
+  (appData.employees || []).forEach(emp => {
+    if (emp.rewardEnabled) {
+      calculateDailyBonusForMonth(emp, year, month); // dùng hàm mới
+    }
+  });
+  saveData();
+}
+// ========== RENDER DANH SÁCH NHÂN VIÊN THEO KỲ (RANGE) - SỬA LỖI NGÀY ==========
+function renderEmployeeList(range) {
+  console.log("🔵 renderEmployeeList - BẮT ĐẦU RENDER, range:", range);
+  
+  const container = document.getElementById("employeeList");
+  if (!container) return;
+  
+  if (!range) {
+    if (typeof getDateRange === 'function') range = getDateRange();
+    else return;
+  }
+  
+  // Lấy tháng dương lịch từ range
+  const { year, month } = getYearMonthFromRange(range);
+  const monthStr = String(month).padStart(2, '0');
+  
+  // Lưu giá trị dropdown cũ
+  const selectedValues = {};
+  document.querySelectorAll('.date-select').forEach(select => {
+    if (select.id) selectedValues[select.id] = select.value;
+  });
+  
+  if (!appData.employees || appData.employees.length === 0) {
+    container.innerHTML = '<div class="empty-text">📭 Chưa có nhân viên nào</div>';
+    const popupTotal = document.getElementById("popupTotalSalary");
+    if (popupTotal) popupTotal.innerText = formatMoney(0);
+    return;
+  }
+  
+  // Tạo danh sách ngày trong tháng (01 -> cuối tháng)
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const dayOptions = [];
+  const today = new Date();
+  const todayStrLocal = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  
+  for (let i = 1; i <= daysInMonth; i++) {
+    const dateStr = `${year}-${monthStr}-${String(i).padStart(2, '0')}`;
+    const displayDate = `${i}/${month}/${year}`;
+    const selected = (dateStr === todayStrLocal) ? 'selected' : '';
+    dayOptions.push(`<option value="${dateStr}" ${selected}>📅 ${displayDate}</option>`);
+  }
+  const dayOptionsHtml = dayOptions.join('');
+  
+  let totalSalary = 0;
+  let html = '';
+  
+  function formatDayMonth(dateStr) {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}`;
+  }
+  
+  appData.employees.forEach(emp => {
+    const stats = calculateEmployeeSalaryForMonth(emp, year, month);
+    const bonus = calculateDailyBonusForMonth(emp, year, month);
+    const totalWithBonus = stats.salary + bonus;
+    totalSalary += totalWithBonus;
+    
+    // Lấy danh sách ngày tăng ca, nghỉ trong tháng
+    let overtimeDates = [];
+    let absentDates = [];
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 0);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const yearD = d.getFullYear();
+      const monthD = String(d.getMonth() + 1).padStart(2, '0');
+      const dayD = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${yearD}-${monthD}-${dayD}`;
+      if (emp.overtimeHistory && emp.overtimeHistory[dateStr]) overtimeDates.push(dateStr);
+      if (emp.absentHistory && emp.absentHistory[dateStr]) absentDates.push(dateStr);
+    }
+    
+    const overtimeBadges = overtimeDates.map(d => `<span class="badge-date overtime">⚡ ${formatDayMonth(d)}</span>`).join('');
+    const absentBadges = absentDates.map(d => `<span class="badge-date absent">📉 ${formatDayMonth(d)}</span>`).join('');
+    
+    const rewardBadge = emp.rewardEnabled ? '<span class="reward-badge">🏆 Thưởng doanh thu</span>' : '';
+    
+    // Chi tiết thưởng
+    let bonusDetailHtml = '';
+    if (bonus > 0 && emp.rewardEnabled) {
+      let bonusDates = [];
+      Object.keys(emp.dailyBonus || {}).forEach(date => {
+        const [y, m, d] = date.split('-');
+        if (parseInt(y) === year && parseInt(m) === month) {
+          bonusDates.push(`📅 ${d}/${m}: ${formatMoney(emp.dailyBonus[date])}`);
+        }
+      });
+      if (bonusDates.length > 0) {
+        bonusDetailHtml = `<div class="bonus-detail"><div class="bonus-title">🏆 Chi tiết thưởng doanh thu:</div><div class="bonus-list">${bonusDates.join(' · ')}</div></div>`;
+      }
+    }
+    
+    html += `
+      <div class="employee-item">
+        <div class="employee-header">
+          <span class="employee-name">👤 ${escapeHtml(emp.name)} ${rewardBadge}</span>
+          <div class="employee-actions">
+            <button class="edit-employee" onclick="editEmployeeSimple('${emp.id}')">✏️</button>
+            <button class="delete-employee" onclick="deleteEmployee('${emp.id}')">🗑️</button>
+          </div>
+        </div>
+        <div class="stats-row highlight" style="margin-bottom: 6px;">
+          💰 <strong>${formatMoney(stats.salary)}</strong>
+          ${bonus > 0 ? `<span style="color: var(--warning);"> + thưởng ${formatMoney(bonus)}</span>` : ''}
+          <span style="color: var(--success); margin-left: auto;">= ${formatMoney(totalWithBonus)}</span>
+        </div>
+        <div class="stats-row">
+          <span>📅 <strong>${stats.actualWorkDays}</strong> ngày công</span>
+          <span>⚡ <strong>${stats.overtimeDays}</strong> tăng ca</span>
+          <span>📉 <strong>${stats.absentDays}</strong> nghỉ</span>
+        </div>
+        ${bonusDetailHtml}
+        <div class="history-dates">
+          ${overtimeBadges}
+          ${absentBadges}
+        </div>
+        <div class="employee-controls">
+          <div class="date-selector">
+            <select id="dateSelect_${emp.id}" class="date-select">
+              ${dayOptionsHtml}
+            </select>
+          </div>
+          <div class="action-buttons">
+            <button class="btn-overtime" onclick="addOvertimeOnDate('${emp.id}')">⚡ Tăng ca</button>
+            <button class="btn-absent" onclick="addAbsentOnDate('${emp.id}')">📉 Nghỉ</button>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+  
+  setTimeout(() => {
+    Object.keys(selectedValues).forEach(id => {
+      const select = document.getElementById(id);
+      if (select && selectedValues[id]) select.value = selectedValues[id];
+    });
+  }, 0);
+  
+  const popupTotal = document.getElementById("popupTotalSalary");
+  if (popupTotal) popupTotal.innerText = formatMoney(totalSalary);
+  console.log(`✅ renderEmployeeList hoàn tất (tháng ${month}/${year}), tổng lương: ${formatMoney(totalSalary)}`);
+}
+// Định dạng ngày tháng từ YYYY-MM-DD sang DD/MM/YYYY
+function formatDisplayDate2(dateString) {
+  if (!dateString) return '';
+  const [year, month, day] = dateString.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+
+// Tương tự cho addAbsentOnDate
+window.addAbsentOnDate = function(employeeId) {
+  console.log("🔵 addAbsentOnDate - employeeId:", employeeId);
+  
+  const selectEl = document.getElementById(`dateSelect_${employeeId}`);
+  if (!selectEl) {
+    showToast("❌ Không tìm thấy bộ chọn ngày");
+    return;
+  }
+  
+  const selectedDate = selectEl.value;
+  if (!selectedDate) {
+    showToast("❌ Vui lòng chọn ngày");
+    return;
+  }
+  
+  const employee = appData.employees.find(e => e.id === employeeId);
+  if (!employee) {
+    showToast("❌ Không tìm thấy nhân viên");
+    return;
+  }
+  
+  if (!employee.overtimeHistory) employee.overtimeHistory = {};
+  if (!employee.absentHistory) employee.absentHistory = {};
+  
+  if (employee.overtimeHistory[selectedDate]) {
+    showToast(`⚠️ Ngày ${formatDisplayDate2(selectedDate)} đã là tăng ca, không thể nghỉ`);
+    return;
+  }
+  
+  if (employee.absentHistory[selectedDate]) {
+    delete employee.absentHistory[selectedDate];
+    showToast(`✓ Đã bỏ nghỉ ngày ${formatDisplayDate2(selectedDate)}`);
+  } else {
+    employee.absentHistory[selectedDate] = true;
+    showToast(`✓ Đã thêm nghỉ ngày ${formatDisplayDate2(selectedDate)}`);
+  }
+  
+  employee.updatedAt = Date.now();
+  saveData();
+  
+  const popup = document.getElementById("employeePopup");
+  if (popup && !popup.classList.contains("hidden")) {
+    const currentRange = getDateRange();
+renderEmployeeList(currentRange);
+  }
+  updateManagerTotalSalary();
+  
+  if (typeof syncToFirebase === 'function') {
+    setTimeout(() => syncToFirebase(), 100);
+  }
+  
+  console.log("✅ Đã cập nhật nghỉ, UI đã refresh");
+};
+
+
+// Thêm tăng ca (có force refresh)
+window.addOvertimeOnDate = function(employeeId) {
+  console.log("🔵 addOvertimeOnDate - employeeId:", employeeId);
+  const selectEl = document.getElementById(`dateSelect_${employeeId}`);
+  if (!selectEl) { showToast("❌ Không tìm thấy bộ chọn ngày"); return; }
+  const selectedDate = selectEl.value;
+  if (!selectedDate) { showToast("❌ Vui lòng chọn ngày"); return; }
+  
+  const employee = appData.employees.find(e => e.id === employeeId);
+  if (!employee) { showToast("❌ Không tìm thấy nhân viên"); return; }
+  
+  if (!employee.overtimeHistory) employee.overtimeHistory = {};
+  if (!employee.absentHistory) employee.absentHistory = {};
+  
+  if (employee.absentHistory[selectedDate]) {
+    showToast(`⚠️ Ngày ${formatDisplayDate2(selectedDate)} đã là nghỉ, không thể tăng ca`);
+    return;
+  }
+  
+  if (employee.overtimeHistory[selectedDate]) {
+    delete employee.overtimeHistory[selectedDate];
+    showToast(`✓ Đã bỏ tăng ca ngày ${formatDisplayDate2(selectedDate)}`);
+  } else {
+    employee.overtimeHistory[selectedDate] = true;
+    showToast(`✓ Đã thêm tăng ca ngày ${formatDisplayDate2(selectedDate)}`);
+  }
+  
+  employee.updatedAt = Date.now();
+  saveData();
+  
+  // Cập nhật tổng lương trên manager box
+  updateManagerTotalSalary();
+  
+  // Force refresh popup nếu đang mở
+  forceRefreshEmployeePopup();
+  
+  // Đồng bộ Firebase
+  if (typeof syncToFirebase === 'function') setTimeout(() => syncToFirebase(), 100);
+  console.log("✅ Tăng ca đã xử lý");
+};
+
+// Thêm nghỉ (có force refresh)
+window.addAbsentOnDate = function(employeeId) {
+  console.log("🔵 addAbsentOnDate - employeeId:", employeeId);
+  const selectEl = document.getElementById(`dateSelect_${employeeId}`);
+  if (!selectEl) { showToast("❌ Không tìm thấy bộ chọn ngày"); return; }
+  const selectedDate = selectEl.value;
+  if (!selectedDate) { showToast("❌ Vui lòng chọn ngày"); return; }
+  
+  const employee = appData.employees.find(e => e.id === employeeId);
+  if (!employee) { showToast("❌ Không tìm thấy nhân viên"); return; }
+  
+  if (!employee.overtimeHistory) employee.overtimeHistory = {};
+  if (!employee.absentHistory) employee.absentHistory = {};
+  
+  if (employee.overtimeHistory[selectedDate]) {
+    showToast(`⚠️ Ngày ${formatDisplayDate2(selectedDate)} đã là tăng ca, không thể nghỉ`);
+    return;
+  }
+  
+  if (employee.absentHistory[selectedDate]) {
+    delete employee.absentHistory[selectedDate];
+    showToast(`✓ Đã bỏ nghỉ ngày ${formatDisplayDate2(selectedDate)}`);
+  } else {
+    employee.absentHistory[selectedDate] = true;
+    showToast(`✓ Đã thêm nghỉ ngày ${formatDisplayDate2(selectedDate)}`);
+  }
+  
+  employee.updatedAt = Date.now();
+  saveData();
+  updateManagerTotalSalary();
+  forceRefreshEmployeePopup();
+  if (typeof syncToFirebase === 'function') setTimeout(() => syncToFirebase(), 100);
+  console.log("✅ Nghỉ đã xử lý");
+};
+
+// Xóa một mục lịch sử
+window.removeHistoryItem = function(employeeId, type, date) {
+  console.log("🔵 removeHistoryItem -", { employeeId, type, date });
+  const employee = appData.employees.find(e => e.id === employeeId);
+  if (!employee) { showToast("❌ Không tìm thấy nhân viên"); return; }
+  
+  if (type === 'overtime') {
+    if (employee.overtimeHistory && employee.overtimeHistory[date]) {
+      delete employee.overtimeHistory[date];
+      showToast(`✓ Đã xóa tăng ca ngày ${formatDisplayDate2(date)}`);
+    }
+  } else if (type === 'absent') {
+    if (employee.absentHistory && employee.absentHistory[date]) {
+      delete employee.absentHistory[date];
+      showToast(`✓ Đã xóa nghỉ ngày ${formatDisplayDate2(date)}`);
+    }
+  }
+  
+  employee.updatedAt = Date.now();
+  saveData();
+  updateManagerTotalSalary();
+  forceRefreshEmployeePopup();
+  if (typeof syncToFirebase === 'function') setTimeout(() => syncToFirebase(), 100);
+};
+
+// Reset tháng
+window.resetEmployeeHistory = function(employeeId) {
+  const employee = appData.employees.find(e => e.id === employeeId);
+  if (!employee) { showToast("❌ Không tìm thấy nhân viên"); return; }
+  
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+  const monthPrefix = `${currentYear}-${currentMonth}`;
+  
+  if (!confirm(`Reset lịch sử của "${employee.name}" trong tháng này?`)) return;
+  
+  if (employee.overtimeHistory) {
+    Object.keys(employee.overtimeHistory).forEach(date => {
+      if (date.startsWith(monthPrefix)) delete employee.overtimeHistory[date];
+    });
+  }
+  if (employee.absentHistory) {
+    Object.keys(employee.absentHistory).forEach(date => {
+      if (date.startsWith(monthPrefix)) delete employee.absentHistory[date];
+    });
+  }
+  
+  employee.updatedAt = Date.now();
+  saveData();
+  updateManagerTotalSalary();
+  forceRefreshEmployeePopup();
+  showToast(`✓ Đã reset lịch sử tháng này của ${employee.name}`);
+  if (typeof syncToFirebase === 'function') setTimeout(() => syncToFirebase(), 100);
+};
+// ========== FORCE REFRESH POPUP NHÂN VIÊN ==========
+function forceRefreshEmployeePopup() {
+  console.log("🔄 Force refresh employee popup...");
+  
+  const popup = document.getElementById("employeePopup");
+  if (!popup || popup.classList.contains("hidden")) {
+    console.log("Popup không mở, bỏ qua");
+    return;
+  }
+  
+  // Gọi lại renderEmployeeList để cập nhật nội dung
+  if (typeof renderEmployeeList === 'function') {
+    const currentRange = getDateRange();
+renderEmployeeList(currentRange);
+  } else {
+    console.error("renderEmployeeList không tồn tại");
+  }
+  
+  // Kiểm tra xem container có thay đổi không
+  const container = document.getElementById("employeeList");
+  if (container) {
+    console.log("Container innerHTML length:", container.innerHTML.length);
+  }
+}
+// Thoát HTML
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
+}
+
+// Điều chỉnh ngày công (có đồng bộ)
+window.adjustWorkDays = function(id, change) {
+  const employee = appData.employees.find(e => e.id === id);
+  if (!employee) return;
+  
+  if (change === 'reset') {
+    employee.workDays = 0;
+  } else {
+    let newDays = (employee.workDays || 0) + change;
+    if (newDays < 0) newDays = 0;
+    employee.workDays = newDays;
+  }
+  
+  employee.updatedAt = Date.now();
+  saveData();
+  const currentRange = getDateRange();
+renderEmployeeList(currentRange);
+  updateManagerTotalSalary();
+  
+  // Đồng bộ lên Firebase
+  if (typeof syncToFirebase === 'function') {
+    setTimeout(() => syncToFirebase(), 100);
+  }
+  
+  showToast(`✓ ${employee.name}: ${employee.workDays} ngày công → ${formatMoney(calculateEmployeeSalary(employee))}`);
+};
+
+// ========== SỬA NHÂN VIÊN (POPUP) - HOÀN CHỈNH ==========
+let editingEmployeeId = null;
+
+window.editEmployeeSimple = function(id) {
+  const employee = appData.employees.find(e => e.id === id);
+  if (!employee) {
+    showToast("❌ Không tìm thấy nhân viên");
+    return;
+  }
+  
+  editingEmployeeId = id;
+  
+  // Điền dữ liệu vào popup
+  const nameInput = document.getElementById("editEmployeeName");
+  const salaryInput = document.getElementById("editEmployeeSalary");
+  const rewardCheckbox = document.getElementById("editEmployeeRewardEnabled");
+  
+  if (nameInput) nameInput.value = employee.name;
+  if (salaryInput) salaryInput.value = employee.salaryPerDay?.toLocaleString("vi-VN") || "";
+  if (rewardCheckbox) rewardCheckbox.checked = employee.rewardEnabled === true;
+  
+  openPopup("editEmployeePopup");
+};
+
+// Xử lý nút Lưu trong popup sửa (chỉ đăng ký một lần)
+const saveEditEmployeeBtn = document.getElementById("saveEditEmployeeBtn");
+if (saveEditEmployeeBtn) {
+  // Gỡ bỏ event cũ nếu có (tránh trùng)
+  const newSaveBtn = saveEditEmployeeBtn.cloneNode(true);
+  saveEditEmployeeBtn.parentNode.replaceChild(newSaveBtn, saveEditEmployeeBtn);
+  
+  newSaveBtn.onclick = () => {
+    // Lấy dữ liệu từ form
+    const newName = document.getElementById("editEmployeeName")?.value.trim();
+    let newSalaryRaw = document.getElementById("editEmployeeSalary")?.value;
+    const rewardEnabled = document.getElementById("editEmployeeRewardEnabled")?.checked || false;
+    
+    // Kiểm tra tên
+    if (!newName) {
+      alert("⚠️ Vui lòng nhập tên nhân viên");
+      return;
+    }
+    
+    // Parse lương (hỗ trợ số có dấu phẩy, khoảng trắng)
+    let newSalary = 0;
+    if (newSalaryRaw) {
+      const cleanSalary = String(newSalaryRaw).replace(/[^0-9]/g, '');
+      newSalary = parseInt(cleanSalary, 10);
+    }
+    
+    // Nếu lương không hợp lệ, giữ nguyên lương cũ
+    if (isNaN(newSalary) || newSalary <= 0) {
+      const employee = appData.employees.find(e => e.id === editingEmployeeId);
+      if (employee && employee.salaryPerDay) {
+        newSalary = employee.salaryPerDay;
+        alert(`⚠️ Lương không hợp lệ, giữ nguyên giá trị cũ: ${formatMoney(newSalary)}/ngày`);
+      } else {
+        newSalary = 200000;
+        alert(`⚠️ Lương không hợp lệ, đặt mặc định 200,000đ/ngày`);
+      }
+    }
+    
+    // Tìm nhân viên và cập nhật
+    const employee = appData.employees.find(e => e.id === editingEmployeeId);
+    if (employee) {
+      employee.name = newName;
+      employee.salaryPerDay = newSalary;
+      employee.rewardEnabled = rewardEnabled;
+      employee.updatedAt = Date.now();
+      saveData();
+      
+      if (rewardEnabled && typeof calculateDailyBonusForMonth === 'function') {
+  const range = getDateRange();
+  const { year, month } = getYearMonthFromRange(range);
+  calculateDailyBonusForMonth(employee, year, month);
+  saveData();
+}
+      
+      // Refresh UI
+      const currentRange = getDateRange();
+      if (typeof renderEmployeeList === 'function') renderEmployeeList(currentRange);
+      if (typeof updateManagerTotalSalary === 'function') updateManagerTotalSalary();
+      
+      // Đồng bộ Firebase
+      if (typeof syncToFirebase === 'function') setTimeout(() => syncToFirebase(), 100);
+      
+      showToast(`✓ Đã cập nhật: ${newName} (${formatMoney(newSalary)}/ngày) ${rewardEnabled ? '🏆 Đã bật thưởng' : ''}`);
+    } else {
+      showToast("❌ Không tìm thấy nhân viên để cập nhật");
+    }
+    
+    closePopup("editEmployeePopup");
+    editingEmployeeId = null;
+  };
+}
+
+
+// ========== HÀM TÍNH THEO KỲ (RANGE) ==========
+function getDaysInRange(startDate, endDate) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  let count = 0;
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) count++;
+  return count;
+}
+
+// Tính số ngày công thực tế trong một khoảng thời gian (start -> end)
+function calculateActualWorkDaysInRange(overtimeHistory, absentHistory, startDate, endDate) {
+  let overtimeCount = 0;
+  let absentCount = 0;
+  
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dateStr = d.toISOString().split('T')[0];
+    if (overtimeHistory && overtimeHistory[dateStr]) overtimeCount++;
+    if (absentHistory && absentHistory[dateStr]) absentCount++;
+  }
+  
+  const daysInRange = getDaysInRange(startDate, endDate);
+  const workDays = daysInRange - absentCount;               // Số ngày có mặt (kể cả tăng ca)
+  const actualWorkDays = workDays + overtimeCount;         // Tổng ngày công (thưởng tăng ca)
+  
+  return {
+    workDays: workDays,
+    overtimeDays: overtimeCount,
+    absentDays: absentCount,
+    actualWorkDays: actualWorkDays
+  };
+}
+
+// Tính lương nhân viên cho một tháng cụ thể (year, month)
+function calculateEmployeeSalaryForMonth(emp, year, month) {
+  // Tạo range của tháng (01/MM/YYYY -> cuối tháng)
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0);
+  const startStr = startDate.toISOString().split('T')[0];
+  const endStr = endDate.toISOString().split('T')[0];
+  
+  const stats = calculateActualWorkDaysInRange(emp.overtimeHistory, emp.absentHistory, startStr, endStr);
+  const salary = stats.actualWorkDays * (emp.salaryPerDay || 200000);
+  return { ...stats, salary };
+}
+// ========== XÓA NHÂN VIÊN (CẢ LOCAL VÀ FIREBASE) ==========
+window.deleteEmployee = function(id) {
+  const employee = appData.employees.find(e => e.id === id);
+  if (!employee) {
+    showToast("❌ Không tìm thấy nhân viên");
+    return;
+  }
+  
+  if (confirm(`Bạn có chắc muốn xóa nhân viên "${employee.name}"?`)) {
+    // 1. Xóa khỏi local (UI ngay lập tức)
+    appData.employees = appData.employees.filter(e => e.id !== id);
+    saveData();
+    const currentRange = getDateRange();
+renderEmployeeList(currentRange);
+    updateManagerTotalSalary();
+    showToast(`✓ Đã xóa: ${employee.name}`);
+    
+    // 2. Xóa khỏi Firebase (đồng bộ sang các máy khác)
+    if (typeof firebase !== 'undefined' && firebase.database) {
+      const empRef = database.ref(`cafeData/${STORE_ID}/employees/${id}`);
+      empRef.remove()
+        .then(() => console.log(`✅ Đã xóa nhân viên ${id} trên Firebase`))
+        .catch(err => console.error("❌ Lỗi xóa Firebase:", err));
+    } else if (typeof syncToFirebase === 'function') {
+      // Fallback: đồng bộ toàn bộ employees (cách này chậm hơn nhưng vẫn hoạt động)
+      setTimeout(() => syncToFirebase(), 100);
+    }
+  }
+};
+
+// ========== SỰ KIỆN THÊM NHÂN VIÊN (DÙNG PROMPT) ==========
+const addEmployeeBtnSimple = document.getElementById("addEmployeeBtnSimple");
+if (addEmployeeBtnSimple) {
+  addEmployeeBtnSimple.onclick = () => {
+    // Prompt nhập tên
+    let name = prompt("👤 Nhập tên nhân viên:");
+    if (!name || name.trim() === "") {
+      alert("⚠️ Vui lòng nhập tên");
+      return;
+    }
+    name = name.trim();
+    
+    // Prompt nhập lương/ngày (mặc định 200,000)
+    let salaryInput = prompt("💰 Lương mỗi ngày (VNĐ):", "200000");
+    let salaryPerDay = parseMoney(salaryInput);
+    if (isNaN(salaryPerDay) || salaryPerDay <= 0) {
+      salaryPerDay = 200000;
+      alert("⚠️ Lương không hợp lệ, đặt mặc định 200,000đ/ngày");
+    }
+    
+    // Kiểm tra trùng tên
+    if (appData.employees.some(e => e.name.toLowerCase() === name.toLowerCase())) {
+      alert("⚠️ Nhân viên này đã tồn tại!");
+      return;
+    }
+    
+    const newEmployee = {
+      id: createId("emp"),
+      name: name,
+      salaryPerDay: salaryPerDay,
+      overtimeHistory: {},
+      absentHistory: {},
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    
+    appData.employees.push(newEmployee);
+    saveData();
+    const currentRange = getDateRange();
+renderEmployeeList(currentRange);
+    updateManagerTotalSalary();
+    
+    if (typeof syncToFirebase === 'function') {
+      setTimeout(() => syncToFirebase(), 100);
+    }
+    
+    showToast(`✓ Đã thêm nhân viên: ${name} (${formatMoney(salaryPerDay)}/ngày)`);
+  };
+}
+
+
+
+// ========== MỞ POPUP ==========
+const employeeBox = document.getElementById("employeeBox");
+if (employeeBox) {
+  employeeBox.onclick = () => {
+    const currentRange = getDateRange();  // Lấy range đang chọn
+    renderEmployeeList(currentRange);
+    openPopup("employeePopup");
+  };
+}
+
+// ========== CẬP NHẬT VÀO RENDER DASHBOARD ==========
+const originalRenderEmp = renderManagerDashboard;
+renderManagerDashboard = function() {
+  originalRenderEmp();
+  updateManagerTotalSalary();
+};
+
+// ========== THÊM POPUP SỬA (nếu chưa có trong HTML) ==========
+// Kiểm tra và thêm popup sửa nếu chưa tồn tại
+if (!document.getElementById("editEmployeePopup")) {
+  const editPopupHtml = `
+    <div class="popup hidden" id="editEmployeePopup">
+      <div class="popup-content" style="max-width: 300px;">
+        <div class="popup-header">
+          <h2>✏️ Sửa nhân viên</h2>
+          <button class="close-btn" data-close="editEmployeePopup">✕</button>
+        </div>
+        <div class="popup-body">
+          <input type="text" id="editEmployeeName" placeholder="Tên nhân viên" style="width: 100%; padding: 10px; margin-bottom: 12px;">
+          <input type="text" id="editEmployeeSalary" placeholder="Lương/ngày" style="width: 100%; padding: 10px; margin-bottom: 16px;" inputmode="numeric">
+          <button id="saveEditEmployeeBtn" class="primary-btn" style="width: 100%;">💾 Lưu</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', editPopupHtml);
+}
+
+// Lấy năm và tháng dương lịch từ range (dựa vào ngày bắt đầu)
+function getYearMonthFromRange(range) {
+  if (!range || !range.start) {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  }
+  const startDate = new Date(range.start);
+  const year = startDate.getFullYear();
+  const month = startDate.getMonth() + 1;
+  return { year, month };
+}

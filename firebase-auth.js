@@ -126,6 +126,15 @@ async function register(email, password, confirmPassword) {
 async function logout() {
   try {
     const user = auth.currentUser;
+    const isAdminUser = window.isAdminSync ? window.isAdminSync() : false;
+    
+    if (user && !isAdminUser && typeof sendSimpleNotification === 'function') {
+      const userName = user.email || user.uid;
+      const now = new Date().toLocaleString('vi-VN');
+      const message = `👤 Nhân viên ${userName} đã đăng xuất lúc ${now}`;
+      sendSimpleNotification(message).catch(console.error);
+    }
+    
     if (user) {
       const deviceId = getDeviceId();
       await database.ref(`users/${user.uid}/devices/${deviceId}/lastLogout`).set(firebase.database.ServerValue.TIMESTAMP);
@@ -175,7 +184,15 @@ async function getUserRole(uid, forceRefresh = false) {
     return 'staff';
   }
 }
-
+// Cập nhật class admin-mode trên body (dùng chung với employee.js)
+function updateBodyAdminClass() {
+  const isAdmin = window.isAdminSync ? window.isAdminSync() : false;
+  if (isAdmin) {
+    document.body.classList.add('admin-mode');
+  } else {
+    document.body.classList.remove('admin-mode');
+  }
+}
 async function showApp(user) {
   if (isAppShowing) {
     console.log("⏭️ App đã hiển thị");
@@ -189,6 +206,22 @@ async function showApp(user) {
   const role = await getUserRole(user.uid);
   const isAdminUser = role === ROLES.ADMIN;
   window.isAdminSync = () => isAdminUser;
+  
+  // ========== GỬI THÔNG BÁO TELEGRAM (CHỈ NHÂN VIÊN) ==========
+  if (!isAdminUser && typeof sendSimpleNotification === 'function') {
+    const userName = user.email || user.uid;
+    const now = new Date().toLocaleString('vi-VN');
+    const message = `👤 Nhân viên ${userName} đã đăng nhập vào hệ thống lúc ${now}`;
+    sendSimpleNotification(message).catch(err => console.error("Lỗi gửi Telegram:", err));
+  }
+  
+  // Cập nhật class admin-mode trên body
+  if (typeof updateBodyAdminClass === 'function') {
+    updateBodyAdminClass();
+  } else {
+    if (isAdminUser) document.body.classList.add('admin-mode');
+    else document.body.classList.remove('admin-mode');
+  }
   
   const managerTabBtn = document.querySelector('.tab-btn[data-tab="managerTab"]');
   if (managerTabBtn) {
@@ -205,7 +238,6 @@ async function showApp(user) {
   const paymentFab = document.getElementById("paymentFab");
   const adminExpenseFab = document.getElementById("adminExpenseFab");
   
-  // Ẩn/hiện nút admin expense (chỉ admin mới thấy)
   if (adminExpenseFab) {
     if (isAdminUser) {
       adminExpenseFab.classList.remove("hidden");
@@ -230,7 +262,6 @@ async function showApp(user) {
     if (debtFab) debtFab.classList.toggle('hidden', isAdminTab);
     if (paymentFab) paymentFab.classList.toggle('hidden', isAdminTab);
     
-    // Nút admin expense chỉ hiện ở tab Admin và chỉ khi là admin
     if (adminExpenseFab) {
       if (isAdminTab && isAdminUser) {
         adminExpenseFab.classList.remove('hidden');
@@ -248,12 +279,10 @@ async function showApp(user) {
   if (paymentFab) paymentFab.classList.remove('hidden');
   if (adminExpenseFab) adminExpenseFab.classList.add('hidden');
   
-  // ========== CHỈ KHỞI TẠO FIREBASE SYNC (KHÔNG CÓ REALTIME UI) ==========
+  // ========== CHỈ KHỞI TẠO FIREBASE SYNC ==========
   if (typeof initFirebaseSync === 'function') {
     await initFirebaseSync();
   }
-  
-  // KHÔNG gọi initRealtimeUI nữa để tránh xung đột listener
   
   // Render UI sau khi đã có dữ liệu
   setTimeout(() => {

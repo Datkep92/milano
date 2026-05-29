@@ -10,6 +10,7 @@ const debtFab = document.getElementById("debtFab");
 const paymentFab = document.getElementById("paymentFab");
 const prevDateBtn = document.getElementById("prevDateBtn");
 const nextDateBtn = document.getElementById("nextDateBtn");
+const expenseNameInput = document.getElementById("expenseNameInput");
 
 // Expense popup
 const expensePopup = document.getElementById("expensePopup");
@@ -23,6 +24,7 @@ const submitDayBtn = document.getElementById("submitDayBtn");
 const addNewExpenseBtn = document.getElementById("addNewExpenseBtn");
 const newExpenseInput = document.getElementById("newExpenseInput");
 const newExpenseName = document.getElementById("newExpenseName");
+const debtCustomerInput = document.getElementById("debtCustomerInput");
 
 // Debt popup
 const debtPopup = document.getElementById("debtPopup");
@@ -317,6 +319,15 @@ savePaymentBtn.onclick = () => {
   // 11. FOCUS
   paymentAmount.focus();
 };
+
+function selectPaymentCustomer(name) {
+  paymentCustomer.value = name;
+  const paymentDropdown = document.getElementById("paymentDropdown");
+  if (paymentDropdown) paymentDropdown.classList.add("hidden");
+  updatePaymentInfo();
+  paymentAmount.focus();
+}
+
 // ========== AUTO SAVE REPORT (HOÀN CHỈNH - CÓ CHẶN NGÀY TƯƠNG LAI) ==========
 function autoSaveReport() {
   const date = getCurrentDate();
@@ -475,13 +486,174 @@ function doSaveReport() {
     updateTotalDebtDisplay();
     renderCustomerDebtList();
   }
+// Cập nhật thưởng doanh thu
+  if (typeof updateAllEmployeesBonus === 'function') {
+    updateAllEmployeesBonus();
+  }
+  
+  // Refresh UI
+  if (typeof renderManagerDashboard === 'function') {
+    renderManagerDashboard();
+  }
 }
 
 // ĐÃ CHUYỂN SANG DÙNG PROMPT - KHÔNG CẦN AUTO SAVE KHI INPUT
 // [bankInput, cashInput, reserveInput].forEach(input => {
 //   if (input) input.addEventListener("input", autoSaveReport);
 // });
+// ========== TÌM KIẾM + GỢI Ý CHO TÊN CHI PHÍ ==========
+let expenseDropdown = null;
+let currentExpenseFilter = "";
 
+function renderExpenseDropdown() {
+  if (!expenseNameInput) return;
+  
+  const keyword = expenseNameInput.value.trim().toLowerCase();
+  currentExpenseFilter = keyword;
+  
+  // Lấy danh sách tên chi phí từ categories và recent (kết hợp, loại trùng)
+  let allNames = [...new Set([...(appData.categories.expenses || []), ...(appData.recent.expenses || [])])];
+  
+  // Lọc theo keyword
+  let filtered = allNames.filter(name => name.toLowerCase().includes(keyword));
+  
+  // Sắp xếp: ưu tiên tên xuất hiện gần đây (dựa trên recent)
+  const recentList = appData.recent.expenses || [];
+  filtered.sort((a, b) => {
+    const idxA = recentList.indexOf(a);
+    const idxB = recentList.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+  
+  // Giới hạn hiển thị tối đa 10 mục
+  filtered = filtered.slice(0, 10);
+  
+  let html = '';
+  if (filtered.length > 0) {
+    filtered.forEach(name => {
+      html += `<div class="dropdown-item" data-value="${name.replace(/'/g, "\\'")}">📦 ${name}</div>`;
+    });
+  }
+  // Thêm option "Thêm mới" nếu keyword không trùng với bất kỳ tên nào
+  if (keyword && !allNames.some(n => n.toLowerCase() === keyword)) {
+    html += `<div class="dropdown-item" data-value="${keyword.replace(/'/g, "\\'")}"> ${keyword}</div>`;
+  }
+  
+  // Tạo hoặc cập nhật dropdown
+  if (!expenseDropdown) {
+    expenseDropdown = document.createElement('div');
+    expenseDropdown.className = 'expense-dropdown dropdown hidden';
+    expenseNameInput.parentNode.appendChild(expenseDropdown);
+  }
+  
+  if (html) {
+    expenseDropdown.innerHTML = html;
+    expenseDropdown.classList.remove('hidden');
+    // Gán sự kiện click cho từng item
+    expenseDropdown.querySelectorAll('.dropdown-item').forEach(item => {
+      item.onclick = () => {
+        expenseNameInput.value = item.dataset.value;
+        expenseDropdown.classList.add('hidden');
+        expenseAmount.focus();
+      };
+    });
+  } else {
+    expenseDropdown.classList.add('hidden');
+  }
+}
+
+// Đóng dropdown khi click ra ngoài
+document.addEventListener('click', (e) => {
+  if (expenseDropdown && !expenseNameInput.contains(e.target) && !expenseDropdown.contains(e.target)) {
+    expenseDropdown.classList.add('hidden');
+  }
+});
+
+// Gán sự kiện input cho expenseNameInput
+if (expenseNameInput) {
+  expenseNameInput.addEventListener('input', () => {
+    renderExpenseDropdown();
+  });
+  expenseNameInput.addEventListener('focus', () => {
+    renderExpenseDropdown();
+  });
+}
+
+// ========== TÌM KIẾM + GỢI Ý CHO TÊN KHÁCH HÀNG ==========
+let customerDropdown = null;
+let currentCustomerFilter = "";
+
+function renderCustomerDropdown() {
+  if (!debtCustomerInput) return;
+  
+  const keyword = debtCustomerInput.value.trim().toLowerCase();
+  currentCustomerFilter = keyword;
+  
+  // Lấy danh sách khách hàng từ categories và recent
+  let allCustomers = [...new Set([...(appData.categories.customers || []), ...(appData.recent.customers || [])])];
+  
+  let filtered = allCustomers.filter(c => c.toLowerCase().includes(keyword));
+  
+  // Sắp xếp theo recent
+  const recentList = appData.recent.customers || [];
+  filtered.sort((a, b) => {
+    const idxA = recentList.indexOf(a);
+    const idxB = recentList.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+  
+  filtered = filtered.slice(0, 10);
+  
+  let html = '';
+  if (filtered.length > 0) {
+    filtered.forEach(name => {
+      // Có thể hiển thị thêm số dư nợ (tùy chọn)
+      const debt = calculateCustomerDebt(name);
+      const debtText = debt !== 0 ? ` (${debt > 0 ? `nợ ${formatMoney(debt)}` : `dư ${formatMoney(Math.abs(debt))}`})` : '';
+      html += `<div class="dropdown-item" data-value="${name.replace(/'/g, "\\'")}">👤 ${name}${debtText}</div>`;
+    });
+  }
+  if (keyword && !allCustomers.some(c => c.toLowerCase() === keyword)) {
+    html += `<div class="dropdown-item" data-value="${keyword.replace(/'/g, "\\'")}"> ${keyword}</div>`;
+  }
+  
+  if (!customerDropdown) {
+    customerDropdown = document.createElement('div');
+    customerDropdown.className = 'customer-dropdown dropdown hidden';
+    debtCustomerInput.parentNode.appendChild(customerDropdown);
+  }
+  
+  if (html) {
+    customerDropdown.innerHTML = html;
+    customerDropdown.classList.remove('hidden');
+    customerDropdown.querySelectorAll('.dropdown-item').forEach(item => {
+      item.onclick = () => {
+        debtCustomerInput.value = item.dataset.value;
+        customerDropdown.classList.add('hidden');
+        debtAmount.focus();
+      };
+    });
+  } else {
+    customerDropdown.classList.add('hidden');
+  }
+}
+
+document.addEventListener('click', (e) => {
+  if (customerDropdown && !debtCustomerInput.contains(e.target) && !customerDropdown.contains(e.target)) {
+    customerDropdown.classList.add('hidden');
+  }
+});
+
+if (debtCustomerInput) {
+  debtCustomerInput.addEventListener('input', () => renderCustomerDropdown());
+  debtCustomerInput.addEventListener('focus', () => renderCustomerDropdown());
+}
 // ========== KIỂM TRA NGÀY HÔM QUA ĐÃ CHỐT CHƯA ==========
 function isYesterdayCompleted() {
   const yesterday = new Date();
@@ -766,7 +938,7 @@ nextDateBtn.onclick = () => {
   loadTodayData();
 };
 
-// ========== DANH SÁCH CÔNG NỢ KHÁCH HÀNG (CÓ HIỂN THỊ DƯ) ==========
+// ========== DANH SÁCH CÔNG NỢ KHÁCH HÀNG (CÓ HIỂN THỊ CẢ KHÁCH ĐÃ TRẢ HẾT) ==========
 function renderCustomerDebtList() {
   const container = document.getElementById('customerDebtList');
   if (!container) return;
@@ -776,6 +948,7 @@ function renderCustomerDebtList() {
     return;
   }
 
+  // Thu thập tất cả khách hàng từ categories, recent, debtTransactions
   const allCustomers = new Set();
   appData.categories.customers.forEach(c => allCustomers.add(c));
   appData.recent.customers.forEach(c => allCustomers.add(c));
@@ -785,30 +958,31 @@ function renderCustomerDebtList() {
 
   const customersWithBalance = [];
   let totalDebt = 0;
-  let totalDeposit = 0; // Tổng tiền dư (gối đầu)
+  let totalDeposit = 0;
 
   allCustomers.forEach(customer => {
     const balance = calculateCustomerDebt(customer);
-    if (balance !== 0) {
-      customersWithBalance.push({ name: customer, balance: balance });
-      if (balance > 0) totalDebt += balance;
-      if (balance < 0) totalDeposit += Math.abs(balance);
-    }
+    customersWithBalance.push({ name: customer, balance: balance });
+    if (balance > 0) totalDebt += balance;
+    if (balance < 0) totalDeposit += Math.abs(balance);
   });
 
-  // Sắp xếp: khách nợ lên trước (theo số nợ giảm dần), sau đó đến khách dư
+  // Sắp xếp: nợ > 0 lên đầu (theo số nợ giảm dần), sau đó đến dư tiền, cuối cùng là đã trả hết (balance === 0)
   customersWithBalance.sort((a, b) => {
     if (a.balance > 0 && b.balance <= 0) return -1;
     if (a.balance <= 0 && b.balance > 0) return 1;
-    return Math.abs(b.balance) - Math.abs(a.balance);
+    if (a.balance > 0 && b.balance > 0) return b.balance - a.balance;
+    if (a.balance < 0 && b.balance < 0) return Math.abs(b.balance) - Math.abs(a.balance);
+    // Cả hai đều = 0, giữ nguyên thứ tự (có thể theo tên)
+    return a.name.localeCompare(b.name);
   });
 
   if (customersWithBalance.length === 0) {
-    container.innerHTML = '<div class="empty-text">✅ Không có khách nợ hay dư tiền</div>';
+    container.innerHTML = '<div class="empty-text">✅ Không có khách hàng nào</div>';
     return;
   }
 
-  // Thêm header thống kê
+  // Header tổng nợ và tổng dư
   let html = `
     <div style="display: flex; justify-content: space-between; margin-bottom: 12px; padding: 8px; background: var(--bg-tertiary); border-radius: 12px;">
       <span style="font-size: 12px;">💰 Tổng nợ: <strong style="color: var(--danger);">${formatMoney(totalDebt)}</strong></span>
@@ -817,17 +991,37 @@ function renderCustomerDebtList() {
   `;
 
   customersWithBalance.forEach(customer => {
-    const isDebt = customer.balance > 0;
-    const isDeposit = customer.balance < 0;
-    const displayBalance = Math.abs(customer.balance);
+    const balance = customer.balance;
+    const isDebt = balance > 0;
+    const isDeposit = balance < 0;
+    const isPaidOff = balance === 0;
+    const displayBalance = Math.abs(balance);
+    
+    let badgeText = '';
+    let badgeStyle = '';
+    let borderColor = '';
+    
+    if (isDebt) {
+      badgeText = `Nợ ${formatMoney(displayBalance)}`;
+      badgeStyle = 'background: var(--danger-light); color: var(--danger);';
+      borderColor = 'var(--danger)';
+    } else if (isDeposit) {
+      badgeText = `Dư ${formatMoney(displayBalance)}`;
+      badgeStyle = 'background: var(--success-light); color: var(--success);';
+      borderColor = 'var(--success)';
+    } else {
+      badgeText = '✅ Đã trả hết';
+      badgeStyle = 'background: var(--bg-tertiary); color: var(--text-light);';
+      borderColor = 'var(--border)';
+    }
     
     html += `
-      <div class="debt-item" onclick="showCustomerDebtDetail('${customer.name.replace(/'/g, "\\'")}')" style="border-left: 3px solid ${isDebt ? 'var(--danger)' : 'var(--success)'};">
+      <div class="debt-item" onclick="showCustomerDebtDetail('${customer.name.replace(/'/g, "\\'")}')" style="border-left: 3px solid ${borderColor};">
         <div class="debt-info">
           <span class="debt-name">👤 ${customer.name}</span>
         </div>
-        <div class="debt-badge ${isDeposit ? 'deposit' : ''}" style="background: ${isDebt ? 'var(--danger-light)' : 'var(--success-light)'}; color: ${isDebt ? 'var(--danger)' : 'var(--success)'};">
-          ${isDebt ? `Nợ ${formatMoney(displayBalance)}` : `Dư ${formatMoney(displayBalance)}`}
+        <div class="debt-badge ${isDeposit ? 'deposit' : ''}" style="${badgeStyle}">
+          ${badgeText}
         </div>
       </div>
     `;
@@ -985,7 +1179,7 @@ function renderPaymentDropdown() {
   });
 
   if (keyword && !list.includes(keyword)) {
-    html += `<div class="dropdown-item" data-value="${keyword.replace(/'/g, "\\'")}">✨ Thêm mới: ${keyword}</div>`;
+    html += `<div class="dropdown-item" data-value="${keyword.replace(/'/g, "\\'")}"> ${keyword}</div>`;
   }
 
   paymentDropdown.innerHTML = html;
@@ -1086,7 +1280,6 @@ loadExpenseDraft();
 loadTodayData();
 
 // ========== BIẾN CHO EXPENSE ==========
-const expenseNameInput = document.getElementById("expenseNameInput");
 
 function renderRecentExpenses() {
   if (!recentExpenseWrap) return;
@@ -1259,7 +1452,6 @@ saveExpenseBtn.onclick = () => {
 };
 
 // ========== BIẾN CHO DEBT ==========
-const debtCustomerInput = document.getElementById("debtCustomerInput");
 
 function renderRecentCustomers() {
   if (!recentCustomerWrap) return;
@@ -2525,3 +2717,22 @@ if (document.readyState === 'loading') {
 } else {
   setupQuickMoneyButtons();
 }
+
+// Tự động bọc input chi phí và khách hàng trong div relative để dropdown định vị chuẩn
+function wrapInputForDropdown() {
+  if (expenseNameInput && expenseNameInput.parentNode && !expenseNameInput.parentNode.classList.contains('input-dropdown-wrapper')) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'input-dropdown-wrapper';
+    wrapper.style.position = 'relative';
+    expenseNameInput.parentNode.insertBefore(wrapper, expenseNameInput);
+    wrapper.appendChild(expenseNameInput);
+  }
+  if (debtCustomerInput && debtCustomerInput.parentNode && !debtCustomerInput.parentNode.classList.contains('input-dropdown-wrapper')) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'input-dropdown-wrapper';
+    wrapper.style.position = 'relative';
+    debtCustomerInput.parentNode.insertBefore(wrapper, debtCustomerInput);
+    wrapper.appendChild(debtCustomerInput);
+  }
+}
+wrapInputForDropdown();

@@ -1,11 +1,11 @@
 const STORAGE_KEY = "cafe_manager_full_v1";
 
-// Khởi tạo dữ liệu mặc định
 const defaultData = {
   reports: {},
   expenses: [],
   adminExpenses: [],
   debtTransactions: [],
+  employees: [],
   categories: {
     expenses: [],
     adminExpenses: [],
@@ -17,6 +17,7 @@ const defaultData = {
     customers: []
   }
 };
+
 
 // Tạo biến toàn cục DUY NHẤT trên window
 window.AppData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultData;
@@ -237,7 +238,7 @@ function getGrabDetails(range) {
   });
   return details.sort((a,b) => b.date.localeCompare(a.date));
 }
-// ========== ĐẢM BẢO CẤU TRÚC DỮ LIỆU (CÓ REVENUE & GRAB) ==========
+// ========== ĐẢM BẢO CẤU TRÚC DỮ LIỆU (CÓ EMPLOYEES HISTORY) ==========
 function ensureAppDataStructure() {
   if (!appData) {
     appData = {
@@ -245,9 +246,29 @@ function ensureAppDataStructure() {
       expenses: [],
       adminExpenses: [],
       debtTransactions: [],
+      employees: [],
       categories: { expenses: [], adminExpenses: [], customers: [] },
       recent: { expenses: [], adminExpenses: [], customers: [] }
     };
+  }
+  
+  // Đảm bảo employees tồn tại
+  if (!appData.employees) appData.employees = [];
+  
+  // Đảm bảo mỗi employee có cấu trúc đầy đủ (history + reward)
+  if (appData.employees && Array.isArray(appData.employees)) {
+    appData.employees.forEach(emp => {
+      if (!emp.overtimeHistory) emp.overtimeHistory = {};
+      if (!emp.absentHistory) emp.absentHistory = {};
+      if (!emp.salaryPerDay) emp.salaryPerDay = 200000;
+      if (emp.workDays === undefined) emp.workDays = 0;
+      if (emp.overtimeDays === undefined) emp.overtimeDays = 0;
+      if (emp.absentDays === undefined) emp.absentDays = 0;
+      
+      // THÊM MỚI: Cấu trúc thưởng doanh thu
+      if (emp.rewardEnabled === undefined) emp.rewardEnabled = false;
+      if (!emp.dailyBonus) emp.dailyBonus = {};
+    });
   }
   
   // Đảm bảo các mảng chính
@@ -268,14 +289,13 @@ function ensureAppDataStructure() {
   if (!appData.recent.adminExpenses) appData.recent.adminExpenses = [];
   if (!appData.recent.customers) appData.recent.customers = [];
   
-  // ========== THÊM MỚI: Đảm bảo mỗi report có revenue và grab ==========
+  // Đảm bảo mỗi report có revenue và grab
   Object.keys(appData.reports).forEach(date => {
     const report = appData.reports[date];
     if (report.revenue === undefined) report.revenue = 0;
     if (report.grab === undefined) report.grab = 0;
   });
 }
-
 ensureAppDataStructure();
 
 
@@ -719,7 +739,13 @@ if (document.readyState === 'loading') {
   setupPromptInputs();
   setupMoneyInputs();
 }
-
+// Thêm vào core.js, sau hàm getToday()
+function addDays(dateStr, days) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 window.renderAllUI = renderAllUI;
 window.refreshUIData = refreshUIData;
 window.calculateTotalDebtAll = calculateTotalDebtAll;

@@ -2583,3 +2583,143 @@ body:not(.admin-mode) .admin-expense-section {
     position: relative;
     top: -12px;
 }
+
+/* ========== NHÂN VIÊN GỌN NHẸ ========== */
+.employee-item {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+}
+
+.employee-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.employee-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.employee-actions button {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  margin-left: 6px;
+}
+
+.stats-row {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-light);
+  margin-bottom: 6px;
+}
+
+.stats-row.highlight {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--success);
+}
+
+.history-summary {
+  display: flex;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.history-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.history-badge.overtime {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.history-badge.absent {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.date-select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  font-size: 13px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.action-buttons button {
+  flex: 1;
+  padding: 6px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-overtime {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.btn-absent {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Nút thêm nhân viên đơn giản */
+#addEmployeeBtnSimple {
+  margin-bottom: 16px;
+}
+
+.history-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.badge-date {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.badge-date.overtime {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.badge-date.absent {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.stats-row.bonus {
+  color: var(--warning);
+  margin-top: 4px;
+  font-size: 13px;
+}
