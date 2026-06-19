@@ -793,11 +793,26 @@ function updatePaymentInfo() {
 
 // ========== NÚT THANH TOÁN NHANH ==========
 document.querySelectorAll(".quick-money-btn").forEach(btn => {
-  btn.onclick = () => expenseAmount.value = (Number(btn.innerText) * 1000).toLocaleString("vi-VN");
+  btn.onclick = () => {
+    const amount = parseInt(btn.getAttribute('data-amount') || (Number(btn.innerText.replace('k','')) * 1000), 10);
+    if (!isNaN(amount) && expenseAmount) {
+      expenseAmount.value = amount.toLocaleString('vi-VN');
+      // Trigger input event để format
+      const evt = new Event('input', { bubbles: true });
+      expenseAmount.dispatchEvent(evt);
+    }
+  };
 });
 
 document.querySelectorAll(".quick-debt-btn").forEach(btn => {
-  btn.onclick = () => debtAmount.value = (Number(btn.innerText) * 1000).toLocaleString("vi-VN");
+  btn.onclick = () => {
+    const amount = parseInt(btn.getAttribute('data-amount') || (Number(btn.innerText.replace('k','')) * 1000), 10);
+    if (!isNaN(amount) && debtAmount) {
+      debtAmount.value = amount.toLocaleString('vi-VN');
+      const evt = new Event('input', { bubbles: true });
+      debtAmount.dispatchEvent(evt);
+    }
+  };
 });
 
 document.querySelectorAll(".quick-payment-btn").forEach(btn => {

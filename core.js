@@ -586,10 +586,10 @@ function parseMoney(value) {
   
   let number = parseInt(clean, 10);
   
-  // QUY TẮC NHANH: Nếu số nhập vào <= 9999 (tức từ 1 đến 9999), coi là nghìn => nhân với 1000
-  // Ví dụ: 1000 -> 1.000.000, 500 -> 500.000, 10 -> 10.000
-  // Bạn có thể tùy chỉnh ngưỡng theo nhu cầu (ví dụ <= 999)
-  if (number <= 9999) {
+  // QUY TẮC NHANH: Nếu số nhập vào <= 999 (từ 1 đến 999), coi là nghìn => nhân với 1000
+  // Ví dụ: gõ 50 -> 50.000, gõ 100 -> 100.000, gõ 999 -> 999.000
+  // Số >= 1000 giữ nguyên (vd: 50000 -> 50.000)
+  if (number > 0 && number <= 999) {
     number = number * 1000;
   }
   
@@ -714,7 +714,19 @@ function setupMoneyInputs() {
     if (id === 'adminExpenseAmount') window.adminExpenseAmount = newInput;
     if (id === 'paymentAmount') window.paymentAmount = newInput;
     
-    // Khi blur: format số
+    // THÊM: Format số trong khi gõ (real-time)
+    newInput.addEventListener('input', function() {
+      // Chỉ lấy số
+      let raw = this.value.replace(/[^0-9]/g, '');
+      if (raw === '') {
+        this.value = '';
+        return;
+      }
+      // Format với dấu phẩy
+      this.value = parseInt(raw, 10).toLocaleString('vi-VN');
+    });
+    
+    // Khi blur: format số (giữ nguyên)
     newInput.addEventListener('blur', function() {
       let num = parseMoney(this.value);
       if (num > 0) {
@@ -724,14 +736,9 @@ function setupMoneyInputs() {
       }
     });
     
-    // Khi focus: bỏ dấu phẩy để dễ nhập
+    // Khi focus: chọn toàn bộ text để dễ gõ lại
     newInput.addEventListener('focus', function() {
-      let num = parseMoney(this.value);
-      if (num > 0) {
-        this.value = num.toString();
-      } else {
-        this.value = '';
-      }
+      this.select();
     });
     
     // Chỉ cho nhập số

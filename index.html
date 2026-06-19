@@ -450,32 +450,27 @@ window.APP_VERSION = "1.0.0";
 const adminExpenseFab = document.getElementById("adminExpenseFab");
 const adminExpensePopup = document.getElementById("adminExpensePopup");
 const adminExpenseNameInput = document.getElementById("adminExpenseNameInput");
-const adminExpenseQty = document.getElementById("adminExpenseQty");
-const adminExpenseAmount = document.getElementById("adminExpenseAmount");
 const recentAdminExpenseWrap = document.getElementById("recentAdminExpenseWrap");
 const saveAdminExpenseBtn = document.getElementById("saveAdminExpenseBtn");
 
 // Biến toàn cục
 window.editingAdminExpenseId = null;
 
-// Format số tiền
-function formatMoneyInput(input) {
-  if (!input) return;
-  input.addEventListener('input', function(e) {
-    let value = this.value.replace(/[^\d]/g, '');
-    if (value) {
-      value = parseInt(value, 10).toLocaleString('vi-VN');
-      this.value = value;
-    }
-  });
+// Helper: lấy fresh DOM reference (vì setupMoneyInputs trong core.js clone và replace element)
+function getAdminExpenseQty() {
+  return document.getElementById("adminExpenseQty");
 }
-formatMoneyInput(adminExpenseAmount);
-formatMoneyInput(adminExpenseQty);
+function getAdminExpenseAmount() {
+  return document.getElementById("adminExpenseAmount");
+}
 
-// Parse số từ string
+// Parse số từ string (đồng bộ với parseMoney trong core.js)
 function parseMoneyValue(str) {
   if (!str) return 0;
-  return parseInt(String(str).replace(/[^\d]/g, ''), 10) || 0;
+  const num = parseInt(String(str).replace(/[^\d]/g, ''), 10) || 0;
+  // Nếu số <= 999, tự động nhân 1000 (gõ "50" => 50,000)
+  if (num > 0 && num <= 999) return num * 1000;
+  return num;
 }
 
 // Lấy ngày hiện tại
@@ -516,7 +511,8 @@ function renderRecentAdminExpenses() {
 // Chọn chi phí từ gợi ý
 window.selectAdminExpense = function(name) {
   if (adminExpenseNameInput) adminExpenseNameInput.value = name;
-  if (adminExpenseAmount) adminExpenseAmount.focus();
+  const amountInput = getAdminExpenseAmount();
+  if (amountInput) amountInput.focus();
   if (typeof showToast === 'function') showToast(`✓ Đã chọn: ${name}`);
 };
 
@@ -525,8 +521,10 @@ if (adminExpenseFab) {
   adminExpenseFab.onclick = () => {
     window.editingAdminExpenseId = null;
     if (adminExpenseNameInput) adminExpenseNameInput.value = '';
-    if (adminExpenseAmount) adminExpenseAmount.value = '';
-    if (adminExpenseQty) adminExpenseQty.value = '';
+    const qtyInput = getAdminExpenseQty();
+    const amountInput = getAdminExpenseAmount();
+    if (qtyInput) qtyInput.value = '';
+    if (amountInput) amountInput.value = '';
     renderRecentAdminExpenses();
     if (typeof openPopup === 'function') openPopup('adminExpensePopup');
     setTimeout(() => {
@@ -538,9 +536,12 @@ if (adminExpenseFab) {
 // Nút số tiền nhanh
 document.querySelectorAll('.quick-admin-money-btn').forEach(btn => {
   btn.onclick = () => {
-    if (adminExpenseAmount) {
+    const amountInput = getAdminExpenseAmount();
+    if (amountInput) {
       const amount = parseInt(btn.getAttribute('data-amount') || btn.innerText.replace('k', '000'), 10);
-      adminExpenseAmount.value = amount.toLocaleString('vi-VN');
+      amountInput.value = amount.toLocaleString('vi-VN');
+      const evt = new Event('input', { bubbles: true });
+      amountInput.dispatchEvent(evt);
     }
   };
 });
@@ -583,8 +584,11 @@ if (saveAdminExpenseBtn) {
     }
     
     const name = adminExpenseNameInput ? adminExpenseNameInput.value.trim() : '';
-    const qty = parseMoneyValue(adminExpenseQty?.value);
-    const amount = parseMoneyValue(adminExpenseAmount?.value);
+    // Luôn lấy fresh DOM reference vì setupMoneyInputs clone và replace element
+    const qtyInput = getAdminExpenseQty();
+    const amountInput = getAdminExpenseAmount();
+    const qty = parseMoneyValue(qtyInput?.value);
+    const amount = parseMoneyValue(amountInput?.value);
     
     if (!name) {
       alert('Vui lòng nhập tên chi phí');
@@ -593,7 +597,7 @@ if (saveAdminExpenseBtn) {
     }
     if (amount <= 0) {
       alert('Vui lòng nhập số tiền hợp lệ');
-      adminExpenseAmount?.focus();
+      amountInput?.focus();
       return;
     }
     if (qty < 0) {
@@ -636,18 +640,23 @@ if (saveAdminExpenseBtn) {
     
     // Reset form và đóng popup
     if (adminExpenseNameInput) adminExpenseNameInput.value = '';
-    if (adminExpenseAmount) adminExpenseAmount.value = '';
-    if (adminExpenseQty) adminExpenseQty.value = '';
+    const qtyInput2 = getAdminExpenseQty();
+    const amountInput2 = getAdminExpenseAmount();
+    if (amountInput2) amountInput2.value = '';
+    if (qtyInput2) qtyInput2.value = '';
     if (typeof closePopup === 'function') closePopup('adminExpensePopup');
   };
 }
 
 // Enter để lưu
-if (adminExpenseAmount) {
-  adminExpenseAmount.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && saveAdminExpenseBtn) saveAdminExpenseBtn.click();
-  });
-}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && document.getElementById('adminExpensePopup')?.classList.contains('active')) {
+    const popup = document.getElementById('adminExpensePopup');
+    if (popup && popup.classList.contains('active') && saveAdminExpenseBtn) {
+      saveAdminExpenseBtn.click();
+    }
+  }
+});
 
 // Export functions
 window.renderRecentAdminExpenses = renderRecentAdminExpenses;
